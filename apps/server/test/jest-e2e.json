@@ -5,12 +5,12 @@
   "moduleFileExtensions": ["js", "json", "ts"],
   "testRegex": ".e2e-spec.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": ["ts-jest", { isolatedModules: true }]
+    "^.+\\.(t|j)s$": ["ts-jest", { "isolatedModules": true }]
   },
   "moduleNameMapper": {
-    "^@ordo/shared$": "<rootDir>/../packages/shared/src/index.ts",
-    "^@ordo/shared/(.*)$": "<rootDir>/../packages/shared/src/$1.ts",
-    "^@ordo/server(/.*)$": "<rootDir>/src/$1"
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+    "^@ordo/shared$": "<rootDir>/../../packages/shared/src/index.ts",
+    "^@ordo/shared/(.*)$": "<rootDir>/../../packages/shared/src/$1.ts"
   },
   "testTimeout": 30000
 }

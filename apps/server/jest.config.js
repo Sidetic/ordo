@@ -9,6 +9,7 @@ module.exports = {
     "^.+\\.(t|j)s$": ["ts-jest", { isolatedModules: true }],
   },
   moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
     "^@ordo/shared$": "<rootDir>/../../packages/shared/src/index.ts",
     "^@ordo/shared/(.*)$": "<rootDir>/../../packages/shared/src/$1.ts",
   },

@@ -65,6 +65,7 @@ export class AuthController {
   }
 
   @Post("login")
+  @HttpCode(200)
   @UsePipes(new ZodValidationPipe(LoginSchema))
   async login(
     @Body() body: { email: string; password: string },
