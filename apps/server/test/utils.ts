@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
-import { Test } from "@nestjs/testing";
+import { Test, type TestingModuleBuilder } from "@nestjs/testing";
 import type { INestApplication } from "@nestjs/common";
 import cookieParser from "cookie-parser";
 import { AppModule } from "../src/app.module.js";
@@ -18,7 +18,12 @@ export interface TestCtx {
 const SERVER_DIR = join(__dirname, "..");
 
 /** Provisions a fresh temp SQLite DB with the current schema and boots the app. */
-export async function createTestApp(overrides: Record<string, unknown> = {}): Promise<TestCtx> {
+export async function createTestApp(
+  options: {
+    config?: Record<string, unknown>;
+    customize?: (builder: TestingModuleBuilder) => TestingModuleBuilder;
+  } = {},
+): Promise<TestCtx> {
   const dbPath = `/tmp/ordo-e2e-${process.pid}-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2)}.db`;
@@ -36,13 +41,15 @@ export async function createTestApp(overrides: Record<string, unknown> = {}): Pr
     databaseUrl: `file:${dbPath}`,
     registrationEnabled: true,
     emailVerificationRequired: false,
-    ...overrides,
+    ...(options.config ?? {}),
   };
 
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-    .overrideProvider(APP_CONFIG)
-    .useValue(cfg)
-    .compile();
+  let builder = Test.createTestingModule({ imports: [AppModule] }).overrideProvider(APP_CONFIG);
+  // overrideProvider returns a stripped builder; apply the config value, then
+  // hand back a regular TestingModuleBuilder for further overrides.
+  const moduleRef = await (options.customize ?? ((b: TestingModuleBuilder) => b))(
+    builder.useValue(cfg),
+  ).compile();
 
   const app = moduleRef.createNestApplication();
   app.use(cookieParser());

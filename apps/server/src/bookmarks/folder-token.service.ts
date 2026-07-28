@@ -1,0 +1,70 @@
+import { Injectable } from "@nestjs/common";
+import bcrypt from "bcryptjs";
+import type { Folder } from "@prisma/client";
+import { ErrorCode, TOKEN_TTL } from "@ordo/shared";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { AppError } from "../common/errors/app-error.js";
+import { TokenService } from "../auth/token.service.js";
+
+const FOLDER_BCRYPT_COST = 10;
+
+/** Manages folder password protection and short-lived folder unlock tokens. */
+@Injectable()
+export class FolderTokenService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tokens: TokenService,
+  ) {}
+
+  async setPassword(folderId: string, password: string): Promise<void> {
+    const passwordHash = await bcrypt.hash(password, FOLDER_BCRYPT_COST);
+    await this.prisma.folder.update({
+      where: { id: folderId },
+      data: { passwordHash },
+    });
+    // invalidate any outstanding tokens for this folder
+    await this.prisma.folderToken.deleteMany({ where: { folderId } });
+  }
+
+  async removePassword(folderId: string): Promise<void> {
+    await this.prisma.folder.update({
+      where: { id: folderId },
+      data: { passwordHash: null },
+    });
+    await this.prisma.folderToken.deleteMany({ where: { folderId } });
+  }
+
+  /** Verify the folder password and issue a short-lived folder-scoped token. */
+  async unlock(folder: Folder, password: string): Promise<{ token: string; expiresIn: number }> {
+    if (!folder.passwordHash) {
+      throw new AppError(ErrorCode.FORBIDDEN, "This folder is not protected");
+    }
+    const ok = await bcrypt.compare(password, folder.passwordHash);
+    if (!ok) {
+      throw new AppError(ErrorCode.INVALID_FOLDER_PASSWORD, "Incorrect folder password");
+    }
+    const { token, hash } = this.tokens.generateFolderToken();
+    await this.prisma.folderToken.create({
+      data: {
+        folderId: folder.id,
+        tokenHash: hash,
+        expiresAt: new Date(Date.now() + TOKEN_TTL.FOLDER_MS),
+      },
+    });
+    return { token, expiresIn: Math.round(TOKEN_TTL.FOLDER_MS / 1000) };
+  }
+
+  /** Verify a folder token is valid for the given folder. */
+  async verify(folderId: string, token: string): Promise<boolean> {
+    const hash = this.tokens.hash(token);
+    const record = await this.prisma.folderToken.findUnique({
+      where: { tokenHash: hash },
+    });
+    if (!record || record.folderId !== folderId) return false;
+    if (record.expiresAt < new Date()) {
+      await this.prisma.folderToken.delete({ where: { id: record.id } }).catch(() => undefined);
+      return false;
+    }
+    return true;
+  }
+}

@@ -10,6 +10,7 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
+    "isolatedModules": true,
     "declaration": false,
     "sourceMap": true,
     "types": ["node", "jest"]

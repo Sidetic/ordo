@@ -6,7 +6,7 @@ module.exports = {
   moduleFileExtensions: ["js", "json", "ts"],
   testRegex: ".*\\.spec\\.ts$",
   transform: {
-    "^.+\\.(t|j)s$": ["ts-jest", { isolatedModules: true }],
+    "^.+\\.(t|j)s$": ["ts-jest", {}],
   },
   moduleNameMapper: {
     "^(\\.{1,2}/.*)\\.js$": "$1",

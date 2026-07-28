@@ -50,7 +50,22 @@ export function toFolderDto(
   };
 }
 
-export function toBookmarkDto(b: Bookmark): BookmarkDto {
+export type BookmarkDtoFields = Pick<
+  Bookmark,
+  | "id"
+  | "folderId"
+  | "url"
+  | "title"
+  | "description"
+  | "domain"
+  | "contentText"
+  | "contentMarkdown"
+  | "isRead"
+  | "createdAt"
+  | "updatedAt"
+>;
+
+export function toBookmarkDto(b: BookmarkDtoFields): BookmarkDto {
   return {
     id: b.id,
     folderId: b.folderId,

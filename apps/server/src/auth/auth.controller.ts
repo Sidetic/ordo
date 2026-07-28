@@ -9,7 +9,6 @@ import {
   Req,
   Res,
   UseGuards,
-  UsePipes,
 } from "@nestjs/common";
 import type { Request, Response } from "express";
 import {
@@ -49,9 +48,8 @@ export class AuthController {
   }
 
   @Post("register")
-  @UsePipes(new ZodValidationPipe(RegisterSchema))
   async register(
-    @Body() body: { email: string; password: string },
+    @Body(new ZodValidationPipe(RegisterSchema)) body: { email: string; password: string },
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {
@@ -66,9 +64,8 @@ export class AuthController {
 
   @Post("login")
   @HttpCode(200)
-  @UsePipes(new ZodValidationPipe(LoginSchema))
   async login(
-    @Body() body: { email: string; password: string },
+    @Body(new ZodValidationPipe(LoginSchema)) body: { email: string; password: string },
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {
@@ -131,9 +128,8 @@ export class AuthController {
   }
 
   @Post("verify-email")
-  @UsePipes(new ZodValidationPipe(VerifyEmailSchema))
   @HttpCode(200)
-  async verifyEmail(@Body() body: { token: string }): Promise<{ success: true }> {
+  async verifyEmail(@Body(new ZodValidationPipe(VerifyEmailSchema)) body: { token: string }): Promise<{ success: true }> {
     await this.auth.verifyEmail(body.token);
     return { success: true };
   }
