@@ -1,0 +1,16 @@
+{
+  "preset": "ts-jest",
+  "testEnvironment": "node",
+  "rootDir": "..",
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": ["ts-jest", { isolatedModules: true }]
+  },
+  "moduleNameMapper": {
+    "^@ordo/shared$": "<rootDir>/../packages/shared/src/index.ts",
+    "^@ordo/shared/(.*)$": "<rootDir>/../packages/shared/src/$1.ts",
+    "^@ordo/server(/.*)$": "<rootDir>/src/$1"
+  },
+  "testTimeout": 30000
+}
