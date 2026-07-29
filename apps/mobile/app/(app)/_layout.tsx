@@ -1,6 +1,7 @@
 /**
  * Authenticated app layout — tabbed (Folders · Search · Settings).
- * Full real implementation lands with the Bookmarks/Settings modules.
+ * Detail routes (folder/reader/sessions) are hidden from the tab bar and
+ * render full-screen (tab bar hidden) for a focused experience.
  */
 import React from "react";
 import { Tabs } from "expo-router";
@@ -10,6 +11,11 @@ import { layout } from "../../src/theme/tokens";
 import { useValidateSession } from "../../src/hooks/queries";
 import { useAuthStore } from "../../src/store/auth";
 import { ActivityIndicator, View } from "react-native";
+
+const HIDDEN = {
+  href: null,
+  tabBarStyle: { display: "none" as const },
+};
 
 export default function AppLayout() {
   const { palette } = useTheme();
@@ -35,7 +41,7 @@ export default function AppLayout() {
           backgroundColor: palette.surface,
           borderTopColor: palette.border,
           borderTopWidth: 1,
-          height: layout.tabBarHeight + 0,
+          height: layout.tabBarHeight,
         },
         tabBarItemStyle: { paddingVertical: 6 },
       }}
@@ -61,6 +67,10 @@ export default function AppLayout() {
           tabBarIcon: ({ color }) => <Ionicons name="settings-outline" size={24} color={color} />,
         }}
       />
+      {/* Hidden detail routes */}
+      <Tabs.Screen name="folder/[id]" options={HIDDEN} />
+      <Tabs.Screen name="reader/[id]" options={HIDDEN} />
+      <Tabs.Screen name="settings/sessions" options={HIDDEN} />
     </Tabs>
   );
 }

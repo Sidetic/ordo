@@ -2,11 +2,13 @@
  * Auth mutations. On success they update the auth store, which flips the root
  * gate. Errors are surfaced via the returned rejection (screens handle UI).
  */
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "../lib/query-client";
 import { authApi } from "../lib/api/auth";
 import { useAuthStore } from "../store/auth";
+import { qk } from "../lib/api/query-keys";
 import { cancelProactiveRefresh, scheduleProactiveRefresh } from "../lib/api/client";
+import type { SessionDto } from "@ordo/shared";
 
 export function useLogin() {
   const setSession = useAuthStore((s) => s.setSession);
@@ -32,6 +34,21 @@ export function useRegister() {
 
 export function useVerifyEmail() {
   return useMutation({ mutationFn: authApi.verifyEmail });
+}
+
+export function useRevokeSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: authApi.revokeSession,
+    onMutate: (id) => {
+      const prev = qc.getQueryData<SessionDto[]>(qk.sessions);
+      qc.setQueryData<SessionDto[]>(qk.sessions, (old) => (old ?? []).filter((s) => s.id !== id));
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(qk.sessions, ctx.prev);
+    },
+  });
 }
 
 export function useLogout() {
