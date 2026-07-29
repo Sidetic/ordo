@@ -1,0 +1,50 @@
+name: OTA Update
+
+# Publishes a JS-only update (EAS Update) to the production channel on every
+# push to main. Binaries built with expo-updates (the apk.yml builds, once
+# expo-updates is baked in) check this channel on launch and pull the latest JS
+# without a new store/APK release. Native changes still require a new build.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ota-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update:
+    name: EAS Update (production)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --config.dangerouslyAllowAllBuilds=true
+
+      - name: Build shared package
+        run: pnpm --filter @ordo/shared build
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v9
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+          packager: pnpm
+          working-directory: apps/mobile
+
+      - name: Publish update
+        working-directory: apps/mobile
+        run: eas update --channel production --non-interactive --no-wait --auto
