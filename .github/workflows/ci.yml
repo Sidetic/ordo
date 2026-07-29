@@ -27,6 +27,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --config.dangerouslyAllowAllBuilds=true
 
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Build shared package
+        run: pnpm --filter @ordo/shared build
+
       - name: Typecheck
         run: pnpm -r typecheck
 
