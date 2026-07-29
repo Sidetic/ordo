@@ -80,8 +80,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --config.dangerouslyAllowAllBuilds=true
 
+      - name: Build shared package
+        run: pnpm --filter @ordo/shared build
+
       - name: Setup Expo
-        uses: expo/expo-github-action@v8
+        uses: expo/expo-github-action@v9
         with:
           expo-version: latest
           packager: pnpm
