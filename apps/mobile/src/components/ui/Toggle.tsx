@@ -1,5 +1,5 @@
 /**
- * Animated toggle switch (Reanimated spring knob). AMOLED-aware.
+ * Animated toggle switch faithful to ordo: coral track when on, surface knob.
  */
 import React, { useCallback } from "react";
 import { StyleSheet, View } from "react-native";
@@ -14,9 +14,9 @@ import { useTheme } from "../../theme/ThemeProvider";
 import { haptics } from "../../lib/haptics";
 import { springs } from "../../theme/tokens";
 
-const TRACK_W = 46;
-const TRACK_H = 28;
-const KNOB = 22;
+const TRACK_W = 44;
+const TRACK_H = 26;
+const KNOB = 20;
 const PADDING = (TRACK_H - KNOB) / 2;
 const TRAVEL = TRACK_W - KNOB - PADDING * 2;
 
@@ -41,7 +41,7 @@ export function Toggle({ value, onValueChange, disabled }: ToggleProps) {
   }, [disabled, onValueChange, value]);
 
   const trackStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(pressed.value, [0, 1], [palette.surfaceSecondary, palette.accent]),
+    backgroundColor: interpolateColor(pressed.value, [0, 1], [palette.borderStrong, palette.accent]),
   }));
 
   const knobStyle = useAnimatedStyle(() => ({
@@ -50,10 +50,7 @@ export function Toggle({ value, onValueChange, disabled }: ToggleProps) {
 
   return (
     <PressableScale scaleTo={0.92} dim={false} disabled={disabled} onPress={onToggle}>
-      <View
-        style={[styles.track, { opacity: disabled ? 0.5 : 1 }, trackStyle]}
-        pointerEvents="none"
-      >
+      <View style={[styles.track, { opacity: disabled ? 0.5 : 1 }, trackStyle]} pointerEvents="none">
         <Animated.View style={[styles.knob, { backgroundColor: palette.surface }, knobStyle]} />
       </View>
     </PressableScale>
@@ -70,8 +67,8 @@ const styles = StyleSheet.create({
     borderRadius: KNOB / 2,
     shadowColor: "#000",
     shadowOpacity: 0.2,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
     elevation: 2,
   },
 });

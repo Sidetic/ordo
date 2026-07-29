@@ -1,5 +1,6 @@
 /**
- * Surface card with subtle border + optional elevation.
+ * Surface card faithful to ordo-archive: surface fill, 1px line border, no
+ * elevation. Shadows are reserved for floating elements.
  */
 import React from "react";
 import { StyleSheet, View, type ViewProps } from "react-native";
@@ -12,7 +13,7 @@ export interface CardProps extends ViewProps {
   elevated?: boolean;
 }
 
-export function Card({ pad = 16, radiusKey = "lg", elevated, style, children, ...rest }: CardProps) {
+export function Card({ pad = 14, radiusKey = "sm", elevated, style, children, ...rest }: CardProps) {
   const { palette, shadows } = useTheme();
   return (
     <View
@@ -35,5 +36,5 @@ export function Card({ pad = 16, radiusKey = "lg", elevated, style, children, ..
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: StyleSheet.hairlineWidth },
+  card: { borderWidth: 1 },
 });

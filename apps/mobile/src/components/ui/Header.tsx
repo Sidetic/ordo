@@ -1,6 +1,7 @@
 /**
  * Screen header with optional back button, title, and trailing action.
- * Respects the status-bar safe area.
+ * Faithful to ordo: bg, no elevation, Inter Tight title (tight tracking),
+ * compact 32×24 trailing icon buttons.
  */
 import React from "react";
 import { StyleSheet, View } from "react-native";
@@ -38,7 +39,7 @@ export function Header({ title, subtitle, showBack, onBack, right, large }: Head
       <View style={styles.row}>
         {showBack ? (
           <PressableScale style={styles.backBtn} scaleTo={0.85} onPress={handleBack} hitSlop={8}>
-            <Ionicons name="chevron-back" size={26} color={palette.text} />
+            <Ionicons name="chevron-back" size={24} color={palette.text} />
           </PressableScale>
         ) : (
           <View style={styles.backBtn} />
@@ -46,7 +47,7 @@ export function Header({ title, subtitle, showBack, onBack, right, large }: Head
         {right ? <View style={styles.right}>{right}</View> : <View style={styles.right} />}
       </View>
       <View style={[styles.titles, !large && styles.compact]}>
-        <Text variant={large ? "title1" : "title3"} numberOfLines={1}>{title}</Text>
+        <Text variant={large ? "title1" : "headline"} numberOfLines={1}>{title}</Text>
         {subtitle ? (
           <Text variant="footnote" color="secondary" numberOfLines={1} style={{ marginTop: spacing[2] }}>
             {subtitle}
@@ -59,9 +60,9 @@ export function Header({ title, subtitle, showBack, onBack, right, large }: Head
 
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: spacing[12], paddingBottom: spacing[8] },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 40 },
-  backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  right: { minWidth: 40, alignItems: "flex-end", justifyContent: "center" },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 36 },
+  backBtn: { width: 36, height: 32, alignItems: "center", justifyContent: "center" },
+  right: { minWidth: 36, alignItems: "flex-end", justifyContent: "center" },
   titles: { marginTop: spacing[4], paddingHorizontal: spacing[4] },
   compact: { marginTop: 0 },
 });

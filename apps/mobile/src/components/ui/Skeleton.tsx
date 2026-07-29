@@ -1,6 +1,4 @@
-/**
- * Skeleton shimmer placeholder for loading states.
- */
+/** Skeleton shimmer placeholder. */
 import React, { useEffect } from "react";
 import { type DimensionValue, type ViewStyle } from "react-native";
 import Animated, {
@@ -21,7 +19,7 @@ export interface SkeletonProps {
   style?: ViewStyle;
 }
 
-export function Skeleton({ width = "100%", height = 14, radiusKey = "sm", style }: SkeletonProps) {
+export function Skeleton({ width = "100%", height = 14, radiusKey = "xs", style }: SkeletonProps) {
   const { palette } = useTheme();
   const t = useSharedValue(0);
 
@@ -30,7 +28,7 @@ export function Skeleton({ width = "100%", height = 14, radiusKey = "sm", style 
   }, [t]);
 
   const animStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(t.value, [0, 0.5, 1], [0.45, 0.85, 0.45]),
+    opacity: interpolate(t.value, [0, 0.5, 1], [0.4, 0.8, 0.4]),
   }));
 
   const staticStyle: ViewStyle = {

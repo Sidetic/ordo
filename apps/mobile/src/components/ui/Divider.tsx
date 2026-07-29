@@ -1,6 +1,4 @@
-/**
- * Thin themed divider.
- */
+/** Thin themed divider (1px line). */
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -11,5 +9,5 @@ export function Divider({ style }: { style?: import("react-native").ViewStyle })
 }
 
 const styles = StyleSheet.create({
-  line: { height: StyleSheet.hairlineWidth, width: "100%" },
+  line: { height: 1, width: "100%" },
 });

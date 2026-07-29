@@ -105,7 +105,7 @@ export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, content
               {
                 backgroundColor: palette.surface,
                 borderColor: palette.border,
-                borderRadius: radius.xl,
+                borderRadius: radius["2xl"],
                 paddingBottom: insets.bottom + spacing[12],
                 maxHeight: `${Math.round(maxFraction * 100)}%`,
               },

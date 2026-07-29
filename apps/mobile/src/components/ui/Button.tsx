@@ -1,5 +1,9 @@
 /**
- * Button — spring press feedback, four variants, loading + icon support.
+ * Button — spring press feedback, four variants faithful to ordo-archive:
+ *  - primary:   coral fill, white label
+ *  - secondary: transparent, 1px line border
+ *  - ghost:     transparent, no border
+ *  - danger:    coral outline (coral border + coral label)
  */
 import React from "react";
 import { ActivityIndicator, StyleSheet, View, type ViewStyle } from "react-native";
@@ -20,7 +24,6 @@ export interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   icon?: React.ReactNode;
-  /** Stretch to fill width. */
   block?: boolean;
   style?: ViewStyle;
   testID?: string;
@@ -39,23 +42,29 @@ export function Button({
   testID,
 }: ButtonProps) {
   const { palette } = useTheme();
-
-  const bg = {
-    primary: palette.accent,
-    secondary: palette.surfaceSecondary,
-    ghost: "transparent",
-    danger: palette.danger,
-  }[variant];
-
-  const fg = {
-    primary: palette.onAccent,
-    secondary: palette.text,
-    ghost: palette.text,
-    danger: "#FFFFFF",
-  }[variant];
-
   const isDisabled = disabled || loading;
-  const height = size === "lg" ? 52 : 44;
+  const height = size === "lg" ? 48 : 42;
+
+  const surface =
+    variant === "primary"
+      ? palette.accent
+      : variant === "secondary"
+        ? "transparent"
+        : variant === "ghost"
+          ? "transparent"
+          : "transparent"; // danger → outline
+
+  const fg =
+    variant === "primary"
+      ? palette.onAccent
+      : variant === "danger"
+        ? palette.danger
+        : palette.text;
+
+  const borderWidth =
+    variant === "secondary" || variant === "danger" ? 1 : 0;
+  const borderColor =
+    variant === "danger" ? palette.danger : palette.borderStrong;
 
   return (
     <PressableScale
@@ -69,9 +78,11 @@ export function Button({
         styles.base,
         {
           height,
-          backgroundColor: bg,
-          borderRadius: radius.md,
-          opacity: disabled ? 0.5 : 1,
+          backgroundColor: surface,
+          borderRadius: radius.sm,
+          borderWidth,
+          borderColor,
+          opacity: disabled ? 0.45 : 1,
           ...(block ? { flex: 1 } : {}),
         },
         style,
@@ -83,7 +94,7 @@ export function Button({
         ) : (
           <>
             {icon ? <View style={styles.iconWrap}>{icon}</View> : null}
-            <Text variant="bodyStrong" color={variant === "ghost" ? "primary" : undefined} style={{ color: fg }}>
+            <Text variant="title3" style={{ color: fg }}>
               {label}
             </Text>
           </>

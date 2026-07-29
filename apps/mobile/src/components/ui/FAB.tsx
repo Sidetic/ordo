@@ -1,12 +1,12 @@
 /**
- * Floating action button with spring press feedback.
+ * Floating action button faithful to ordo-archive: 48px coral circle, white icon.
  */
 import React from "react";
 import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { PressableScale } from "./PressableScale";
 import { useTheme } from "../../theme/ThemeProvider";
-import { radius, spacing } from "../../theme/tokens";
+import { spacing } from "../../theme/tokens";
 
 export interface FABProps {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -19,15 +19,24 @@ export function FAB({ icon = "add", onPress, testID }: FABProps) {
   return (
     <PressableScale
       testID={testID}
-      style={[styles.fab, { backgroundColor: palette.accent, borderRadius: radius.full }, shadows.level3]}
+      style={[styles.fab, { backgroundColor: palette.accent }, shadows.level2]}
       scaleTo={0.9}
       onPress={onPress}
     >
-      <Ionicons name={icon} size={26} color={palette.onAccent} />
+      <Ionicons name={icon} size={24} color={palette.onAccent} />
     </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
-  fab: { position: "absolute", right: spacing[20], bottom: spacing[24], width: 56, height: 56, alignItems: "center", justifyContent: "center" },
+  fab: {
+    position: "absolute",
+    right: spacing[20],
+    bottom: spacing[20],
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
