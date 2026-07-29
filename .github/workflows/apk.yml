@@ -78,7 +78,7 @@ jobs:
           restore-keys: gradle-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --config.dangerouslyAllowAllBuilds=true
 
       - name: Setup Expo
         uses: expo/expo-github-action@v8
