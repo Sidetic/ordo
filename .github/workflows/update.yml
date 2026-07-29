@@ -45,4 +45,4 @@ jobs:
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas update --channel production --non-interactive --no-wait --auto
+        run: eas update --channel production --non-interactive --auto
