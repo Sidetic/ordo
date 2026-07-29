@@ -1,0 +1,138 @@
+name: Build APK
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event.workflow_run.conclusion == 'success')
+    outputs:
+      version: ${{ steps.info.outputs.version }}
+      should_release: ${{ steps.info.outputs.should_release }}
+      build_ref: ${{ steps.info.outputs.build_ref }}
+    steps:
+      - id: info
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message || github.event.workflow_run.head_commit.message || '' }}
+        run: |
+          # On workflow_run events, use the triggering commit message
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            MSG="${{ github.event.workflow_run.head_commit.message }}"
+          else
+            MSG="$COMMIT_MSG"
+          fi
+          MSG=$(echo "$MSG" | head -1)
+
+          if [[ "$MSG" == *-b ]] || [[ "$MSG" == *-build ]]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "build_ref=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+  build_apk:
+    needs: detect
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('apps/mobile/android/**/*.gradle*', 'apps/mobile/android/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          packager: pnpm
+          working-directory: apps/mobile
+
+      - name: Prebuild (generate native Android project)
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ordo-apk
+          path: apps/mobile/android/app/build/outputs/apk/release/*.apk
+
+      - name: Publish to rolling dev release
+        if: needs.detect.outputs.should_release != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK=$(find apps/mobile/android -name "*.apk" -path "*/release/*" | head -1)
+          if [ -z "$APK" ]; then echo "No APK found"; exit 1; fi
+          if gh release view dev -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload dev "$APK" --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create dev "$APK" \
+              --title "Dev build" \
+              --notes "Latest dev APK. Auto-built from main." \
+              --prerelease \
+              -R "$GITHUB_REPOSITORY"
+          fi
+
+      - name: Publish to tag release
+        if: needs.detect.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          APK=$(find apps/mobile/android -name "*.apk" -path "*/release/*" | head -1)
+          mv "$APK" "Ordo-${TAG}.apk"
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "Ordo-${TAG}.apk" --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "Ordo-${TAG}.apk" \
+              --title "Ordo ${TAG}" \
+              --generate-notes \
+              -R "$GITHUB_REPOSITORY"
+          fi
