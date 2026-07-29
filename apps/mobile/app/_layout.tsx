@@ -8,6 +8,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClientProvider } from "@tanstack/react-query";
+import * as Font from "expo-font";
 import { ThemeProvider, useTheme } from "../src/theme/ThemeProvider";
 import { queryClient } from "../src/lib/query-client";
 import { useAuthStore } from "../src/store/auth";
@@ -18,12 +19,13 @@ import { scheduleProactiveRefresh } from "../src/lib/api/client";
 import { ToastHost } from "../src/components/ui/ToastHost";
 import { Banner } from "../src/components/ui/Banner";
 import { Text } from "../src/components/ui/Text";
+import { fontAssets } from "../src/theme/tokens";
 
 function Splash() {
   const { palette } = useTheme();
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: palette.background }}>
-      <Text variant="display" color="accent">Ordo</Text>
+      <Text variant="wordmark" color="accent">Ordo</Text>
     </View>
   );
 }
@@ -88,6 +90,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     (async () => {
+      await Font.loadAsync(fontAssets);
       await Promise.all([
         useSettingsStore.getState().hydrate(),
         useFolderTokenStore.getState().hydrate(),

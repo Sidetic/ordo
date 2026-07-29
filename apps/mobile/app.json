@@ -1,5 +1,25 @@
 {
-  "plugins": [
-    "expo-asset"
-  ]
+  "expo": {
+    "name": "Ordo",
+    "slug": "ordo",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "updates": {
+      "url": "https://u.expo.dev/c044b586-2816-42c7-b564-bef8556e21da"
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "plugins": [
+      "expo-asset"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c044b586-2816-42c7-b564-bef8556e21da"
+      }
+    },
+    "owner": "imlucki"
+  }
 }

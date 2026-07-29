@@ -1,9 +1,10 @@
 /**
- * Design tokens — the single source of truth for spacing, radius, elevation,
- * typography, and motion. Every surface in the app derives from these.
+ * Design tokens — the single source of truth for spacing, radius, typography,
+ * and motion. Faithful to the ordo-archive design language: warm, compact,
+ * line-driven. Every surface in the app derives from these.
  */
 
-/** Spacing scale (px). Multiply by the unit when consuming. */
+/** Spacing scale (px). */
 export const spacing = {
   0: 0,
   px: 1,
@@ -28,31 +29,37 @@ export const spacing = {
 } as const;
 
 export type Spacing = keyof typeof spacing;
-export const UNIT = 1;
 
-/** Corner radius scale (px). */
+/**
+ * Corner radius scale (px). ordo-archive uses small radii throughout:
+ * cards/buttons/inputs at 8, dialogs/snackbars at 14, sheet tops at 16.
+ */
 export const radius = {
   none: 0,
+  xs: 6,
   sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  "2xl": 28,
+  md: 10,
+  lg: 12,
+  xl: 14,
+  "2xl": 16,
+  "3xl": 20,
   full: 9999,
 } as const;
 export type Radius = keyof typeof radius;
 
-/** Typography sizes (px). */
+/** Typography sizes (px). Compact scale matching the original app. */
 export const fontSize = {
-  xs: 12,
-  sm: 13,
-  md: 15,
-  lg: 17,
-  xl: 20,
-  "2xl": 24,
-  "3xl": 28,
-  "4xl": 34,
-  "5xl": 40,
+  "2xs": 9,
+  xs: 10.5,
+  sm: 12,
+  md: 13,
+  lg: 14,
+  xl: 15,
+  "2xl": 16,
+  "3xl": 18,
+  "4xl": 22,
+  "5xl": 28,
+  "6xl": 32,
 } as const;
 export type FontSize = keyof typeof fontSize;
 
@@ -73,17 +80,100 @@ export const fontWeight = {
   bold: "700" as const,
 };
 
+/* ----------------------------- Font families ----------------------------- */
+// Loaded via @expo-google-fonts in app/_layout.tsx. Referenced by name string.
+
+export type FontFamily = "display" | "sans" | "mono" | "serif";
+
+const FONTS = {
+  display: {
+    "400": "InterTight_400Regular",
+    "500": "InterTight_500Medium",
+    "600": "InterTight_600SemiBold",
+    "700": "InterTight_700Bold",
+  },
+  sans: {
+    "400": "Inter_400Regular",
+    "500": "Inter_500Medium",
+    "600": "Inter_600SemiBold",
+    "700": "Inter_700Bold",
+  },
+  mono: {
+    "400": "JetBrainsMono_400Regular",
+    "500": "JetBrainsMono_500Medium",
+    "600": "JetBrainsMono_600SemiBold",
+    "700": "JetBrainsMono_700Bold",
+  },
+  serif: {
+    "400": "PlayfairDisplay_400Regular",
+    "700": "PlayfairDisplay_700Bold",
+    "400-italic": "PlayfairDisplay_400Regular_Italic",
+  },
+} as const;
+
+/** Resolve a loaded font family + weight into a fontFamily string. */
+export function resolveFont(
+  family: FontFamily,
+  weight: keyof typeof fontWeight | string = "400",
+  italic?: boolean,
+): string {
+  if (family === "serif" && italic) return FONTS.serif["400-italic"];
+  const table = FONTS[family] as Record<string, string>;
+  return table[weight] ?? table["400"];
+}
+
+/** The list of font assets to preload (passed to useFonts in the root layout). */
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
+import {
+  InterTight_400Regular,
+  InterTight_500Medium,
+  InterTight_600SemiBold,
+  InterTight_700Bold,
+} from "@expo-google-fonts/inter-tight";
+import {
+  JetBrainsMono_400Regular,
+  JetBrainsMono_500Medium,
+  JetBrainsMono_700Bold,
+} from "@expo-google-fonts/jetbrains-mono";
+import {
+  PlayfairDisplay_400Regular,
+  PlayfairDisplay_700Bold,
+  PlayfairDisplay_400Regular_Italic,
+} from "@expo-google-fonts/playfair-display";
+
+export const fontAssets = {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  InterTight_400Regular,
+  InterTight_500Medium,
+  InterTight_600SemiBold,
+  InterTight_700Bold,
+  JetBrainsMono_400Regular,
+  JetBrainsMono_500Medium,
+  JetBrainsMono_700Bold,
+  PlayfairDisplay_400Regular,
+  PlayfairDisplay_700Bold,
+  PlayfairDisplay_400Regular_Italic,
+};
+
 /** Layout constants. */
 export const layout = {
   screenHorizontalPad: 16,
   touchTargetMin: 44,
-  tabBarHeight: 52,
+  tabBarHeight: 60,
   maxContentWidth: 640,
 } as const;
 
 /**
- * Elevation shadows. Three discrete levels keep the system consistent.
- * `elevation` is Android-only; `shadow*` is iOS-only.
+ * Elevation shadows. ordo is mostly line-driven (no shadows on cards); shadows
+ * are reserved for floating elements (FAB, sheets). Kept subtle.
  */
 export interface Shadow {
   shadowColor: string;
@@ -95,9 +185,9 @@ export interface Shadow {
 
 export function makeShadow(color: string, level: 1 | 2 | 3): Shadow {
   const presets = {
-    1: { offset: { width: 0, height: 1 }, opacity: 0.06, blur: 3, elevation: 1 },
-    2: { offset: { width: 0, height: 4 }, opacity: 0.08, blur: 12, elevation: 3 },
-    3: { offset: { width: 0, height: 12 }, opacity: 0.12, blur: 28, elevation: 8 },
+    1: { offset: { width: 0, height: 1 }, opacity: 0.05, blur: 2, elevation: 1 },
+    2: { offset: { width: 0, height: 2 }, opacity: 0.08, blur: 6, elevation: 3 },
+    3: { offset: { width: 0, height: 6 }, opacity: 0.12, blur: 16, elevation: 5 },
   } as const;
   const p = presets[level];
   return {

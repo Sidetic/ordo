@@ -1,6 +1,8 @@
 /**
- * Color palettes for light, dark, and AMOLED (dark + pure black surfaces).
- * AMOLED is not a separate mode — it overrides dark surfaces when active.
+ * Color palettes faithful to ordo-archive: a warm Gruvbox/parchment system.
+ * Light = cream surfaces with warm near-black ink; Dark = warm dark surfaces
+ * with cream ink; AMOLED = pure black with neutral grays. Coral is the single
+ * primary accent (also used for danger/error, matching the original).
  */
 import { makeShadow, type Shadow } from "./tokens";
 
@@ -11,25 +13,34 @@ export interface Palette {
   amoled: boolean;
 
   background: string;
-  /** Primary card / sheet surface. */
   surface: string;
-  /** Subtle fill for inputs, chips, selected rows. */
   surfaceSecondary: string;
-  /** Raised surface (modals, popovers). */
   surfaceElevated: string;
 
+  /** Primary ink (headings). */
   text: string;
+  /** inkSoft — body text. */
   textSecondary: string;
+  /** inkMute — captions, meta. */
   textTertiary: string;
+  /** inkFaint — placeholders, faint meta. */
+  textFaint: string;
 
+  /** Thin separator (line). */
   border: string;
+  /** Stronger separator (lineThick). */
   borderStrong: string;
 
+  /** Coral — primary accent. */
   accent: string;
-  /** Foreground text drawn on top of `accent`. */
   onAccent: string;
-  /** Translucent accent fill for pills/tints. */
   accentSoft: string;
+
+  // Semantic accents (shared across modes, used for chips/tints).
+  coral: string;
+  green: string;
+  blue: string;
+  mustard: string;
 
   success: string;
   warning: string;
@@ -43,58 +54,71 @@ export interface Palette {
 const light: Palette = {
   mode: "light",
   amoled: false,
-  background: "#FAFAFA",
-  surface: "#FFFFFF",
-  surfaceSecondary: "#F1F1F4",
-  surfaceElevated: "#FFFFFF",
-  text: "#18181B",
-  textSecondary: "#6B7280",
-  textTertiary: "#9CA3AF",
-  border: "#E7E7EA",
-  borderStrong: "#D1D5DB",
-  accent: "#4F46E5",
+  background: "#EFE7D2",
+  surface: "#F7F1DE",
+  surfaceSecondary: "#E7DEC6",
+  surfaceElevated: "#FBF6E6",
+  text: "#15140F",
+  textSecondary: "#2A2620",
+  textTertiary: "#5A5448",
+  textFaint: "#8B8676",
+  border: "rgba(21,20,15,0.10)",
+  borderStrong: "rgba(21,20,15,0.18)",
+  accent: "#ED6F5C",
   onAccent: "#FFFFFF",
-  accentSoft: "#EEF2FF",
-  success: "#16A34A",
-  warning: "#D97706",
-  danger: "#DC2626",
-  dangerSoft: "#FEF2F2",
-  overlay: "rgba(9,9,11,0.40)",
+  accentSoft: "rgba(237,111,92,0.12)",
+  coral: "#ED6F5C",
+  green: "#6C8F3A",
+  blue: "#4F7DA6",
+  mustard: "#D9A83A",
+  success: "#6C8F3A",
+  warning: "#D9A83A",
+  danger: "#ED6F5C",
+  dangerSoft: "rgba(237,111,92,0.12)",
+  overlay: "rgba(0,0,0,0.5)",
 };
 
 const dark: Palette = {
   mode: "dark",
   amoled: false,
-  background: "#09090B",
-  surface: "#18181B",
-  surfaceSecondary: "#27272A",
-  surfaceElevated: "#1F1F23",
-  text: "#FAFAFA",
-  textSecondary: "#A1A1AA",
-  textTertiary: "#71717A",
-  border: "#27272A",
-  borderStrong: "#3F3F46",
-  accent: "#818CF8",
-  onAccent: "#111827",
-  accentSoft: "#1E1B4B",
-  success: "#4ADE80",
-  warning: "#FBBF24",
-  danger: "#F87171",
-  dangerSoft: "#450A0A",
-  overlay: "rgba(0,0,0,0.62)",
+  background: "#1A1A16",
+  surface: "#22221D",
+  surfaceSecondary: "#2A2A24",
+  surfaceElevated: "#28281F",
+  text: "#EBDDB2",
+  textSecondary: "#D5C4A1",
+  textTertiary: "#928374",
+  textFaint: "#6C6457",
+  border: "rgba(235,221,178,0.08)",
+  borderStrong: "rgba(235,221,178,0.14)",
+  accent: "#ED6F5C",
+  onAccent: "#FFFFFF",
+  accentSoft: "rgba(237,111,92,0.16)",
+  coral: "#ED6F5C",
+  green: "#8AAA5A",
+  blue: "#7DAEA3",
+  mustard: "#D9A83A",
+  success: "#8AAA5A",
+  warning: "#D9A83A",
+  danger: "#ED6F5C",
+  dangerSoft: "rgba(237,111,92,0.16)",
+  overlay: "rgba(0,0,0,0.5)",
 };
 
-/** AMOLED: dark palette with pure-black surfaces for OLED battery savings. */
+/** AMOLED: pure-black surfaces + neutral grays (dark + AMOLED toggle). */
 const amoledOverrides: Partial<Palette> = {
   amoled: true,
   background: "#000000",
-  surface: "#000000",
-  surfaceSecondary: "#0A0A0A",
-  surfaceElevated: "#0E0E0E",
-  border: "#1C1C1E",
-  borderStrong: "#2C2C2E",
-  accentSoft: "#161622",
-  overlay: "rgba(0,0,0,0.72)",
+  surface: "#0A0A0A",
+  surfaceSecondary: "#141414",
+  surfaceElevated: "#101010",
+  text: "#E0E0E0",
+  textSecondary: "#B0B0B0",
+  textTertiary: "#707070",
+  textFaint: "#454545",
+  border: "rgba(224,224,224,0.08)",
+  borderStrong: "rgba(224,224,224,0.14)",
+  overlay: "rgba(0,0,0,0.6)",
 };
 
 /** Resolve the effective palette from a mode (+ system hint) and amoled flag. */
@@ -119,9 +143,23 @@ export interface Shadows {
 }
 
 export function resolveShadows(p: Palette): Shadows {
+  const c = p.mode === "dark" ? "#000000" : "#15140F";
   return {
-    level1: makeShadow(p.mode === "dark" ? "#000000" : "#27272A", 1),
-    level2: makeShadow(p.mode === "dark" ? "#000000" : "#27272A", 2),
-    level3: makeShadow(p.mode === "dark" ? "#000000" : "#27272A", 3),
+    level1: makeShadow(c, 1),
+    level2: makeShadow(c, 2),
+    level3: makeShadow(c, 3),
   };
 }
+
+/**
+ * Fixed terminal palette for the server health-check UI (always dark,
+ * regardless of app theme — matches ordo-archive's hacker-style log).
+ */
+export const terminalPalette = {
+  bg: "#15140F",
+  text: "#EBDDB2",
+  mute: "#928374",
+  teal: "#7DAEA3",
+  green: "#8AAA5A",
+  coral: "#ED6F5C",
+} as const;

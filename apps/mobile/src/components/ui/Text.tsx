@@ -1,12 +1,22 @@
 /**
- * Themed Text with typographic presets. Inherits color from palette by default.
+ * Themed Text with typographic presets faithful to ordo-archive:
+ *  - Inter Tight for display/titles/labels (tight negative tracking)
+ *  - Inter for body/subhead
+ *  - JetBrains Mono for URLs/counts/timestamps
+ *  - Playfair Display for the wordmark
  */
 import React from "react";
-import { Text as RNText, type TextProps as RNTextProps, type StyleProp, type TextStyle } from "react-native";
-import { fontSize, fontWeight, lineHeight } from "../../theme/tokens";
+import {
+  Text as RNText,
+  type TextProps as RNTextProps,
+  type StyleProp,
+  type TextStyle,
+} from "react-native";
+import { fontSize, lineHeight, resolveFont, type FontFamily } from "../../theme/tokens";
 import { useTheme } from "../../theme/ThemeProvider";
 
 export type TextVariant =
+  | "wordmark"
   | "display"
   | "title1"
   | "title2"
@@ -18,64 +28,86 @@ export type TextVariant =
   | "subhead"
   | "footnote"
   | "caption"
-  | "mono";
+  | "label"
+  | "mono"
+  | "monoSmall";
 
 interface Preset {
+  family: FontFamily;
   size: number;
   weight: TextStyle["fontWeight"];
   lineHeight: number;
   letterSpacing?: number;
+  uppercase?: boolean;
 }
 
 const PRESETS: Record<TextVariant, Preset> = {
-  display: { size: fontSize["5xl"], weight: fontWeight.bold, lineHeight: lineHeight.tight },
-  title1: { size: fontSize["4xl"], weight: fontWeight.bold, lineHeight: lineHeight.tight },
-  title2: { size: fontSize["3xl"], weight: fontWeight.bold, lineHeight: lineHeight.snug },
-  title3: { size: fontSize["2xl"], weight: fontWeight.semibold, lineHeight: lineHeight.snug },
-  headline: { size: fontSize.xl, weight: fontWeight.semibold, lineHeight: lineHeight.normal },
-  body: { size: fontSize.md, weight: fontWeight.regular, lineHeight: lineHeight.normal },
-  bodyStrong: { size: fontSize.md, weight: fontWeight.semibold, lineHeight: lineHeight.normal },
-  callout: { size: fontSize.lg, weight: fontWeight.regular, lineHeight: lineHeight.normal },
-  subhead: { size: fontSize.sm, weight: fontWeight.medium, lineHeight: lineHeight.normal },
-  footnote: { size: fontSize.sm, weight: fontWeight.regular, lineHeight: lineHeight.normal },
-  caption: { size: fontSize.xs, weight: fontWeight.regular, lineHeight: lineHeight.normal, letterSpacing: 0.2 },
-  mono: { size: fontSize.sm, weight: fontWeight.regular, lineHeight: lineHeight.normal },
+  wordmark: { family: "serif", size: fontSize["6xl"], weight: "700", lineHeight: lineHeight.tight },
+  display: { family: "display", size: fontSize["4xl"], weight: "700", lineHeight: lineHeight.tight, letterSpacing: -0.5 },
+  title1: { family: "display", size: fontSize["3xl"], weight: "700", lineHeight: lineHeight.snug, letterSpacing: -0.4 },
+  title2: { family: "display", size: fontSize["2xl"], weight: "700", lineHeight: lineHeight.snug, letterSpacing: -0.3 },
+  title3: { family: "display", size: fontSize.lg, weight: "600", lineHeight: lineHeight.snug, letterSpacing: -0.2 },
+  headline: { family: "display", size: fontSize.xl, weight: "700", lineHeight: lineHeight.normal, letterSpacing: -0.3 },
+  body: { family: "sans", size: fontSize.md, weight: "500", lineHeight: lineHeight.normal },
+  bodyStrong: { family: "sans", size: fontSize.md, weight: "700", lineHeight: lineHeight.normal },
+  callout: { family: "sans", size: fontSize.xl, weight: "400", lineHeight: lineHeight.normal },
+  subhead: { family: "sans", size: fontSize.sm, weight: "600", lineHeight: lineHeight.normal },
+  footnote: { family: "sans", size: fontSize.sm, weight: "500", lineHeight: lineHeight.normal },
+  caption: { family: "display", size: fontSize.xs, weight: "500", lineHeight: lineHeight.normal, letterSpacing: 0.2 },
+  label: { family: "display", size: fontSize["2xs"], weight: "600", lineHeight: lineHeight.normal, letterSpacing: 1.4, uppercase: true },
+  mono: { family: "mono", size: fontSize.sm, weight: "400", lineHeight: lineHeight.normal },
+  monoSmall: { family: "mono", size: fontSize.xs, weight: "400", lineHeight: lineHeight.normal },
 };
+
+export type TextColor =
+  | "primary"
+  | "secondary"
+  | "tertiary"
+  | "faint"
+  | "accent"
+  | "onAccent"
+  | "coral"
+  | "green"
+  | "blue"
+  | "mustard"
+  | "danger";
 
 export interface TextProps extends RNTextProps {
   variant?: TextVariant;
-  /** "primary" | "secondary" | "tertiary" | "accent" | "danger" */
-  color?: "primary" | "secondary" | "tertiary" | "accent" | "danger" | "onAccent";
+  color?: TextColor;
   align?: "auto" | "left" | "center" | "right" | "justify";
 }
 
-export function Text({
-  variant = "body",
-  color = "primary",
-  align,
-  style,
-  ...rest
-}: TextProps) {
+export function Text({ variant = "body", color = "primary", align, style, ...rest }: TextProps) {
   const { palette } = useTheme();
   const preset = PRESETS[variant];
 
-  const colorValue = {
+  const colorValue: string = {
     primary: palette.text,
     secondary: palette.textSecondary,
     tertiary: palette.textTertiary,
+    faint: palette.textFaint,
     accent: palette.accent,
-    danger: palette.danger,
     onAccent: palette.onAccent,
+    coral: palette.coral,
+    green: palette.green,
+    blue: palette.blue,
+    mustard: palette.mustard,
+    danger: palette.danger,
   }[color];
+
+  const fontFamily = resolveFont(preset.family, preset.weight as string);
 
   const merged: StyleProp<TextStyle> = [
     {
       color: colorValue,
+      fontFamily,
       fontSize: preset.size,
       fontWeight: preset.weight,
       lineHeight: Math.round(preset.size * preset.lineHeight),
       letterSpacing: preset.letterSpacing,
       textAlign: align,
+      textTransform: preset.uppercase ? "uppercase" : undefined,
     },
     style,
   ];
