@@ -13,7 +13,6 @@ import {
 import type { Request, Response } from "express";
 import {
   LoginSchema,
-  RefreshSchema,
   RegisterSchema,
   VerifyEmailSchema,
   type AuthResponse,
@@ -42,7 +41,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   /** Strip tokens from the body when the client is web (it uses cookies). */
-  private maybeStripTokens(body: AuthResponse, mobile: boolean, res: Response): AuthResponse {
+  private maybeStripTokens(body: AuthResponse, mobile: boolean): AuthResponse {
     if (mobile) return body;
     return { ...body, tokens: { accessToken: "", refreshToken: "", expiresIn: body.tokens.expiresIn } };
   }
@@ -59,7 +58,7 @@ export class AuthController {
       ip: getClientIp(req),
     });
     if (!mobile) setAuthCookies(res, result.tokens);
-    return this.maybeStripTokens(result, mobile, res);
+    return this.maybeStripTokens(result, mobile);
   }
 
   @Post("login")
@@ -75,7 +74,7 @@ export class AuthController {
       ip: getClientIp(req),
     });
     if (!mobile) setAuthCookies(res, result.tokens);
-    return this.maybeStripTokens(result, mobile, res);
+    return this.maybeStripTokens(result, mobile);
   }
 
   @Post("refresh")
@@ -87,7 +86,7 @@ export class AuthController {
     const mobile = isMobileClient(req);
     const result = await this.auth.refresh(getRefreshToken(req));
     if (!mobile) setAuthCookies(res, result.tokens);
-    return this.maybeStripTokens(result, mobile, res);
+    return this.maybeStripTokens(result, mobile);
   }
 
   @Post("logout")

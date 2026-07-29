@@ -1,0 +1,71 @@
+/**
+ * Non-intrusive top banner (connection status / sync errors). Animates in/out.
+ */
+import React, { useEffect } from "react";
+import { StyleSheet, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  interpolate,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Text } from "./Text";
+import { useTheme } from "../../theme/ThemeProvider";
+import { springs, spacing } from "../../theme/tokens";
+
+export interface BannerProps {
+  message: string;
+  visible: boolean;
+  tone?: "warning" | "danger";
+  icon?: React.ReactNode;
+}
+
+export function Banner({ message, visible, tone = "warning", icon }: BannerProps) {
+  const { palette } = useTheme();
+  const insets = useSafeAreaInsets();
+  const h = useSharedValue(0);
+
+  useEffect(() => {
+    h.value = visible ? withSpring(1, springs.gentle) : withTiming(0, { duration: 220, easing: Easing.inOut(Easing.ease) });
+  }, [visible, h]);
+
+  const bg = tone === "danger" ? palette.danger : palette.warning;
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(h.value, [0, 1], [-60, 0]) }],
+    opacity: h.value,
+  }));
+
+  return (
+    <Animated.View pointerEvents="none" style={[styles.wrap, { paddingTop: insets.top }, style]}>
+      <View style={[styles.inner, { backgroundColor: bg }]}>
+        {icon}
+        <Text variant="footnote" style={{ color: "#111827", flex: 1 }}>
+          {message}
+        </Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 50,
+    paddingHorizontal: spacing[12],
+  },
+  inner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[8],
+    paddingHorizontal: spacing[14],
+    paddingVertical: spacing[10],
+    borderRadius: 12,
+  },
+});

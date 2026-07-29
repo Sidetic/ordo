@@ -1,0 +1,31 @@
+/**
+ * Auth API endpoints. Types come from @ordo/shared's contract.
+ */
+import { AuthRoutes, buildPath } from "@ordo/shared";
+import { api } from "./client";
+
+export const authApi = {
+  register: (body: { email: string; password: string }) =>
+    api.post<typeof AuthRoutes.register.response>(AuthRoutes.register.path, body, { auth: false }),
+
+  login: (body: { email: string; password: string }) =>
+    api.post<typeof AuthRoutes.login.response>(AuthRoutes.login.path, body, { auth: false }),
+
+  me: () => api.get<typeof AuthRoutes.me.response>(AuthRoutes.me.path),
+
+  logout: () => api.post<typeof AuthRoutes.logout.response>(AuthRoutes.logout.path),
+
+  listSessions: () => api.get<typeof AuthRoutes.listSessions.response>(AuthRoutes.listSessions.path),
+
+  revokeSession: (id: string) =>
+    api.delete<typeof AuthRoutes.revokeSession.response>(
+      buildPath(AuthRoutes.revokeSession.path, { id }),
+    ),
+
+  verifyEmail: (token: string) =>
+    api.post<typeof AuthRoutes.verifyEmail.response>(
+      AuthRoutes.verifyEmail.path,
+      { token },
+      { auth: false },
+    ),
+};
