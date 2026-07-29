@@ -1,10 +1,13 @@
 /**
  * Bottom sheet modal: dim scrim + spring-in panel, dismissable by tap or
- * swipe-down. Renders via React state (not a portal) — place inside the
- * screen that owns it.
+ * swipe-down. Driven by a single `translateY` shared value so the enter/exit
+ * animation is always correct (no off-screen-first-paint races). Stays mounted
+ * through the exit animation, then unmounts.
  */
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  Dimensions,
+  Easing as RNEasing,
   StyleSheet,
   View,
   type ViewStyle,
@@ -14,16 +17,19 @@ import {
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
+  Extrapolation,
+  interpolate,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  runOnJS,
   withSpring,
   withTiming,
-  Easing,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../theme/ThemeProvider";
 import { radius, springs, spacing } from "../../theme/tokens";
+
+const SCREEN_H = Dimensions.get("window").height;
 
 export interface SheetProps {
   visible: boolean;
@@ -37,46 +43,48 @@ export interface SheetProps {
 export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, contentStyle }: SheetProps) {
   const { palette } = useTheme();
   const insets = useSafeAreaInsets();
-  const y = useSharedValue(0);
-  const opacity = useSharedValue(0);
+  // Panel translateY. 0 = fully open; SCREEN_H = fully hidden (off-screen).
+  const ty = useSharedValue(SCREEN_H);
+  const startTy = useSharedValue(0);
+  const [mounted, setMounted] = useState(visible);
 
   useEffect(() => {
     if (visible) {
-      y.value = 0;
-      opacity.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.ease) });
-    } else {
-      opacity.value = withTiming(0, { duration: 200 });
-      y.value = withSpring(400, springs.gentle);
+      setMounted(true);
+      ty.value = withSpring(0, springs.gentle);
+    } else if (mounted) {
+      ty.value = withTiming(SCREEN_H, { duration: 200, easing: RNEasing.inOut(RNEasing.ease) }, (finished) => {
+        if (finished) runOnJS(setMounted)(false);
+      });
     }
-  }, [visible, opacity, y]);
+  }, [visible]);
 
   const dismiss = useCallback(() => onDismiss(), [onDismiss]);
 
   const pan = Gesture.Pan()
+    .onBegin(() => {
+      startTy.value = ty.value;
+    })
     .onUpdate((e) => {
-      y.value = Math.max(0, e.translationY);
+      ty.value = Math.max(0, startTy.value + e.translationY);
     })
     .onEnd((e) => {
-      if (e.translationY > 80 || e.velocityY > 600) {
-        y.value = withSpring(500, springs.snappy, () => runOnJS(dismiss)());
-        opacity.value = withTiming(0, { duration: 160 });
+      if (ty.value > 100 || e.velocityY > 600) {
+        ty.value = withSpring(SCREEN_H, springs.snappy, () => runOnJS(dismiss)());
       } else {
-        y.value = withSpring(0, springs.gentle);
+        ty.value = withSpring(0, springs.gentle);
       }
     });
 
-  const panelStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: y.value }],
-    maxHeight: `${Math.round(maxFraction * 100)}%`,
+  const scrimStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(ty.value, [0, SCREEN_H], [1, 0], Extrapolation.CLAMP),
   }));
 
-  const scrimStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const panelStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: ty.value }],
+  }));
 
-  if (!visible) {
-    return (
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: 0 }]} />
-    );
-  }
+  if (!mounted) return null;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="auto">
@@ -99,6 +107,7 @@ export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, content
                 borderColor: palette.border,
                 borderRadius: radius.xl,
                 paddingBottom: insets.bottom + spacing[12],
+                maxHeight: `${Math.round(maxFraction * 100)}%`,
               },
               panelStyle,
               contentStyle,
