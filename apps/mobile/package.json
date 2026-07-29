@@ -21,6 +21,7 @@
     "@shopify/flash-list": "1.7.3",
     "expo": "~52.0.30",
     "expo-constants": "~17.0.5",
+    "expo-file-system": "~18.0.12",
     "expo-haptics": "~13.0.1",
     "expo-linking": "~7.0.5",
     "expo-network": "~7.0.5",

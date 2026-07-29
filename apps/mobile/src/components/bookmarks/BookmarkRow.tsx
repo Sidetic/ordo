@@ -1,0 +1,65 @@
+/**
+ * A single bookmark row. Tapping opens the reader; the trailing button reveals
+ * row actions. Unread items are marked with an accent dot.
+ */
+import React from "react";
+import { StyleSheet, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { PressableScale } from "../ui/PressableScale";
+import { Text } from "../ui/Text";
+import { useTheme } from "../../theme/ThemeProvider";
+import { domainFromUrl, relativeTime } from "../../lib/format";
+import { spacing } from "../../theme/tokens";
+import type { BookmarkDto } from "@ordo/shared";
+
+export interface BookmarkRowProps {
+  bookmark: BookmarkDto;
+  onPress: (b: BookmarkDto) => void;
+  onMore: (b: BookmarkDto) => void;
+}
+
+export function BookmarkRow({ bookmark, onPress, onMore }: BookmarkRowProps) {
+  const { palette } = useTheme();
+  const titleColor = bookmark.isRead ? "secondary" : "primary";
+
+  return (
+    <View style={[styles.wrap, { borderBottomColor: palette.border }]}>
+      <PressableScale style={styles.body} onPress={() => onPress(bookmark)}>
+        <View style={styles.topRow}>
+          <View style={[styles.dot, { backgroundColor: bookmark.isRead ? "transparent" : palette.accent }]} />
+          <Text variant="caption" color="tertiary" numberOfLines={1} style={styles.domain}>
+            {domainFromUrl(bookmark.url)}
+          </Text>
+          <Text variant="caption" color="tertiary">·</Text>
+          <Text variant="caption" color="tertiary" numberOfLines={1}>{relativeTime(bookmark.createdAt)}</Text>
+        </View>
+        <Text variant="bodyStrong" color={titleColor} numberOfLines={2} style={{ marginTop: spacing[4] }}>
+          {bookmark.title || domainFromUrl(bookmark.url)}
+        </Text>
+        {bookmark.description ? (
+          <Text variant="footnote" color="secondary" numberOfLines={2} style={{ marginTop: spacing[4] }}>
+            {bookmark.description}
+          </Text>
+        ) : null}
+      </PressableScale>
+
+      <PressableScale
+        style={styles.moreBtn}
+        scaleTo={0.85}
+        onPress={() => onMore(bookmark)}
+        hitSlop={12}
+      >
+        <Ionicons name="ellipsis-horizontal" size={20} color={palette.textTertiary} />
+      </PressableScale>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: { flexDirection: "row", alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, paddingRight: spacing[4] },
+  body: { flex: 1, paddingVertical: spacing[14], paddingHorizontal: spacing[16] },
+  topRow: { flexDirection: "row", alignItems: "center", gap: spacing[6] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  domain: { flexShrink: 1 },
+  moreBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+});

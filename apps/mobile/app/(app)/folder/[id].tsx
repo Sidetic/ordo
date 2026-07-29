@@ -1,0 +1,196 @@
+/**
+ * Folder detail: cursor-paginated bookmark list with infinite scroll.
+ * Handles protected folders (unlock prompt → token cached → retry),
+ * optimistic toggle/delete/move, mark-all-read, and export/actions.
+ */
+import React, { useMemo, useState } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { FlashList } from "@shopify/flash-list";
+import { Ionicons } from "@expo/vector-icons";
+import { Header } from "../../../src/components/ui/Header";
+import { FAB } from "../../../src/components/ui/FAB";
+import { Button } from "../../../src/components/ui/Button";
+import { PressableScale } from "../../../src/components/ui/PressableScale";
+import { EmptyState } from "../../../src/components/ui/EmptyState";
+import { BookmarkListSkeleton } from "../../../src/components/ui/BookmarkListSkeleton";
+import { BookmarkRow } from "../../../src/components/bookmarks/BookmarkRow";
+import { AddBookmarkSheet } from "../../../src/components/bookmarks/AddBookmarkSheet";
+import { MoveSheet } from "../../../src/components/bookmarks/MoveSheet";
+import { LockPrompt } from "../../../src/components/bookmarks/LockPrompt";
+import { BookmarkActionsSheet } from "../../../src/components/bookmarks/BookmarkActionsSheet";
+import { FolderActionsSheet } from "../../../src/components/bookmarks/FolderActionsSheet";
+import { useFolders } from "../../../src/hooks/queries";
+import {
+  useInfiniteBookmarks,
+  useToggleRead,
+  useDeleteBookmark,
+  useMarkAllRead,
+} from "../../../src/hooks/use-bookmarks";
+import { useTheme } from "../../../src/theme/ThemeProvider";
+import { haptics } from "../../../src/lib/haptics";
+import { toast } from "../../../src/components/ui/toast-store";
+import { errorMessage, isFolderProtected } from "../../../src/lib/error-message";
+import { flattenPages } from "../../../src/lib/api/query-keys";
+import { spacing } from "../../../src/theme/tokens";
+import type { BookmarkDto } from "@ordo/shared";
+
+export default function FolderDetailScreen() {
+  const { palette } = useTheme();
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const folderId = Array.isArray(id) ? id[0] : id;
+
+  const { data: folders } = useFolders();
+  const folder = useMemo(() => folders?.find((f) => f.id === folderId), [folders, folderId]);
+
+  const bookmarks = useInfiniteBookmarks(folderId, !!folderId);
+  const toggleRead = useToggleRead(folderId);
+  const deleteBm = useDeleteBookmark(folderId);
+  const markAll = useMarkAllRead(folderId);
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [moveTarget, setMoveTarget] = useState<BookmarkDto | null>(null);
+  const [actionBm, setActionBm] = useState<BookmarkDto | null>(null);
+  const [folderActions, setFolderActions] = useState(false);
+
+  const protectedError = !!bookmarks.error && isFolderProtected(bookmarks.error);
+  const items = useMemo(() => flattenPages(bookmarks.data?.pages ?? []), [bookmarks.data]);
+  const isEmpty = !bookmarks.isLoading && !protectedError && items.length === 0;
+  const hasUnread = (folder?.unreadCount ?? 0) > 0;
+
+  const openReader = (b: BookmarkDto) => router.push(`/reader/${b.id}`);
+
+  const loadMore = () => {
+    if (bookmarks.hasNextPage && !bookmarks.isFetchingNextPage) {
+      bookmarks.fetchNextPage();
+    }
+  };
+
+  const onToggleRead = (b: BookmarkDto) => {
+    haptics.light();
+    toggleRead.mutate({ id: b.id, isRead: !b.isRead });
+  };
+
+  const onDelete = (b: BookmarkDto) => {
+    haptics.medium();
+    deleteBm.mutate(b.id, {
+      onSuccess: () => toast.success("Bookmark deleted"),
+      onError: (e) => toast.error(errorMessage(e)),
+    });
+  };
+
+  const onMarkAllRead = () => {
+    haptics.medium();
+    markAll.mutate(undefined, {
+      onSuccess: (r) => toast.success(`${r.updated} marked as read`),
+      onError: (e) => toast.error(errorMessage(e)),
+    });
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: palette.background }}>
+      <Header
+        title={folder?.name ?? "Folder"}
+        subtitle={folder ? `${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}` : undefined}
+        showBack
+        right={
+          hasUnread && !protectedError ? (
+            <PressableScale style={styles.iconBtn} scaleTo={0.85} onPress={onMarkAllRead} hitSlop={8}>
+              <Ionicons name="checkmark-done" size={22} color={palette.accent} />
+            </PressableScale>
+          ) : (
+            <PressableScale style={styles.iconBtn} scaleTo={0.85} onPress={() => setFolderActions(true)} hitSlop={8}>
+              <Ionicons name="ellipsis-horizontal" size={22} color={palette.text} />
+            </PressableScale>
+          )
+        }
+      />
+
+      {protectedError ? (
+        <View style={styles.center}>
+          <EmptyState
+            icon="lock-closed-outline"
+            title="This folder is locked"
+            message="Enter the password to view these bookmarks."
+          />
+          <LockPrompt
+            visible={protectedError}
+            folderId={folderId}
+            folderName={folder?.name}
+            onDismiss={() => router.back()}
+            onUnlocked={() => bookmarks.refetch()}
+          />
+        </View>
+      ) : isEmpty ? (
+        <EmptyState
+          icon="bookmark-outline"
+          title="No bookmarks here"
+          message="Save a link to start reading."
+          action={<Button onPress={() => setAddOpen(true)} label="Save bookmark" />}
+        />
+      ) : bookmarks.isLoading ? (
+        <BookmarkListSkeleton />
+      ) : (
+        <FlashList
+          data={items}
+          keyExtractor={(b: BookmarkDto) => b.id}
+          renderItem={({ item }: { item: BookmarkDto }) => (
+            <BookmarkRow bookmark={item} onPress={openReader} onMore={(b) => setActionBm(b)} />
+          )}
+          estimatedItemSize={108}
+          contentContainerStyle={{ paddingBottom: spacing[96] }}
+          refreshing={bookmarks.isFetching && !bookmarks.isFetchingNextPage}
+          onRefresh={() => bookmarks.refetch()}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            bookmarks.isFetchingNextPage ? (
+              <View style={styles.footer}>
+                <ActivityIndicator color={palette.accent} />
+              </View>
+            ) : null
+          }
+        />
+      )}
+
+      {!protectedError ? <FAB onPress={() => setAddOpen(true)} testID="add-bookmark-fab" /> : null}
+
+      <AddBookmarkSheet
+        visible={addOpen}
+        onDismiss={() => setAddOpen(false)}
+        folderId={folderId}
+        folderName={folder?.name}
+      />
+
+      <BookmarkActionsSheet
+        visible={!!actionBm}
+        bookmark={actionBm}
+        folderId={folderId}
+        onDismiss={() => setActionBm(null)}
+        onToggleRead={onToggleRead}
+        onMove={(b) => setMoveTarget(b)}
+        onDelete={onDelete}
+      />
+
+      <MoveSheet
+        visible={!!moveTarget}
+        bookmark={moveTarget}
+        fromFolderId={folderId}
+        onDismiss={() => setMoveTarget(null)}
+      />
+
+      <FolderActionsSheet
+        visible={folderActions}
+        folder={folder ?? null}
+        onDismiss={() => setFolderActions(false)}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  center: { flex: 1, justifyContent: "center" },
+  footer: { paddingVertical: spacing[20], alignItems: "center" },
+});
