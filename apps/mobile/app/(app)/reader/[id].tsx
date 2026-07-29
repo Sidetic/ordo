@@ -2,7 +2,7 @@
  * Reader mode: distraction-free article rendering from cached markdown.
  * Renders instantly from the list cache; falls back to a detail fetch.
  */
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import { Linking, ScrollView, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,7 +14,7 @@ import { PressableScale } from "../../../src/components/ui/PressableScale";
 import { Markdown } from "../../../src/components/reader/Markdown";
 import { queryClient } from "../../../src/lib/query-client";
 import { findBookmarkInCache } from "../../../src/lib/cache-helpers";
-import { useBookmarkDetail } from "../../../src/hooks/use-bookmarks";
+import { useBookmarkDetail, useToggleRead } from "../../../src/hooks/use-bookmarks";
 import { useTheme } from "../../../src/theme/ThemeProvider";
 import { domainFromUrl, relativeTime } from "../../../src/lib/format";
 import { errorMessage } from "../../../src/lib/error-message";
@@ -33,6 +33,16 @@ export default function ReaderScreen() {
   const bookmark = detail.data ?? cached;
   const loading = !bookmark && detail.isLoading;
   const hasContent = !!bookmark?.contentMarkdown;
+
+  // Auto-mark as read on open (once per bookmark).
+  const toggleRead = useToggleRead(bookmark?.folderId ?? "");
+  const markedRef = useRef<string | null>(null);
+  React.useEffect(() => {
+    if (bookmark && !bookmark.isRead && bookmark.folderId && markedRef.current !== bookmark.id) {
+      markedRef.current = bookmark.id;
+      toggleRead.mutate({ id: bookmark.id, isRead: true });
+    }
+  }, [bookmark?.id, bookmark?.isRead]);
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
