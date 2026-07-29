@@ -36,15 +36,13 @@ jobs:
       - name: Build shared package
         run: pnpm --filter @ordo/shared build
 
-      - name: Setup Expo
-        uses: expo/expo-github-action@v9
-        with:
-          expo-version: latest
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-          packager: pnpm
-          working-directory: apps/mobile
+      # Install eas-cli via npm to avoid pnpm's unapproved-build-script gate
+      # (eas-cli pulls dtrace-provider, whose build script pnpm would reject).
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
 
       - name: Publish update
         working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: eas update --channel production --non-interactive --no-wait --auto
