@@ -11,7 +11,7 @@ import React from "react";
 import { Linking, StyleSheet, View } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "../../theme/ThemeProvider";
-import { fontSize, spacing } from "../../theme/tokens";
+import { fontSize, resolveFont, spacing } from "../../theme/tokens";
 import type { TextVariant } from "../ui/Text";
 
 /* ----------------------------- inline parsing ----------------------------- */
@@ -68,7 +68,7 @@ function InlineText({ segments }: { segments: Segment[] }) {
         const weight = s.bold ? "600" : "400";
         const style = s.code
           ? {
-              fontFamily: undefined as never,
+              fontFamily: resolveFont("mono", "400"),
               backgroundColor: palette.surfaceSecondary,
               paddingHorizontal: 4,
               borderRadius: 4,
@@ -280,7 +280,7 @@ export function Markdown({ children }: MarkdownProps) {
           case "code":
             return (
               <View key={idx} style={[styles.code, { backgroundColor: palette.surfaceSecondary }]}>
-                <Text variant="footnote" style={{ fontFamily: undefined, lineHeight: fontSize.sm * 1.5 }}>
+                <Text variant="mono" style={{ lineHeight: fontSize.sm * 1.55 }}>
                   {b.text}
                 </Text>
               </View>

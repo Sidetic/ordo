@@ -27,13 +27,13 @@ export function BookmarkRow({ bookmark, onPress, onMore }: BookmarkRowProps) {
       <PressableScale style={styles.body} onPress={() => onPress(bookmark)}>
         <View style={styles.topRow}>
           <View style={[styles.dot, { backgroundColor: bookmark.isRead ? "transparent" : palette.accent }]} />
-          <Text variant="caption" color="tertiary" numberOfLines={1} style={styles.domain}>
+          <Text variant="monoSmall" color="tertiary" numberOfLines={1} style={styles.domain}>
             {domainFromUrl(bookmark.url)}
           </Text>
-          <Text variant="caption" color="tertiary">·</Text>
-          <Text variant="caption" color="tertiary" numberOfLines={1}>{relativeTime(bookmark.createdAt)}</Text>
+          <Text variant="monoSmall" color="tertiary">·</Text>
+          <Text variant="monoSmall" color="tertiary" numberOfLines={1}>{relativeTime(bookmark.createdAt)}</Text>
         </View>
-        <Text variant="bodyStrong" color={titleColor} numberOfLines={2} style={{ marginTop: spacing[4] }}>
+        <Text variant="title3" color={titleColor} numberOfLines={2} style={{ marginTop: spacing[4] }}>
           {bookmark.title || domainFromUrl(bookmark.url)}
         </Text>
         {bookmark.description ? (

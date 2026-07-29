@@ -29,13 +29,13 @@ export function AuthShell({ title, subtitle, children, footer, style }: AuthShel
       style={{ backgroundColor: palette.background }}
     >
       <View style={[styles.inner, { maxWidth: layout.maxContentWidth }, style]}>
-        <Text variant="display" color="accent" style={styles.wordmark}>Ordo</Text>
-        <Text variant="title2" style={{ marginTop: spacing[24] }}>{title}</Text>
+        <Text variant="wordmark" color="accent" style={styles.wordmark}>Ordo</Text>
+        <Text variant="title2" style={{ marginTop: spacing[20] }}>{title}</Text>
         {subtitle ? (
           <Text variant="body" color="secondary" style={{ marginTop: spacing[6] }}>{subtitle}</Text>
         ) : null}
 
-        <View style={{ marginTop: spacing[28] }}>{children}</View>
+        <View style={{ marginTop: spacing[24] }}>{children}</View>
       </View>
       {footer ? <View style={[styles.footer, { maxWidth: layout.maxContentWidth }]}>{footer}</View> : null}
     </ScrollView>
@@ -45,6 +45,6 @@ export function AuthShell({ title, subtitle, children, footer, style }: AuthShel
 const styles = StyleSheet.create({
   container: { flexGrow: 1, paddingHorizontal: spacing[24] },
   inner: { width: "100%", alignSelf: "center" },
-  wordmark: { letterSpacing: -1 },
+  wordmark: {},
   footer: { alignSelf: "center", marginTop: spacing[24] },
 });

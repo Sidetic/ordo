@@ -38,33 +38,34 @@ export default function AppLayout() {
         tabBarActiveTintColor: palette.accent,
         tabBarInactiveTintColor: palette.textTertiary,
         tabBarStyle: {
-          backgroundColor: palette.surface,
+          backgroundColor: palette.background,
           borderTopColor: palette.border,
           borderTopWidth: 1,
           height: layout.tabBarHeight,
         },
-        tabBarItemStyle: { paddingVertical: 6 },
+        tabBarLabelStyle: { fontFamily: "InterTight_500Medium", fontSize: 10 },
+        tabBarItemStyle: { paddingVertical: 8 },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Folders",
-          tabBarIcon: ({ color }) => <Ionicons name="folder-outline" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons name="folder-outline" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
           title: "Search",
-          tabBarIcon: ({ color }) => <Ionicons name="search-outline" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons name="search-outline" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings/index"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color }) => <Ionicons name="settings-outline" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons name="settings-outline" size={22} color={color} />,
         }}
       />
       {/* Hidden detail routes */}

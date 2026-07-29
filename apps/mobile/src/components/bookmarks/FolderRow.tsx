@@ -9,7 +9,7 @@ import { Text } from "../ui/Text";
 import { Badge } from "../ui/Badge";
 import { useTheme } from "../../theme/ThemeProvider";
 import { haptics } from "../../lib/haptics";
-import { spacing } from "../../theme/tokens";
+import { radius, spacing } from "../../theme/tokens";
 import type { FolderDto } from "@ordo/shared";
 
 export interface FolderRowProps {
@@ -32,16 +32,16 @@ export function FolderRow({ folder, onPress, onLongPress }: FolderRowProps) {
       onLongPress={() => onLongPress?.(folder)}
     >
       <View style={[styles.iconWrap, { backgroundColor: palette.surfaceSecondary }]}>
-        <Ionicons name={folder.protected ? "lock-closed" : "folder-outline"} size={20} color={palette.accent} />
+        <Ionicons name={folder.protected ? "lock-closed" : "folder-outline"} size={18} color={palette.accent} />
       </View>
       <View style={styles.body}>
-        <Text variant="bodyStrong" numberOfLines={1}>{folder.name}</Text>
-        <Text variant="footnote" color="secondary">
+        <Text variant="title3" numberOfLines={1}>{folder.name}</Text>
+        <Text variant="monoSmall" color="tertiary">
           {folder.bookmarkCount} {folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}
         </Text>
       </View>
       {unread ? <Badge tone="accent">{folder.unreadCount}</Badge> : null}
-      <Ionicons name="chevron-forward" size={18} color={palette.textTertiary} />
+      <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
     </PressableScale>
   );
 }
@@ -50,12 +50,12 @@ const styles = StyleSheet.create({
   wrap: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
+    borderWidth: 1,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing[12],
     paddingVertical: spacing[12],
     gap: spacing[12],
   },
-  iconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  body: { flex: 1 },
+  iconWrap: { width: 34, height: 34, borderRadius: radius.sm, alignItems: "center", justifyContent: "center" },
+  body: { flex: 1, gap: 2 },
 });
