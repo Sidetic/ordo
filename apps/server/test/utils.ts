@@ -78,15 +78,19 @@ export async function registerUser(
   app: INestApplication,
   email = "user@ordo.app",
   password = "password123",
+  username?: string,
 ): Promise<{
-  user: { id: string; email: string };
+  user: { id: string; username: string; email: string };
   tokens: { accessToken: string; refreshToken: string; expiresIn: number };
 }> {
   const supertest = (await import("supertest")).default;
+  let uname = email.split("@")[0].replace(/[^a-zA-Z0-9_-]/g, "");
+  if (username) uname = username;
+  if (!uname) uname = "user";
   const res = await supertest(app.getHttpServer())
     .post("/api/auth/register")
     .set("x-client-type", "mobile")
-    .send({ email, password });
+    .send({ username: uname, email, password });
   return res.body;
 }
 

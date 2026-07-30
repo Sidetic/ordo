@@ -1,5 +1,6 @@
 import request from "supertest";
 import { ErrorCode } from "@ordo/shared";
+import { MailService } from "../src/auth/mail.service.js";
 import {
   authedAgent,
   clearDb,
@@ -29,10 +30,11 @@ describe("Auth (e2e)", () => {
       const res = await request(ctx.app.getHttpServer())
         .post("/api/auth/register")
         .set("x-client-type", "mobile")
-        .send({ email: "alice@ordo.app", password: "supersecret" })
+        .send({ username: "alice", email: "alice@ordo.app", password: "supersecret" })
         .expect(201);
 
       expect(res.body.user.email).toBe("alice@ordo.app");
+      expect(res.body.user.username).toBe("alice");
       expect(res.body.tokens.accessToken).toBeTruthy();
       expect(res.body.tokens.refreshToken).toBeTruthy();
       expect(res.body.tokens.expiresIn).toBeGreaterThan(0);
@@ -47,7 +49,7 @@ describe("Auth (e2e)", () => {
     it("does not return tokens in the body for web clients (cookies instead)", async () => {
       const res = await request(ctx.app.getHttpServer())
         .post("/api/auth/register")
-        .send({ email: "web@ordo.app", password: "supersecret" })
+        .send({ username: "webuser", email: "web@ordo.app", password: "supersecret" })
         .expect(201);
 
       expect(res.body.tokens.accessToken).toBe("");
@@ -61,7 +63,7 @@ describe("Auth (e2e)", () => {
       const res = await request(ctx.app.getHttpServer())
         .post("/api/auth/register")
         .set("x-client-type", "mobile")
-        .send({ email: "dup@ordo.app", password: "supersecret" })
+        .send({ username: "dupagain", email: "dup@ordo.app", password: "supersecret" })
         .expect(409);
       expect(res.body.error.code).toBe(ErrorCode.EMAIL_ALREADY_EXISTS);
     });
@@ -191,6 +193,169 @@ describe("Auth (e2e)", () => {
         .get("/api/auth/me")
         .set("authorization", `Bearer ${second.body.tokens.accessToken}`)
         .expect(401);
+    });
+  });
+
+  describe("profile edits", () => {
+    let pctx: TestCtx;
+    const sent: { to: string; token: string }[] = [];
+
+    beforeAll(async () => {
+      pctx = await createTestApp({
+        customize: (b) =>
+          b
+            .overrideProvider(MailService)
+            .useValue({
+              isConfigured: true,
+              sendVerification: async (to: string, token: string) => {
+                sent.push({ to, token });
+              },
+            }),
+      });
+    });
+
+    afterAll(async () => {
+      await teardownApp(pctx);
+    });
+
+    beforeEach(async () => {
+      await clearDb(pctx.prisma);
+      sent.length = 0;
+    });
+
+    describe("username", () => {
+      it("changes the username without a password", async () => {
+        const agent = await authedAgent(pctx.app, "username@ordo.app");
+        const res = await agent
+          .post("/api/auth/username")
+          .send({ newUsername: "newname" })
+          .expect(200);
+        expect(res.body.username).toBe("newname");
+      });
+
+      it("validates the new username", async () => {
+        const agent = await authedAgent(pctx.app, "username2@ordo.app");
+        const res = await agent
+          .post("/api/auth/username")
+          .send({ newUsername: "a" })
+          .expect(400);
+        expect(res.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+      });
+
+      it("requires authentication", async () => {
+        await request(pctx.app.getHttpServer())
+          .post("/api/auth/username")
+          .send({ newUsername: "x" })
+          .expect(401);
+      });
+    });
+
+    describe("email change", () => {
+      it("rejects a wrong current password", async () => {
+        const agent = await authedAgent(pctx.app, "email1@ordo.app");
+        const res = await agent
+          .post("/api/auth/email/change")
+          .send({ currentPassword: "wrongpassword", newEmail: "new@ordo.app" })
+          .expect(401);
+        expect(res.body.error.code).toBe(ErrorCode.INVALID_CREDENTIALS);
+      });
+
+      it("rejects an email already in use", async () => {
+        await registerUser(pctx.app, "taken@ordo.app");
+        const agent = await authedAgent(pctx.app, "email2@ordo.app");
+        const res = await agent
+          .post("/api/auth/email/change")
+          .send({ currentPassword: "password123", newEmail: "taken@ordo.app" })
+          .expect(409);
+        expect(res.body.error.code).toBe(ErrorCode.EMAIL_ALREADY_EXISTS);
+      });
+
+      it("completes after verifying the code sent to the new address", async () => {
+        const agent = await authedAgent(pctx.app, "change@ordo.app");
+        await agent
+          .post("/api/auth/email/change")
+          .send({ currentPassword: "password123", newEmail: "changed@ordo.app" })
+          .expect(200);
+
+        const last = sent[sent.length - 1];
+        expect(last.to).toBe("changed@ordo.app");
+
+        const res = await agent
+          .post("/api/auth/email/verify-change")
+          .send({ token: last.token })
+          .expect(200);
+        expect(res.body.email).toBe("changed@ordo.app");
+        expect(res.body.emailVerified).toBe(true);
+
+        // pending email is cleared
+        const dbUser = await pctx.prisma.user.findUnique({ where: { email: "changed@ordo.app" } });
+        expect(dbUser?.pendingEmail).toBeNull();
+      });
+
+      it("resends the verification code on demand", async () => {
+        const agent = await authedAgent(pctx.app, "resend@ordo.app");
+        await agent
+          .post("/api/auth/email/change")
+          .send({ currentPassword: "password123", newEmail: "resended@ordo.app" })
+          .expect(200);
+        const afterFirst = sent.length;
+        await agent.post("/api/auth/email/change/resend").expect(200);
+        expect(sent.length).toBeGreaterThan(afterFirst);
+      });
+
+      it("rejects an invalid verification code", async () => {
+        const agent = await authedAgent(pctx.app, "badcode@ordo.app");
+        await agent
+          .post("/api/auth/email/change")
+          .send({ currentPassword: "password123", newEmail: "badcode2@ordo.app" })
+          .expect(200);
+        const res = await agent
+          .post("/api/auth/email/verify-change")
+          .send({ token: "not-a-real-token" })
+          .expect(400);
+        expect(res.body.error.code).toBe(ErrorCode.INVALID_VERIFICATION_TOKEN);
+      });
+    });
+
+    describe("password change", () => {
+      it("rejects a wrong current password", async () => {
+        const agent = await authedAgent(pctx.app, "pwd1@ordo.app");
+        const res = await agent
+          .post("/api/auth/password")
+          .send({ currentPassword: "wrongpassword", newPassword: "brandnew123" })
+          .expect(401);
+        expect(res.body.error.code).toBe(ErrorCode.INVALID_CREDENTIALS);
+      });
+
+      it("changes the password and revokes other sessions (keeping the current one)", async () => {
+        const auth = await registerUser(pctx.app, "pwd2@ordo.app");
+        // create a second session
+        const second = await request(pctx.app.getHttpServer())
+          .post("/api/auth/login")
+          .set("x-client-type", "mobile")
+          .send({ email: "pwd2@ordo.app", password: "password123" })
+          .expect(200);
+
+        const agent = request
+          .agent(pctx.app.getHttpServer())
+          .auth(auth.tokens.accessToken, { type: "bearer" });
+
+        const before = await agent.get("/api/auth/sessions").expect(200);
+        expect(before.body).toHaveLength(2);
+
+        await agent
+          .post("/api/auth/password")
+          .send({ currentPassword: "password123", newPassword: "brandnew123" })
+          .expect(200);
+
+        // the other session is revoked
+        await request(pctx.app.getHttpServer())
+          .get("/api/auth/me")
+          .set("authorization", `Bearer ${second.body.tokens.accessToken}`)
+          .expect(401);
+        // the current session survives
+        await agent.get("/api/auth/me").expect(200);
+      });
     });
   });
 });
