@@ -4,20 +4,24 @@
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Link } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { AuthShell } from "../../src/components/auth/AuthShell";
 import { Input } from "../../src/components/ui/Input";
 import { Button } from "../../src/components/ui/Button";
 import { Text } from "../../src/components/ui/Text";
+import { PressableScale } from "../../src/components/ui/PressableScale";
 import { ServerConnectSheet } from "../../src/components/auth/ServerConnectSheet";
 import { EyeToggle } from "../../src/components/ui/EyeToggle";
 import { useSettingsStore } from "../../src/store/settings";
 import { useLogin } from "../../src/hooks/use-auth-actions";
 import { errorMessage } from "../../src/lib/error-message";
 import { haptics } from "../../src/lib/haptics";
-import { spacing } from "../../src/theme/tokens";
+import { useTheme } from "../../src/theme/ThemeProvider";
+import { radius, spacing } from "../../src/theme/tokens";
 import { LoginSchema } from "@ordo/shared";
 
 export default function LoginScreen() {
+  const { palette } = useTheme();
   const serverUrl = useSettingsStore((s) => s.serverUrl);
   const login = useLogin();
 
@@ -79,9 +83,30 @@ export default function LoginScreen() {
         <View style={{ height: spacing[24] }} />
         <Button label="Sign in" block size="lg" onPress={submit} loading={login.isPending} />
 
-        <View style={styles.serverRow}>
-          <Text variant="caption" color="tertiary" numberOfLines={1}>{serverUrl}</Text>
-          <Button label="Change" variant="ghost" size="md" onPress={() => setShowServer(true)} />
+        <View style={styles.serverSection}>
+          <Text variant="label" color="tertiary" style={styles.serverLabel}>Server URL</Text>
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel={`Change server URL. Current server: ${serverUrl}`}
+            scaleTo={0.985}
+            onPress={() => {
+              haptics.light();
+              setShowServer(true);
+            }}
+            style={[
+              styles.serverBox,
+              {
+                backgroundColor: palette.surface,
+                borderColor: palette.borderStrong,
+                borderRadius: radius.sm,
+              },
+            ]}
+          >
+            <Ionicons name="link-outline" size={16} color={palette.textTertiary} />
+            <Text variant="mono" numberOfLines={1} style={styles.serverUrl}>{serverUrl}</Text>
+            <View style={[styles.serverDivider, { backgroundColor: palette.borderStrong }]} />
+            <Text variant="label" color="accent">Change</Text>
+          </PressableScale>
         </View>
       </AuthShell>
 
@@ -93,5 +118,16 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
   link: { textDecorationLine: "underline" },
-  serverRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: spacing[20] },
+  serverSection: { marginTop: spacing[20] },
+  serverLabel: { marginBottom: spacing[6] },
+  serverBox: {
+    minHeight: 44,
+    borderWidth: 1,
+    paddingHorizontal: spacing[12],
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[10],
+  },
+  serverUrl: { flex: 1 },
+  serverDivider: { width: StyleSheet.hairlineWidth, height: 22 },
 });
