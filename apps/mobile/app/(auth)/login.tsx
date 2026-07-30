@@ -49,7 +49,7 @@ export default function LoginScreen() {
         footer={
           <View style={styles.row}>
             <Text variant="footnote" color="secondary">No account yet? </Text>
-            <Link href="/(auth)/register" asChild>
+            <Link href="/(auth)/register" asChild replace>
               <Text variant="footnote" color="accent" style={styles.link}>Create one</Text>
             </Link>
           </View>

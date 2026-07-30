@@ -36,12 +36,12 @@ export function AuthShell({ title, subtitle, children, footer, style }: AuthShel
       style={{ backgroundColor: palette.background }}
     >
       <View style={[styles.inner, { maxWidth: layout.maxContentWidth }, style]}>
-        <Text variant="title2">{title}</Text>
+        <Text variant="header" align="center">{title}</Text>
         {subtitle ? (
-          <Text variant="body" color="secondary" style={{ marginTop: spacing[6] }}>{subtitle}</Text>
+          <Text variant="body" color="secondary" align="center" style={{ marginTop: spacing[6] }}>{subtitle}</Text>
         ) : null}
 
-        <View style={{ marginTop: spacing[24] }}>{children}</View>
+        <View style={{ marginTop: spacing[28] }}>{children}</View>
 
         {footer ? <View style={styles.footer}>{footer}</View> : null}
       </View>

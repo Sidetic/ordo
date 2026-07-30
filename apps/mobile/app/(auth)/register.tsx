@@ -52,18 +52,17 @@ export default function RegisterScreen() {
   };
 
   return (
-    <AuthShell
-      title="Create your account"
-      subtitle="Save articles and read them in a clean, focused space."
-      footer={
-        <View style={styles.row}>
-          <Text variant="footnote" color="secondary">Already have an account? </Text>
-          <Link href="/(auth)/login" asChild>
-            <Text variant="footnote" color="accent" style={styles.link}>Sign in</Text>
-          </Link>
-        </View>
-      }
-    >
+      <AuthShell
+        title="Create your account"
+        footer={
+          <View style={styles.row}>
+            <Text variant="footnote" color="secondary">Already have an account? </Text>
+            <Link href="/(auth)/login" asChild replace>
+              <Text variant="footnote" color="accent" style={styles.link}>Sign in</Text>
+            </Link>
+          </View>
+        }
+      >
       {!registrationEnabled ? (
         <View style={[styles.disabledCard]}>
           <Text variant="callout">Sign-ups are closed on this server.</Text>

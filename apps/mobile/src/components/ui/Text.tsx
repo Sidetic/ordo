@@ -22,6 +22,7 @@ export type TextVariant =
   | "title2"
   | "title3"
   | "headline"
+  | "header"
   | "body"
   | "bodyStrong"
   | "callout"
@@ -48,6 +49,7 @@ const PRESETS: Record<TextVariant, Preset> = {
   title2: { family: "display", size: fontSize["2xl"], weight: "700", lineHeight: lineHeight.snug, letterSpacing: -0.3 },
   title3: { family: "display", size: fontSize.lg, weight: "600", lineHeight: lineHeight.snug, letterSpacing: -0.2 },
   headline: { family: "display", size: fontSize.xl, weight: "700", lineHeight: lineHeight.normal, letterSpacing: -0.3 },
+  header: { family: "display", size: fontSize.lg, weight: "600", lineHeight: lineHeight.normal, letterSpacing: 1.4, uppercase: true },
   body: { family: "sans", size: fontSize.md, weight: "500", lineHeight: lineHeight.normal },
   bodyStrong: { family: "sans", size: fontSize.md, weight: "700", lineHeight: lineHeight.normal },
   callout: { family: "sans", size: fontSize.xl, weight: "400", lineHeight: lineHeight.normal },
