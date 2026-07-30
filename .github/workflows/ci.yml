@@ -12,6 +12,11 @@ on:
         required: false
         default: 'false'
         type: boolean
+      publish_ota:
+        description: 'Publish an EAS Update to the production channel'
+        required: false
+        default: 'false'
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -101,6 +106,50 @@ jobs:
 
       - name: Test
         run: pnpm -r test
+
+  ota:
+    needs: detect
+    # Publishes a JS-only update (EAS Update) to the production channel on
+    # every push to main. Binaries built with expo-updates check this channel
+    # on launch and pull the latest JS without a new APK release. Native
+    # changes still require a new build.
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.publish_ota == true)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --config.dangerouslyAllowAllBuilds=true
+
+      - name: Build shared package
+        run: pnpm --filter @ordo/shared build
+
+      # Prebuild so the fingerprint matches the APK build (which also runs
+      # prebuild). Without this, bareNativeDir (android/) differs and the
+      # OTA update gets a different runtime version than the installed binary.
+      - name: Expo prebuild
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install
+
+      # Install eas-cli via npm to avoid pnpm's unapproved-build-script gate
+      # (eas-cli pulls dtrace-provider, whose build script pnpm would reject).
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Publish update
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas update --channel production --non-interactive --auto
 
   build_apk:
     needs: detect
