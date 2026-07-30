@@ -47,10 +47,13 @@ const withAndroidBuild = (config) => {
   config = withAppBuildGradle(config, (c) => {
     let code = c.modResults.contents;
 
-    // Allow CI to pass -Pandroid.versionCode=<n>; default to 1.
+    // Allow CI to pass -Pandroid.versionCode=<n>; default to 1. Wrapped in a
+    // parenthesized `as int` cast so Groovy parses it as a single versionCode(int)
+    // argument — the bare `... ).toInteger()` form was parsed as
+    // `versionCode(arg).toInteger()` and threw IllegalArgumentException: Value is null.
     code = code.replace(
       /(\bversionCode\s+)\d+/,
-      `$1(findProperty('android.versionCode') ?: '1').toInteger()`
+      `$1((rootProject.findProperty('android.versionCode') ?: '1') as int)`
     );
 
     // Inject ABI splits inside the android { } block. Disabled unless
