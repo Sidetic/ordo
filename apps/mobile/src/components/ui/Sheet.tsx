@@ -7,7 +7,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
-  Easing as RNEasing,
   Pressable,
   StyleSheet,
   View,
@@ -54,7 +53,11 @@ export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, content
       setMounted(true);
       ty.value = withSpring(0, springs.gentle);
     } else if (mounted) {
-      ty.value = withTiming(SCREEN_H, { duration: 200, easing: RNEasing.inOut(RNEasing.ease) }, (finished) => {
+      // NOTE: do not pass a custom easing here. RN's `Easing` is not a Reanimated
+      // worklet, so Reanimated throws inside the dismiss worklet on native
+      // (assertEasingIsWorklet) — which silently white-screens the app. Reanimated's
+      // default easing (inOut(quad)) is a valid worklet and looks near-identical.
+      ty.value = withTiming(SCREEN_H, { duration: 200 }, (finished) => {
         if (finished) runOnJS(setMounted)(false);
       });
     }
