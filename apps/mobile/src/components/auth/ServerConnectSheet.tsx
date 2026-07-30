@@ -108,6 +108,7 @@ export function ServerConnectSheet({ visible, onDismiss, onSaved }: ServerConnec
   // Debounced probe whenever the (normalised) URL changes.
   useEffect(() => {
     if (!visible) return;
+    let cancelled = false;
     const normalized = normalizeServerUrl(url);
     if (!normalized || normalized === normalizeServerUrl(currentUrl)) {
       setSteps([]);
@@ -116,14 +117,19 @@ export function ServerConnectSheet({ visible, onDismiss, onSaved }: ServerConnec
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
+      if (cancelled) return;
       setProbing(true);
       setUp(false);
-      void probeServer(url, (s) => setSteps(s)).then((r) => {
+      void probeServer(url, (s) => {
+        if (!cancelled) setSteps(s);
+      }).then((r) => {
+        if (cancelled) return;
         setProbing(false);
         setUp(r.status === "up");
       });
     }, 900);
     return () => {
+      cancelled = true;
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [url, visible, currentUrl]);

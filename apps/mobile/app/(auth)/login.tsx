@@ -46,7 +46,6 @@ export default function LoginScreen() {
     <>
       <AuthShell
         title="Welcome back"
-        subtitle="Sign in to your reading list."
         footer={
           <View style={styles.row}>
             <Text variant="footnote" color="secondary">No account yet? </Text>

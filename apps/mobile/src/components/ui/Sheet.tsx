@@ -8,6 +8,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
   Easing as RNEasing,
+  Pressable,
   StyleSheet,
   View,
   type ViewStyle,
@@ -88,11 +89,17 @@ export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, content
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="auto">
-      {/* Scrim */}
+      {/*
+        Backdrop = animated dim (non-interactive) + a transparent Pressable that
+        reliably captures outside taps. Using Pressable (not a raw onTouchEnd on
+        the dim) so the tap is captured consistently on web and native and never
+        leaks through to the screen behind, which previously left a blank screen.
+      */}
       <Animated.View
+        pointerEvents="none"
         style={[StyleSheet.absoluteFill, { backgroundColor: palette.overlay }, scrimStyle]}
-        onTouchEnd={dismiss}
       />
+      <Pressable style={StyleSheet.absoluteFill} onPress={dismiss} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={StyleSheet.absoluteFill}

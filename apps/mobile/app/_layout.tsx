@@ -19,6 +19,7 @@ import { scheduleProactiveRefresh } from "../src/lib/api/client";
 import { ToastHost } from "../src/components/ui/ToastHost";
 import { Banner } from "../src/components/ui/Banner";
 import { Text } from "../src/components/ui/Text";
+import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { fontAssets } from "../src/theme/tokens";
 
 function Splash() {
@@ -116,7 +117,9 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
-            <RootShell />
+            <ErrorBoundary>
+              <RootShell />
+            </ErrorBoundary>
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
