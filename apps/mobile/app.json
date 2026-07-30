@@ -13,7 +13,8 @@
       "policy": "fingerprint"
     },
     "plugins": [
-      "expo-asset"
+      "expo-asset",
+      "./plugins/with-updates-channel.js"
     ],
     "extra": {
       "eas": {
