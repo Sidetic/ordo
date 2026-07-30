@@ -3,14 +3,74 @@ name: CI
 on:
   push:
     branches: ['**']
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      build_apk:
+        description: 'Build an arm64 dev APK'
+        required: false
+        default: 'false'
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'release' }}
 
 jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.info.outputs.version }}
+      version_code: ${{ steps.info.outputs.version_code }}
+      should_build: ${{ steps.info.outputs.should_build }}
+      is_release: ${{ steps.info.outputs.is_release }}
+      build_ref: ${{ steps.info.outputs.build_ref }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Gather trigger info
+        id: info
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message || github.event.release.body || '' }}
+          EVENT: ${{ github.event_name }}
+          BUILD_INPUT: ${{ inputs.build_apk }}
+        run: |
+          VERSION=$(node -e "console.log(require('./apps/mobile/app.json').expo.version)")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # versionCode scaled by 10000 so per-ABI versionCode offsets from
+          # splits.abi can never invert ordering between builds.
+          echo "version_code=$(( ${{ github.run_number }} * 10000 ))" >> "$GITHUB_OUTPUT"
+          echo "build_ref=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+          if [ "$EVENT" = "release" ]; then
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+            MSG=$(echo "$COMMIT_MSG" | head -1)
+            if [[ "$EVENT" = "workflow_dispatch" && "$BUILD_INPUT" = "true" ]]; then
+              echo "should_build=true" >> "$GITHUB_OUTPUT"
+            elif [[ "$MSG" == *-apk ]]; then
+              echo "should_build=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "should_build=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Validate release tag matches app version
+        if: github.event_name == 'release'
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          EXPECTED="v${{ steps.info.outputs.version }}"
+          if [[ "$TAG" != "$EXPECTED" ]]; then
+            echo "::error::Release tag '$TAG' does not match app.json version '$EXPECTED'"
+            exit 1
+          fi
+
   analyze:
+    needs: detect
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -41,3 +101,120 @@ jobs:
 
       - name: Test
         run: pnpm -r test
+
+  build_apk:
+    needs: detect
+    if: needs.detect.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists
+          key: gradle-deps-${{ hashFiles('apps/mobile/package.json', 'pnpm-lock.yaml') }}
+          restore-keys: gradle-deps-
+
+      - name: Cache Gradle build outputs
+        uses: actions/cache@v5
+        with:
+          path: ~/.gradle/caches/build-cache-1
+          key: gradle-build-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: gradle-build-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --config.dangerouslyAllowAllBuilds=true
+
+      - name: Build shared package
+        run: pnpm --filter @ordo/shared build
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v9
+        with:
+          expo-version: latest
+          packager: pnpm
+
+      - name: Prebuild (generate native Android project)
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Verify OTA channel embedded
+        working-directory: apps/mobile
+        run: grep -q "expo.modules.updates.EXPO_UPDATES_CHANNEL" android/app/src/main/AndroidManifest.xml
+
+      - name: Build APK (dev, arm64 only)
+        if: needs.detect.outputs.is_release != 'true'
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a -Pandroid.versionCode=${{ needs.detect.outputs.version_code }}
+
+      - name: Build APKs (release, per-ABI splits + universal)
+        if: needs.detect.outputs.is_release == 'true'
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease -Pandroid.buildAbiSplits=true -Pandroid.versionCode=${{ needs.detect.outputs.version_code }}
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ordo-apk
+          path: apps/mobile/android/app/build/outputs/apk/release/*.apk
+
+  release:
+    needs: [detect, build_apk]
+    if: needs.detect.outputs.is_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download APK artifact
+        uses: actions/download-artifact@v6
+        with:
+          name: ordo-apk
+          path: apk
+
+      - name: Rename APKs
+        run: |
+          VERSION="${{ needs.detect.outputs.version }}"
+          cd apk
+          # universal (all ABIs) -> Ordo-vX.Y.Z.apk
+          if [ -f app-universal-release.apk ]; then
+            mv app-universal-release.apk "Ordo-v${VERSION}.apk"
+          elif [ -f app-release.apk ]; then
+            mv app-release.apk "Ordo-v${VERSION}.apk"
+          fi
+          # per-ABI splits -> Ordo-vX.Y.Z-<abi>.apk
+          for abi in armeabi-v7a arm64-v8a x86 x86_64; do
+            if [ -f "app-${abi}-release.apk" ]; then
+              mv "app-${abi}-release.apk" "Ordo-v${VERSION}-${abi}.apk"
+            fi
+          done
+          echo "## APKs to publish:" >> "$GITHUB_STEP_SUMMARY"
+          ls -1 Ordo-v*.apk | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          gh release upload "$TAG" apk/Ordo-v*.apk --clobber -R "$GITHUB_REPOSITORY"

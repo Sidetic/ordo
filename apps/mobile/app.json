@@ -14,7 +14,8 @@
     },
     "plugins": [
       "expo-asset",
-      "./plugins/with-updates-channel.js"
+      "./plugins/with-updates-channel.js",
+      "./plugins/with-android-build.js"
     ],
     "extra": {
       "eas": {
