@@ -8,7 +8,7 @@ import { authApi } from "../lib/api/auth";
 import { useAuthStore } from "../store/auth";
 import { qk } from "../lib/api/query-keys";
 import { cancelProactiveRefresh, scheduleProactiveRefresh } from "../lib/api/client";
-import type { SessionDto } from "@ordo/shared";
+import type { SessionDto, UserDto } from "@ordo/shared";
 
 export function useLogin() {
   const setSession = useAuthStore((s) => s.setSession);
@@ -34,6 +34,47 @@ export function useRegister() {
 
 export function useVerifyEmail() {
   return useMutation({ mutationFn: authApi.verifyEmail });
+}
+
+/** Write an updated user into the auth store + the `me` query cache. */
+function useUpdateUser() {
+  const setUser = useAuthStore((s) => s.setUser);
+  return (user: UserDto) => {
+    setUser(user);
+    queryClient.setQueryData<UserDto>(qk.me, user);
+  };
+}
+
+export function useChangeUsername() {
+  const updateUser = useUpdateUser();
+  return useMutation({
+    mutationFn: authApi.changeUsername,
+    onSuccess: updateUser,
+  });
+}
+
+export function useRequestEmailChange() {
+  return useMutation({ mutationFn: authApi.requestEmailChange });
+}
+
+export function useResendEmailChange() {
+  return useMutation({ mutationFn: authApi.resendEmailChange });
+}
+
+export function useVerifyEmailChange() {
+  const updateUser = useUpdateUser();
+  return useMutation({
+    mutationFn: authApi.verifyEmailChange,
+    onSuccess: updateUser,
+  });
+}
+
+export function useChangePassword() {
+  const updateUser = useUpdateUser();
+  return useMutation({
+    mutationFn: authApi.changePassword,
+    onSuccess: updateUser,
+  });
 }
 
 export function useRevokeSession() {

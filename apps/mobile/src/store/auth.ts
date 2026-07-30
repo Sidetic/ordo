@@ -26,6 +26,8 @@ export interface AuthState {
   setSession: (session: PersistedAuth) => void;
   /** Replace only the token pair (used after transparent refresh). */
   setTokens: (tokens: AuthTokens) => void;
+  /** Replace only the user (used after profile edits). */
+  setUser: (user: UserDto) => void;
   clear: () => void;
 }
 
@@ -52,6 +54,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const user = get().user;
     if (!user) return;
     set({ tokens });
+    void secureSet(StorageKeys.AUTH, { user, tokens });
+  },
+
+  setUser: (user) => {
+    const tokens = get().tokens;
+    if (!tokens) return;
+    set({ user });
     void secureSet(StorageKeys.AUTH, { user, tokens });
   },
 

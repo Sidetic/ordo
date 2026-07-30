@@ -5,7 +5,7 @@ import { AuthRoutes, buildPath } from "@ordo/shared";
 import { api } from "./client";
 
 export const authApi = {
-  register: (body: { email: string; password: string }) =>
+  register: (body: { username: string; email: string; password: string }) =>
     api.post<typeof AuthRoutes.register.response>(AuthRoutes.register.path, body, { auth: false }),
 
   login: (body: { email: string; password: string }) =>
@@ -28,4 +28,22 @@ export const authApi = {
       { token },
       { auth: false },
     ),
+
+  changeUsername: (body: { newUsername: string }) =>
+    api.post<typeof AuthRoutes.changeUsername.response>(AuthRoutes.changeUsername.path, body),
+
+  requestEmailChange: (body: { currentPassword: string; newEmail: string }) =>
+    api.post<typeof AuthRoutes.changeEmail.response>(AuthRoutes.changeEmail.path, body),
+
+  resendEmailChange: () =>
+    api.post<typeof AuthRoutes.resendEmailChange.response>(AuthRoutes.resendEmailChange.path),
+
+  verifyEmailChange: (token: string) =>
+    api.post<typeof AuthRoutes.verifyEmailChange.response>(
+      AuthRoutes.verifyEmailChange.path,
+      { token },
+    ),
+
+  changePassword: (body: { currentPassword: string; newPassword: string }) =>
+    api.post<typeof AuthRoutes.changePassword.response>(AuthRoutes.changePassword.path, body),
 };
