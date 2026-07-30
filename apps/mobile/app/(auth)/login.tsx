@@ -9,6 +9,7 @@ import { Input } from "../../src/components/ui/Input";
 import { Button } from "../../src/components/ui/Button";
 import { Text } from "../../src/components/ui/Text";
 import { ServerConnectSheet } from "../../src/components/auth/ServerConnectSheet";
+import { EyeToggle } from "../../src/components/ui/EyeToggle";
 import { useSettingsStore } from "../../src/store/settings";
 import { useLogin } from "../../src/hooks/use-auth-actions";
 import { errorMessage } from "../../src/lib/error-message";
@@ -72,14 +73,7 @@ export default function LoginScreen() {
           placeholder="••••••••"
           secureTextEntry={!showPwd}
           textContentType="password"
-          rightAccessory={
-            <Button
-              label={showPwd ? "Hide" : "Show"}
-              variant="ghost"
-              size="md"
-              onPress={() => setShowPwd((v) => !v)}
-            />
-          }
+          rightAccessory={<EyeToggle visible={showPwd} onPress={() => setShowPwd((v) => !v)} />}
         />
 
         <View style={{ height: spacing[24] }} />

@@ -8,6 +8,7 @@ import { AuthShell } from "../../src/components/auth/AuthShell";
 import { Input } from "../../src/components/ui/Input";
 import { Button } from "../../src/components/ui/Button";
 import { Text } from "../../src/components/ui/Text";
+import { EyeToggle } from "../../src/components/ui/EyeToggle";
 import { useRegister } from "../../src/hooks/use-auth-actions";
 import { useServerInfo } from "../../src/hooks/queries";
 import { errorMessage } from "../../src/lib/error-message";
@@ -98,10 +99,7 @@ export default function RegisterScreen() {
             placeholder="At least 8 characters"
             secureTextEntry={!showPwd}
             textContentType="newPassword"
-            helper="Use 8 characters or more."
-            rightAccessory={
-              <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
-            }
+            rightAccessory={<EyeToggle visible={showPwd} onPress={() => setShowPwd((v) => !v)} />}
           />
           <View style={{ height: spacing[16] }} />
           <Input

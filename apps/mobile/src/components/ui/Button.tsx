@@ -94,7 +94,7 @@ export function Button({
         ) : (
           <>
             {icon ? <View style={styles.iconWrap}>{icon}</View> : null}
-            <Text variant="title3" style={{ color: fg }}>
+            <Text variant="header" style={{ color: fg }}>
               {label}
             </Text>
           </>
