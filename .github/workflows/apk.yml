@@ -88,7 +88,6 @@ jobs:
         with:
           expo-version: latest
           packager: pnpm
-          working-directory: apps/mobile
 
       - name: Prebuild (generate native Android project)
         working-directory: apps/mobile
@@ -99,7 +98,7 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: ordo-apk
           path: apps/mobile/android/app/build/outputs/apk/release/*.apk
