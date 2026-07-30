@@ -20,6 +20,7 @@ export default function RegisterScreen() {
   const { data: info } = useServerInfo();
   const registrationEnabled = info?.registrationEnabled ?? true;
 
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -32,7 +33,11 @@ export default function RegisterScreen() {
       setFormError("Passwords don't match.");
       return;
     }
-    const parsed = RegisterSchema.safeParse({ email: email.trim().toLowerCase(), password });
+    const parsed = RegisterSchema.safeParse({
+      username: username.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+    });
     if (!parsed.success) {
       setFormError(parsed.error.issues[0]?.message || "Please check your input.");
       return;
@@ -69,13 +74,22 @@ export default function RegisterScreen() {
       ) : (
         <>
           <Input
+            label="Username"
+            value={username}
+            onChangeText={setUsername}
+            placeholder="2–32 chars, letters, numbers, _ or -"
+            textContentType="username"
+            autoCapitalize="none"
+            error={formError || undefined}
+          />
+          <View style={{ height: spacing[16] }} />
+          <Input
             label="Email"
             value={email}
             onChangeText={setEmail}
             placeholder="you@example.com"
             keyboardType="email-address"
             textContentType="emailAddress"
-            error={formError || undefined}
           />
           <View style={{ height: spacing[16] }} />
           <Input

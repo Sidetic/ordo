@@ -69,8 +69,32 @@ export default function SettingsScreen() {
 
         {/* Account */}
         <SectionLabel>Account</SectionLabel>
-        <SettingRow icon="mail-outline" label="Email" value={user?.email ?? "—"} />
-        <SettingRow icon="calendar-outline" label="Member since" value={user ? formatDate(user.createdAt) : "—"} divider={false} />
+        <SettingRow
+          icon="at-outline"
+          label="Username"
+          value={user?.username ?? "—"}
+          onPress={() => router.push("/settings/username")}
+          showChevron
+        />
+        <SettingRow
+          icon="mail-outline"
+          label="Email"
+          value={user?.email ?? "—"}
+          onPress={() => router.push("/settings/email")}
+          showChevron
+        />
+        <SettingRow
+          icon="lock-closed-outline"
+          label="Password"
+          onPress={() => router.push("/settings/password")}
+          showChevron
+        />
+        <SettingRow
+          icon="calendar-outline"
+          label="Member since"
+          value={user ? formatDate(user.createdAt) : "—"}
+          divider={false}
+        />
 
         {/* Appearance */}
         <SectionLabel>Appearance</SectionLabel>
