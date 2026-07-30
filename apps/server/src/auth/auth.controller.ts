@@ -12,8 +12,12 @@ import {
 } from "@nestjs/common";
 import type { Request, Response } from "express";
 import {
+  ChangeEmailSchema,
+  ChangePasswordSchema,
+  ChangeUsernameSchema,
   LoginSchema,
   RegisterSchema,
+  VerifyEmailChangeSchema,
   VerifyEmailSchema,
   type AuthResponse,
   type SessionDto,
@@ -48,7 +52,7 @@ export class AuthController {
 
   @Post("register")
   async register(
-    @Body(new ZodValidationPipe(RegisterSchema)) body: { email: string; password: string },
+    @Body(new ZodValidationPipe(RegisterSchema)) body: { username: string; email: string; password: string },
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {
@@ -131,5 +135,54 @@ export class AuthController {
   async verifyEmail(@Body(new ZodValidationPipe(VerifyEmailSchema)) body: { token: string }): Promise<{ success: true }> {
     await this.auth.verifyEmail(body.token);
     return { success: true };
+  }
+
+  @Post("username")
+  @UseGuards(AuthGuard)
+  @HttpCode(200)
+  async changeUsername(
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(ChangeUsernameSchema)) body: { newUsername: string },
+  ): Promise<UserDto> {
+    return this.auth.changeUsername(user.userId, body.newUsername);
+  }
+
+  @Post("email/change")
+  @UseGuards(AuthGuard)
+  @HttpCode(200)
+  async changeEmail(
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(ChangeEmailSchema)) body: { currentPassword: string; newEmail: string },
+  ): Promise<{ success: true }> {
+    await this.auth.requestEmailChange(user.userId, body.currentPassword, body.newEmail);
+    return { success: true };
+  }
+
+  @Post("email/change/resend")
+  @UseGuards(AuthGuard)
+  @HttpCode(200)
+  async resendEmailChange(@CurrentUser() user: AuthContext): Promise<{ success: true }> {
+    await this.auth.resendEmailChange(user.userId);
+    return { success: true };
+  }
+
+  @Post("email/verify-change")
+  @UseGuards(AuthGuard)
+  @HttpCode(200)
+  async verifyEmailChange(
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(VerifyEmailChangeSchema)) body: { token: string },
+  ): Promise<UserDto> {
+    return this.auth.verifyEmailChange(user.userId, body.token);
+  }
+
+  @Post("password")
+  @UseGuards(AuthGuard)
+  @HttpCode(200)
+  async changePassword(
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(ChangePasswordSchema)) body: { currentPassword: string; newPassword: string },
+  ): Promise<UserDto> {
+    return this.auth.changePassword(user.userId, body.currentPassword, body.newPassword, user.sessionId);
   }
 }

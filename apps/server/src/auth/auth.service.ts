@@ -38,7 +38,7 @@ export class AuthService {
   ) {}
 
   async register(
-    input: { email: string; password: string },
+    input: { username: string; email: string; password: string },
     meta: ClientMeta,
   ): Promise<AuthResponse> {
     if (!this.cfg.registrationEnabled) {
@@ -55,6 +55,7 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
+        username: input.username.trim(),
         email,
         passwordHash,
         folders: {
@@ -162,6 +163,103 @@ export class AuthService {
     await this.createAndSendVerification(user.id, user.email);
   }
 
+  async changeUsername(userId: string, newUsername: string): Promise<UserDto> {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { username: newUsername.trim() },
+    });
+    return toUserDto(user);
+  }
+
+  async requestEmailChange(
+    userId: string,
+    currentPassword: string,
+    newEmail: string,
+  ): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
+
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok) {
+      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password");
+    }
+
+    if (newEmail === user.email) {
+      throw new AppError(ErrorCode.VALIDATION_ERROR, "New email must be different from your current email");
+    }
+
+    const taken = await this.prisma.user.findUnique({ where: { email: newEmail } });
+    if (taken) {
+      throw new AppError(ErrorCode.EMAIL_ALREADY_EXISTS, "An account with this email already exists");
+    }
+
+    await this.prisma.user.update({ where: { id: userId }, data: { pendingEmail: newEmail } });
+    await this.createAndSendVerification(userId, newEmail);
+  }
+
+  async resendEmailChange(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.pendingEmail) return;
+    await this.createAndSendVerification(userId, user.pendingEmail);
+  }
+
+  async verifyEmailChange(userId: string, token: string): Promise<UserDto> {
+    const hash = hashToken(token);
+    const record = await this.prisma.emailVerificationToken.findUnique({
+      where: { token: hash },
+    });
+    if (!record || record.userId !== userId || record.consumedAt || record.expiresAt < new Date()) {
+      throw new AppError(
+        ErrorCode.INVALID_VERIFICATION_TOKEN,
+        "This verification code is invalid or has expired",
+      );
+    }
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.pendingEmail) {
+      throw new AppError(
+        ErrorCode.INVALID_VERIFICATION_TOKEN,
+        "No pending email change to verify",
+      );
+    }
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.emailVerificationToken.update({
+        where: { id: record.id },
+        data: { consumedAt: new Date() },
+      });
+      return tx.user.update({
+        where: { id: userId },
+        data: {
+          email: user.pendingEmail as string,
+          pendingEmail: null,
+          emailVerifiedAt: new Date(),
+        },
+      });
+    });
+    return toUserDto(updated);
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+    currentSessionId: string,
+  ): Promise<UserDto> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok) {
+      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password");
+    }
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+    // Sign out everywhere else; the current session stays alive.
+    await this.sessions.revokeAllExcept(userId, currentSessionId);
+    return toUserDto(updated);
+  }
+
   private async createAndSendVerification(userId: string, email: string): Promise<void> {
     // invalidate previous tokens for this user
     await this.prisma.emailVerificationToken.deleteMany({ where: { userId } });
@@ -181,13 +279,14 @@ export class AuthService {
   }
 
   private buildAuthResponse(
-    user: { id: string; email: string; emailVerifiedAt: Date | null; createdAt: Date },
+    user: { id: string; username: string; email: string; emailVerifiedAt: Date | null; createdAt: Date },
     sessionId: string,
     tokens: { accessToken: string; refreshToken: string; expiresIn: number },
   ): AuthResponse {
     return {
       user: {
         id: user.id,
+        username: user.username,
         email: user.email,
         emailVerified: user.emailVerifiedAt !== null,
         createdAt: user.createdAt.toISOString(),

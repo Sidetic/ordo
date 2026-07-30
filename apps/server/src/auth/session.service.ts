@@ -108,6 +108,14 @@ export class SessionService {
     await this.prisma.session.deleteMany({ where: { accessTokenHash: accessHash } });
   }
 
+  /** Revoke every session for a user except the one identified by `keepSessionId`. */
+  async revokeAllExcept(userId: string, keepSessionId: string): Promise<number> {
+    const result = await this.prisma.session.deleteMany({
+      where: { userId, id: { not: keepSessionId } },
+    });
+    return result.count;
+  }
+
   async listForUser(userId: string, currentSessionId: string) {
     const sessions = await this.prisma.session.findMany({
       where: { userId },
