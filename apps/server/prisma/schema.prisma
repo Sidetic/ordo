@@ -12,9 +12,11 @@ datasource db {
 
 model User {
   id              String                   @id @default(cuid())
+  username        String
   email           String                   @unique
   passwordHash    String
   emailVerifiedAt DateTime?
+  pendingEmail    String?
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
 

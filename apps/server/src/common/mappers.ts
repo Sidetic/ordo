@@ -9,6 +9,7 @@ import type {
 export function toUserDto(u: User): UserDto {
   return {
     id: u.id,
+    username: u.username,
     email: u.email,
     emailVerified: u.emailVerifiedAt !== null,
     createdAt: u.createdAt.toISOString(),
