@@ -10,8 +10,9 @@
  * probe, which is what broke Save / reset the URL.)
  */
 import React, { useEffect, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import Animated, {
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -23,10 +24,11 @@ import { Sheet } from "../ui/Sheet";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
+import { PressableScale } from "../ui/PressableScale";
 import { useTheme } from "../../theme/ThemeProvider";
 import { terminalPalette } from "../../theme/theme";
-import { radius, spacing } from "../../theme/tokens";
-import { resolveFont } from "../../theme/tokens";
+import { fontSize, radius, resolveFont, spacing } from "../../theme/tokens";
+import { haptics } from "../../lib/haptics";
 import { useSettingsStore } from "../../store/settings";
 import {
   hostOf,
@@ -76,13 +78,94 @@ function suffixFor(step: ProbeStep): string | null {
   }
 }
 
+/**
+ * Change button that sits greyed-out (neutral fill + muted label) until the
+ * probe reports the server is up, then cross-fades to the coral accent fill.
+ * Opt-in via the `animateReadyColor` prop (auth flow only).
+ */
+function AnimatedChangeButton({
+  ready,
+  loading,
+  disabled,
+  onPress,
+}: {
+  ready: boolean;
+  loading: boolean;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  const { palette } = useTheme();
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withTiming(ready ? 1 : 0, { duration: 420 });
+  }, [ready, progress]);
+
+  const bg = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(progress.value, [0, 1], [
+      palette.surfaceSecondary,
+      palette.accent,
+    ]),
+  }));
+
+  const fg = useAnimatedStyle(() => ({
+    color: interpolateColor(progress.value, [0, 1], [
+      palette.textTertiary,
+      palette.onAccent,
+    ]),
+  }));
+
+  return (
+    <PressableScale
+      disabled={disabled || loading}
+      onPress={() => {
+        haptics.light();
+        onPress();
+      }}
+      style={[styles.changeBtn, { height: 42, borderRadius: radius.sm, overflow: "hidden" }]}
+    >
+      <Animated.View
+        style={[StyleSheet.absoluteFill, { borderRadius: radius.sm }, bg]}
+        pointerEvents="none"
+      />
+      <View style={styles.changeContent}>
+        {loading ? (
+          <ActivityIndicator size="small" color={palette.onAccent} />
+        ) : (
+          <Animated.Text
+            style={[
+              {
+                fontFamily: resolveFont("display", "600"),
+                fontSize: fontSize.lg,
+                fontWeight: "600",
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+              },
+              fg,
+            ]}
+          >
+            Change
+          </Animated.Text>
+        )}
+      </View>
+    </PressableScale>
+  );
+}
+
 export interface ServerConnectSheetProps {
   visible: boolean;
   onDismiss: () => void;
   onSaved?: () => void;
+  /** Cross-fade the Change button grey → accent once verification passes (auth flow). */
+  animateReadyColor?: boolean;
 }
 
-export function ServerConnectSheet({ visible, onDismiss, onSaved }: ServerConnectSheetProps) {
+export function ServerConnectSheet({
+  visible,
+  onDismiss,
+  onSaved,
+  animateReadyColor = false,
+}: ServerConnectSheetProps) {
   const { palette } = useTheme();
   const currentUrl = useSettingsStore((s) => s.serverUrl);
   const setServerUrl = useSettingsStore((s) => s.setServerUrl);
@@ -259,13 +342,22 @@ export function ServerConnectSheet({ visible, onDismiss, onSaved }: ServerConnec
         <Button label="Close" variant="secondary" onPress={onDismiss} disabled={confirming} />
         <View style={{ width: spacing[10] }} />
         <View style={{ flex: 2 }}>
-          <Button
-            label={confirming ? "" : "Change"}
-            variant="primary"
-            onPress={onChange}
-            disabled={!canChange}
-            loading={confirming}
-          />
+          {animateReadyColor ? (
+            <AnimatedChangeButton
+              ready={up && !probing}
+              loading={confirming}
+              disabled={!canChange}
+              onPress={onChange}
+            />
+          ) : (
+            <Button
+              label={confirming ? "" : "Change"}
+              variant="primary"
+              onPress={onChange}
+              disabled={!canChange}
+              loading={confirming}
+            />
+          )}
         </View>
       </View>
     </Sheet>
@@ -287,4 +379,11 @@ const styles = StyleSheet.create({
   cursor: { fontSize: 12, color: terminalPalette.teal, marginTop: 2 },
   currentRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: spacing[10] },
   actions: { flexDirection: "row", alignItems: "center", marginTop: spacing[20] },
+  changeBtn: {
+    paddingHorizontal: spacing[20],
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  changeContent: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
 });

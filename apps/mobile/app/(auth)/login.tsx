@@ -112,7 +112,11 @@ export default function LoginScreen() {
         </View>
       </AuthShell>
 
-      <ServerConnectSheet visible={showServer} onDismiss={() => setShowServer(false)} />
+      <ServerConnectSheet
+        visible={showServer}
+        onDismiss={() => setShowServer(false)}
+        animateReadyColor
+      />
     </>
   );
 }
