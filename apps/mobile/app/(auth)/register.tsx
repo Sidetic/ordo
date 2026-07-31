@@ -57,16 +57,14 @@ export default function RegisterScreen() {
       <AuthShell
         title="Create your account"
         footer={
-          <View>
-            <View style={styles.row}>
-              <Text variant="footnote" color="secondary">Already have an account? </Text>
-              <Link href="/(auth)/login" asChild replace>
-                <Text variant="footnote" color="accent" style={styles.link}>Sign in</Text>
-              </Link>
-            </View>
-            <OtaUpdateLink />
+          <View style={styles.row}>
+            <Text variant="footnote" color="secondary">Already have an account? </Text>
+            <Link href="/(auth)/login" asChild replace>
+              <Text variant="footnote" color="accent" style={styles.link}>Sign in</Text>
+            </Link>
           </View>
         }
+        bottomAffix={<OtaUpdateLink />}
       >
       {!registrationEnabled ? (
         <View style={[styles.disabledCard]}>

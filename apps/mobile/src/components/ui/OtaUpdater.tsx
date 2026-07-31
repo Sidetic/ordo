@@ -135,14 +135,15 @@ export function OtaUpdateLink() {
 
   const busy = ota.status === "checking" || ota.status === "downloading";
   const label = (() => {
+    const version = ota.version && ota.version !== "—" ? `v${ota.version}` : null;
     switch (ota.status) {
       case "checking": return "Checking…";
       case "downloading": return "Updating…";
-      case "up-to-date": return "Up to date";
+      case "up-to-date": return version ? `${version} · Up to date` : "Up to date";
       case "available":
       case "ready": return "Restart to finish";
       case "error": return "Tap to retry";
-      default: return "Check for updates";
+      default: return version ? `${version} · Check for updates` : "Check for updates";
     }
   })();
 

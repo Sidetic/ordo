@@ -53,16 +53,14 @@ export default function LoginScreen() {
       <AuthShell
         title="Welcome back"
         footer={
-          <View>
-            <View style={styles.row}>
-              <Text variant="footnote" color="secondary">No account yet? </Text>
-              <Link href="/(auth)/register" asChild replace>
-                <Text variant="footnote" color="accent" style={styles.link}>Create one</Text>
-              </Link>
-            </View>
-            <OtaUpdateLink />
+          <View style={styles.row}>
+            <Text variant="footnote" color="secondary">No account yet? </Text>
+            <Link href="/(auth)/register" asChild replace>
+              <Text variant="footnote" color="accent" style={styles.link}>Create one</Text>
+            </Link>
           </View>
         }
+        bottomAffix={<OtaUpdateLink />}
       >
         <Input
           label="Email"
