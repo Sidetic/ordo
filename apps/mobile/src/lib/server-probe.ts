@@ -100,10 +100,17 @@ export async function probeServer(
   } catch (e) {
     const aborted = e instanceof DOMException && e.name === "AbortError";
     const detail = aborted ? "timeout" : "unreachable";
-    if (steps[0].state !== "success") {
-      steps[0] = { command: `connect ${host}`, state: "failure", detail };
-    } else {
-      steps[1] = { command: `GET /api/server/info`, state: "failure", detail };
+    // Mark the first still-pending step as the failure point, and every
+    // step after it as skipped — otherwise they sit at "pending" forever
+    // and the log looks like the probe hung.
+    const failedIdx = steps.findIndex((s) => s.state === "pending");
+    for (let i = 0; i < steps.length; i++) {
+      if (i < failedIdx) continue;
+      steps[i] = {
+        command: steps[i].command,
+        state: "failure",
+        detail: i === failedIdx ? detail : "skipped",
+      };
     }
     emit();
     return { url: origin, status: "down", detail };

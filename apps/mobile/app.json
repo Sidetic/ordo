@@ -24,7 +24,15 @@
     },
     "owner": "imlucki",
     "android": {
-      "package": "com.imlucki.ordo"
+      "package": "com.imlucki.ordo",
+      "usesCleartextTraffic": true
+    },
+    "ios": {
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
     }
   }
 }
