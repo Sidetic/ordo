@@ -11,6 +11,7 @@ import { Text } from "../../../src/components/ui/Text";
 import { Button } from "../../../src/components/ui/Button";
 import { Segmented } from "../../../src/components/ui/Segmented";
 import { Toggle } from "../../../src/components/ui/Toggle";
+import { OtaUpdateCard } from "../../../src/components/ui/OtaUpdater";
 import { ServerConnectSheet } from "../../../src/components/auth/ServerConnectSheet";
 import { useAuthStore } from "../../../src/store/auth";
 import { useSettingsStore } from "../../../src/store/settings";
@@ -124,6 +125,12 @@ export default function SettingsScreen() {
           divider={false}
         />
 
+        {/* Updates */}
+        <SectionLabel>Updates</SectionLabel>
+        <View style={styles.updatesWrap}>
+          <OtaUpdateCard />
+        </View>
+
         {/* Sign out */}
         <View style={styles.signout}>
           <Button
@@ -153,4 +160,5 @@ const styles = StyleSheet.create({
   themeWrap: { paddingHorizontal: spacing[16], paddingVertical: spacing[12] },
   helper: { paddingHorizontal: spacing[20], paddingTop: spacing[8] },
   signout: { paddingHorizontal: spacing[16], paddingTop: spacing[32] },
+  updatesWrap: { paddingHorizontal: spacing[12], paddingTop: spacing[4] },
 });

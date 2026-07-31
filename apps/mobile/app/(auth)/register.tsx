@@ -9,6 +9,7 @@ import { Input } from "../../src/components/ui/Input";
 import { Button } from "../../src/components/ui/Button";
 import { Text } from "../../src/components/ui/Text";
 import { EyeToggle } from "../../src/components/ui/EyeToggle";
+import { OtaUpdateLink } from "../../src/components/ui/OtaUpdater";
 import { useRegister } from "../../src/hooks/use-auth-actions";
 import { useServerInfo } from "../../src/hooks/queries";
 import { errorMessage } from "../../src/lib/error-message";
@@ -56,11 +57,14 @@ export default function RegisterScreen() {
       <AuthShell
         title="Create your account"
         footer={
-          <View style={styles.row}>
-            <Text variant="footnote" color="secondary">Already have an account? </Text>
-            <Link href="/(auth)/login" asChild replace>
-              <Text variant="footnote" color="accent" style={styles.link}>Sign in</Text>
-            </Link>
+          <View>
+            <View style={styles.row}>
+              <Text variant="footnote" color="secondary">Already have an account? </Text>
+              <Link href="/(auth)/login" asChild replace>
+                <Text variant="footnote" color="accent" style={styles.link}>Sign in</Text>
+              </Link>
+            </View>
+            <OtaUpdateLink />
           </View>
         }
       >

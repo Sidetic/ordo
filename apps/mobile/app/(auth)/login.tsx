@@ -10,6 +10,7 @@ import { Input } from "../../src/components/ui/Input";
 import { Button } from "../../src/components/ui/Button";
 import { Text } from "../../src/components/ui/Text";
 import { PressableScale } from "../../src/components/ui/PressableScale";
+import { OtaUpdateLink } from "../../src/components/ui/OtaUpdater";
 import { ServerConnectSheet } from "../../src/components/auth/ServerConnectSheet";
 import { EyeToggle } from "../../src/components/ui/EyeToggle";
 import { useSettingsStore } from "../../src/store/settings";
@@ -52,11 +53,14 @@ export default function LoginScreen() {
       <AuthShell
         title="Welcome back"
         footer={
-          <View style={styles.row}>
-            <Text variant="footnote" color="secondary">No account yet? </Text>
-            <Link href="/(auth)/register" asChild replace>
-              <Text variant="footnote" color="accent" style={styles.link}>Create one</Text>
-            </Link>
+          <View>
+            <View style={styles.row}>
+              <Text variant="footnote" color="secondary">No account yet? </Text>
+              <Link href="/(auth)/register" asChild replace>
+                <Text variant="footnote" color="accent" style={styles.link}>Create one</Text>
+              </Link>
+            </View>
+            <OtaUpdateLink />
           </View>
         }
       >
