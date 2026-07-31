@@ -34,6 +34,13 @@ expo-env.d.ts
 apps/mobile/android/
 apps/mobile/ios/
 
+# stray Expo artifacts if it's accidentally run from the repo root instead of
+# apps/mobile/ (where the real app lives). Anchored to the repo root only, so
+# the legit tracked apps/mobile/app.json is NOT ignored.
+/android/
+/ios/
+/app.json
+
 # coverage
 coverage/
 
