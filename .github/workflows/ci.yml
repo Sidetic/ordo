@@ -209,7 +209,7 @@ jobs:
 
       - name: Verify OTA channel embedded
         working-directory: apps/mobile
-        run: grep -q "expo.modules.updates.EXPO_UPDATES_CHANNEL" android/app/src/main/AndroidManifest.xml
+        run: grep -q "expo-channel-name" android/app/src/main/AndroidManifest.xml
 
       - name: Build APK (dev, arm64 only)
         if: needs.detect.outputs.is_release != 'true'
