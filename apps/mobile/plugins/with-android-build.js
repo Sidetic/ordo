@@ -1,6 +1,7 @@
 const {
   withAppBuildGradle,
   withGradleProperties,
+  withAndroidManifest,
 } = require('expo/config-plugins');
 
 /**
@@ -20,6 +21,21 @@ const {
  *     splits for a single fast APK.
  */
 const withAndroidBuild = (config) => {
+  // ── AndroidManifest.xml ────────────────────────────────────────────────
+  // Force usesCleartextTraffic=true. Expo SDK 52's prebuild-config silently
+  // drops the `android.usesCleartextTraffic` field from app.json, so without
+  // this OkHttp refuses to open HTTP connections on Android 9+ (API 28+) —
+  // the socket factory throws before connect(), the request never reaches the
+  // network, and the fetch hangs indefinitely with zero packets on the wire.
+  config = withAndroidManifest(config, (c) => {
+    const app = c.modResults.manifest.application?.[0];
+    if (app) {
+      if (!app.$) app.$ = {};
+      app.$['android:usesCleartextTraffic'] = 'true';
+    }
+    return c;
+  });
+
   // ── gradle.properties ──────────────────────────────────────────────────
   config = withGradleProperties(config, (c) => {
     const props = c.modResults;
