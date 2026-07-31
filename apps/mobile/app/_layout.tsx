@@ -65,7 +65,14 @@ function RootShell() {
     if (tokens?.expiresIn) scheduleProactiveRefresh(tokens.expiresIn);
   }, [tokens?.expiresIn, tokens?.accessToken]);
 
-  if (status === "loading") return <Splash />;
+  // Hold the splash until the visible route is reconciled with the auth status
+  // (the redirect happens in an effect, which runs after the first paint) so the
+  // wrong group — e.g. login for an already-authenticated user — never flashes.
+  const routeMatchesAuth =
+    status !== "loading" &&
+    (status === "authenticated" ? segments[0] !== "(auth)" : segments[0] === "(auth)");
+
+  if (!routeMatchesAuth) return <Splash />;
 
   return (
     <>

@@ -39,8 +39,6 @@ export default function AppLayout() {
         tabBarInactiveTintColor: palette.textTertiary,
         tabBarStyle: {
           backgroundColor: palette.background,
-          borderTopColor: palette.border,
-          borderTopWidth: 1,
           height: layout.tabBarHeight,
         },
         tabBarLabelStyle: { fontFamily: "InterTight_500Medium", fontSize: 10 },
