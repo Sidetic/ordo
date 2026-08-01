@@ -6,9 +6,9 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "splash": {
+      "image": "./assets/splash.png",
       "backgroundColor": "#EFE7D2",
-      "resizeMode": "cover",
-      "dark": { "backgroundColor": "#1A1A16" }
+      "dark": { "image": "./assets/splash.png", "backgroundColor": "#1A1A16" }
     },
     "newArchEnabled": false,
     "updates": {
