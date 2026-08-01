@@ -65,14 +65,14 @@ function RootShell() {
     if (tokens?.expiresIn) scheduleProactiveRefresh(tokens.expiresIn);
   }, [tokens?.expiresIn, tokens?.accessToken]);
 
-  // Hold the splash until the visible route is reconciled with the auth status
-  // (the redirect happens in an effect, which runs after the first paint) so the
-  // wrong group — e.g. login for an already-authenticated user — never flashes.
+  // Keep the navigator mounted at all times — tearing the <Stack> out based on
+  // segments corrupts expo-router's state and renders a blank white frame. The
+  // redirect happens in an effect (after the first paint), so we overlay an
+  // opaque splash until the visible route reconciles with the auth status,
+  // hiding the wrong group (e.g. login for an already-authenticated user).
   const routeMatchesAuth =
     status !== "loading" &&
     (status === "authenticated" ? segments[0] !== "(auth)" : segments[0] === "(auth)");
-
-  if (!routeMatchesAuth) return <Splash />;
 
   return (
     <>
@@ -89,6 +89,22 @@ function RootShell() {
       </Stack>
       <ConnectionBanner />
       <ToastHost />
+      {!routeMatchesAuth && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: palette.background,
+          }}
+        >
+          <Text variant="wordmark" color="accent">Ordo</Text>
+        </View>
+      )}
     </>
   );
 }
