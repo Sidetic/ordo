@@ -1,10 +1,23 @@
 /**
  * Root layout: installs providers (gesture, safe-area, query, theme), hydrates
  * persisted state, initialises connectivity, and gates navigation by auth status.
+ *
+ * Launch sequence: the native splash is held (expo-splash-screen) while fonts +
+ * persisted stores hydrate. Once hydrated, the navigator mounts underneath a
+ * branded "Ordo" launch overlay, the native splash is dismissed, and the overlay
+ * fades out — revealing the login or bookmarks screen — once the route has
+ * reconciled with the auth status and a minimum brand beat has elapsed. The
+ * overlay guarantees the wrong group (e.g. login for an authenticated user) is
+ * never visible during the auth redirect.
  */
 import React, { useEffect } from "react";
-import { View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import Animated, {
+  FadeOut,
+  withTiming,
+  type EntryExitAnimationFunction,
+} from "react-native-reanimated";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -22,12 +35,45 @@ import { Text } from "../src/components/ui/Text";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { fontAssets } from "../src/theme/tokens";
 
-function Splash() {
+// Hold the native splash as early as possible so it covers JS load + hydration
+// (otherwise its auto-hide leaves a white frame before React paints).
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Brand beat: keep the launch overlay up for at least this long once mounted.
+const MIN_SPLASH_MS = 600;
+
+const enterFadeScale: EntryExitAnimationFunction = () => {
+  "worklet";
+  return {
+    initialValues: { opacity: 0, transform: [{ scale: 0.9 }] },
+    animations: {
+      opacity: withTiming(1, { duration: 320 }),
+      transform: [{ scale: withTiming(1, { duration: 320 }) }],
+    },
+  };
+};
+
+function BrandSplash() {
   const { palette } = useTheme();
   return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: palette.background }}>
-      <Text variant="wordmark" color="accent">Ordo</Text>
-    </View>
+    <Animated.View
+      entering={enterFadeScale}
+      exiting={FadeOut.duration(220)}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: palette.background,
+      }}
+    >
+      <Text variant="wordmark" color="accent" style={{ fontSize: 52 }}>
+        Ordo
+      </Text>
+    </Animated.View>
   );
 }
 
@@ -48,6 +94,18 @@ function RootShell() {
   const segments = useSegments();
   const status = useAuthStore((s) => s.status);
   const tokens = useAuthStore((s) => s.tokens);
+  const [minElapsed, setMinElapsed] = React.useState(false);
+
+  // The branded overlay has painted — hand off from the native splash.
+  useEffect(() => {
+    SplashScreen.hide();
+  }, []);
+
+  // Minimum brand display so the launch reads as intentional, not a flicker.
+  useEffect(() => {
+    const t = setTimeout(() => setMinElapsed(true), MIN_SPLASH_MS);
+    return () => clearTimeout(t);
+  }, []);
 
   // Gate navigation once status is resolved.
   useEffect(() => {
@@ -65,14 +123,14 @@ function RootShell() {
     if (tokens?.expiresIn) scheduleProactiveRefresh(tokens.expiresIn);
   }, [tokens?.expiresIn, tokens?.accessToken]);
 
-  // Keep the navigator mounted at all times — tearing the <Stack> out based on
-  // segments corrupts expo-router's state and renders a blank white frame. The
-  // redirect happens in an effect (after the first paint), so we overlay an
-  // opaque splash until the visible route reconciles with the auth status,
-  // hiding the wrong group (e.g. login for an already-authenticated user).
+  // The navigator stays mounted at all times; the overlay covers the brief
+  // window before the redirect reconciles the route with the auth status, so the
+  // wrong group (e.g. login for an already-authenticated user) never shows.
   const routeMatchesAuth =
     status !== "loading" &&
     (status === "authenticated" ? segments[0] !== "(auth)" : segments[0] === "(auth)");
+
+  const showSplash = !routeMatchesAuth || !minElapsed;
 
   return (
     <>
@@ -89,28 +147,13 @@ function RootShell() {
       </Stack>
       <ConnectionBanner />
       <ToastHost />
-      {!routeMatchesAuth && (
-        <View
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: palette.background,
-          }}
-        >
-          <Text variant="wordmark" color="accent">Ordo</Text>
-        </View>
-      )}
+      {showSplash && <BrandSplash />}
     </>
   );
 }
 
 export default function RootLayout() {
-  const [ready, setReady] = React.useState(false);
+  const [booted, setBooted] = React.useState(false);
 
   useEffect(() => {
     (async () => {
@@ -121,28 +164,16 @@ export default function RootLayout() {
       ]);
       await useAuthStore.getState().hydrate();
       await useOnlineStore.getState().init();
-      setReady(true);
+      setBooted(true);
     })();
   }, []);
-
-  if (!ready) {
-    return (
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <Splash />
-        </ThemeProvider>
-      </SafeAreaProvider>
-    );
-  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
-            <ErrorBoundary>
-              <RootShell />
-            </ErrorBoundary>
+            <ErrorBoundary>{booted ? <RootShell /> : null}</ErrorBoundary>
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
