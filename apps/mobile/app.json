@@ -29,7 +29,7 @@
     },
     "owner": "imlucki",
     "android": {
-      "package": "com.imlucki.ordo",
+      "package": "com.axolet.ordo",
       "usesCleartextTraffic": true
     },
     "ios": {
