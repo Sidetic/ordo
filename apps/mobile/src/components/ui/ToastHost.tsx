@@ -1,80 +1,127 @@
 /**
- * ToastHost — renders queued toasts at the bottom. Faithful to ordo's snackbar:
- * ink (text-color) background with bg-colored label, radius 14, floating.
+ * ToastHost — renders queued toasts at the bottom. Each toast enters with a
+ * spring, auto-dismisses after its duration, and can be swiped away or carry an
+ * inline action. Driven by two shared values (enter + swipe offset) so the
+ * enter/exit and swipe animations never fight.
  */
-import React, { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useRef } from "react";
+import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
-  withSequence,
   withSpring,
   withTiming,
-  Easing,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useToastStore, type Toast } from "./toast-store";
 import { Text } from "./Text";
+import { PressableScale } from "./PressableScale";
 import { useTheme } from "../../theme/ThemeProvider";
 import { radius, springs, spacing } from "../../theme/tokens";
+
+const SWIPE_THRESHOLD = 80;
+const SWIPE_VELOCITY = 600;
 
 function ToastItem({ toast }: { toast: Toast }) {
   const { palette, shadows } = useTheme();
   const insets = useSafeAreaInsets();
   const dismiss = useToastStore((s) => s.dismiss);
-  const t = useSharedValue(0);
+  const dismissed = useRef(false);
 
+  // 0 → 1 enter/exit; horizontal px for swipe.
+  const enter = useSharedValue(0);
+  const offsetX = useSharedValue(0);
+
+  const animateOut = useCallback(() => {
+    if (dismissed.current) return;
+    dismissed.current = true;
+    enter.value = withTiming(0, { duration: 220 }, () => runOnJS(dismiss)(toast.id));
+  }, [dismiss, enter, toast.id]);
+
+  // Enter, then schedule an auto-dismiss.
   useEffect(() => {
-    t.value = withSequence(
-      withSpring(1, springs.gentle),
-      withDelay(
-        toast.duration,
-        withTiming(0, { duration: 240, easing: Easing.inOut(Easing.ease) }, () => dismiss(toast.id)),
-      ),
-    );
-  }, [toast, dismiss, t]);
+    enter.value = withSpring(1, springs.gentle);
+    const timer = setTimeout(animateOut, toast.duration);
+    return () => clearTimeout(timer);
+  }, [toast.id, toast.duration, enter, animateOut]);
+
+  const pan = Gesture.Pan()
+    .enabled(toast.swipeable)
+    .onUpdate((e) => {
+      offsetX.value = e.translationX;
+    })
+    .onEnd((e) => {
+      const past = Math.abs(offsetX.value) > SWIPE_THRESHOLD || Math.abs(e.velocityX) > SWIPE_VELOCITY;
+      if (past) {
+        const dir = Math.sign(offsetX.value) || 1;
+        offsetX.value = withSpring(dir * 500, springs.snappy, () => runOnJS(animateOut)());
+      } else {
+        offsetX.value = withSpring(0, springs.gentle);
+      }
+    });
 
   const animStyle = useAnimatedStyle(() => ({
-    opacity: t.value,
-    transform: [{ translateY: (1 - t.value) * 20 }],
+    opacity: enter.value,
+    transform: [{ translateX: offsetX.value }, { translateY: (1 - enter.value) * 20 }],
   }));
 
   const iconName =
-    toast.tone === "success" ? "checkmark-circle" : toast.tone === "danger" ? "alert-circle" : "information-circle";
+    toast.tone === "success"
+      ? "checkmark-circle"
+      : toast.tone === "danger"
+        ? "alert-circle"
+        : "information-circle";
   const iconColor =
     toast.tone === "success" ? palette.green : toast.tone === "danger" ? palette.coral : palette.blue;
 
   return (
-    <Animated.View
-      style={[
-        styles.toast,
-        {
-          backgroundColor: palette.text,
-          borderRadius: radius.xl,
-          marginBottom: insets.bottom + spacing[16],
-        },
-        shadows.level2,
-        animStyle,
-      ]}
-    >
-      <Ionicons name={iconName as any} size={16} color={iconColor} />
-      <Text variant="footnote" style={{ flex: 1, color: palette.background }}>
-        {toast.message}
-      </Text>
-    </Animated.View>
+    <GestureDetector gesture={pan}>
+      <Animated.View
+        style={[
+          styles.toast,
+          {
+            backgroundColor: palette.text,
+            borderRadius: radius.xl,
+            marginBottom: insets.bottom + spacing[16],
+          },
+          shadows.level2,
+          animStyle,
+        ]}
+      >
+        <Ionicons name={iconName as any} size={16} color={iconColor} />
+        <Text variant="footnote" style={{ flex: 1, color: palette.background }}>
+          {toast.message}
+        </Text>
+        {toast.action ? (
+          <PressableScale
+            scaleTo={0.92}
+            hitSlop={6}
+            onPress={() => {
+              toast.action!.onPress();
+              animateOut();
+            }}
+          >
+            <Text variant="footnote" style={{ color: palette.accent, fontWeight: "700" }}>
+              {toast.action.label}
+            </Text>
+          </PressableScale>
+        ) : null}
+      </Animated.View>
+    </GestureDetector>
   );
 }
 
 export function ToastHost() {
   const toasts = useToastStore((s) => s.toasts);
   return (
-    <View pointerEvents="box-none" style={styles.host}>
+    <Animated.View pointerEvents="box-none" style={styles.host}>
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} />
       ))}
-    </View>
+    </Animated.View>
   );
 }
 

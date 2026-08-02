@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Ordo backend — NestJS + Prisma (SQLite)",
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",

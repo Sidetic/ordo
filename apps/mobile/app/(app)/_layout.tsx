@@ -70,6 +70,7 @@ export default function AppLayout() {
       <Tabs.Screen name="folder/[id]" options={HIDDEN} />
       <Tabs.Screen name="reader/[id]" options={HIDDEN} />
       <Tabs.Screen name="settings/sessions" options={HIDDEN} />
+      <Tabs.Screen name="settings/about" options={HIDDEN} />
       <Tabs.Screen name="settings/username" options={HIDDEN} />
       <Tabs.Screen name="settings/email" options={HIDDEN} />
       <Tabs.Screen name="settings/verify-email" options={HIDDEN} />

@@ -11,7 +11,6 @@ import { Text } from "../../../src/components/ui/Text";
 import { Button } from "../../../src/components/ui/Button";
 import { Segmented } from "../../../src/components/ui/Segmented";
 import { Toggle } from "../../../src/components/ui/Toggle";
-import { OtaUpdateCard } from "../../../src/components/ui/OtaUpdater";
 import { ServerConnectSheet } from "../../../src/components/auth/ServerConnectSheet";
 import { useAuthStore } from "../../../src/store/auth";
 import { useSettingsStore } from "../../../src/store/settings";
@@ -125,11 +124,15 @@ export default function SettingsScreen() {
           divider={false}
         />
 
-        {/* Updates */}
-        <SectionLabel>Updates</SectionLabel>
-        <View style={styles.updatesWrap}>
-          <OtaUpdateCard />
-        </View>
+        {/* About */}
+        <SectionLabel>About</SectionLabel>
+        <SettingRow
+          icon="information-circle-outline"
+          label="About Ordo"
+          onPress={() => router.push("/settings/about")}
+          showChevron
+          divider={false}
+        />
 
         {/* Sign out */}
         <View style={styles.signout}>
@@ -145,9 +148,6 @@ export default function SettingsScreen() {
             }}
           />
         </View>
-        <Text variant="caption" color="tertiary" align="center" style={{ marginTop: spacing[12] }}>
-          Ordo · v0.1.0
-        </Text>
       </ScrollView>
 
       <ServerConnectSheet visible={serverOpen} onDismiss={() => setServerOpen(false)} />
@@ -160,5 +160,4 @@ const styles = StyleSheet.create({
   themeWrap: { paddingHorizontal: spacing[16], paddingVertical: spacing[12] },
   helper: { paddingHorizontal: spacing[20], paddingTop: spacing[8] },
   signout: { paddingHorizontal: spacing[16], paddingTop: spacing[32] },
-  updatesWrap: { paddingHorizontal: spacing[12], paddingTop: spacing[4] },
 });

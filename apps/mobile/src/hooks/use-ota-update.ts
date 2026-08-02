@@ -1,11 +1,14 @@
 /**
- * OTA update hook — wraps `expo-updates` for manual check / download / restart.
- * In development builds `expo-updates` is disabled and its async APIs reject, so
- * every action guards on `enabled` and surfaces a disabled state instead.
+ * OTA update state, derived reactively from expo-updates' `useUpdates()` so it
+ * always reflects the native module's truth: a downloaded update stays "ready"
+ * across remounts (the previous useState-driven version lost that). Actions
+ * route through the `Updates` module, whose emitted events drive the reactive
+ * state. expo-updates is disabled in dev builds, so everything guards on
+ * `enabled` and surfaces a disabled state.
  */
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { AppState } from "react-native";
 import * as Updates from "expo-updates";
-import Constants from "expo-constants";
 
 export type OtaStatus =
   | "disabled"
@@ -19,92 +22,110 @@ export type OtaStatus =
 
 export interface UseOtaUpdate {
   enabled: boolean;
-  version: string;
-  channel: string | null;
-  runtimeVersion: string | null;
-  updateId: string | null;
-  isEmbeddedLaunch: boolean;
   status: OtaStatus;
   message: string | null;
+  /** EAS Update channel the build is configured for, if any. */
+  channel: string | null;
+  /** Runtime fingerprint (compatibility key) for the current build. */
+  runtimeVersion: string | null;
+  /** True when the running code is the binary's embedded bundle (not an OTA). */
+  isEmbeddedLaunch: boolean;
+  /** Update id of the currently running OTA bundle, if any. */
+  runningUpdateId: string | null;
+  /** Publish time of the running OTA bundle, if any. */
+  runningUpdateCreatedAt: Date | null;
+  /** Update id of the most recently downloaded (pending) update, if any. */
+  pendingUpdateId: string | null;
+  /** When we last checked for an update this session. */
   lastChecked: Date | null;
   check: () => Promise<void>;
   download: () => Promise<void>;
   restart: () => Promise<void>;
 }
 
+/** Minimum gap between automatic foreground checks. */
+const FOREGROUND_RECHECK_MS = 60 * 60 * 1000;
+
 export function useOtaUpdate(): UseOtaUpdate {
   const enabled = Updates.isEnabled;
-  const version = Constants.expoConfig?.version ?? "—";
+  const {
+    currentlyRunning,
+    isChecking,
+    isDownloading,
+    isUpdateAvailable,
+    isUpdatePending,
+    downloadedUpdate,
+    checkError,
+    downloadError,
+    initializationError,
+    lastCheckForUpdateTimeSinceRestart,
+  } = Updates.useUpdates();
 
-  const [status, setStatus] = useState<OtaStatus>(enabled ? "idle" : "disabled");
-  const [message, setMessage] = useState<string | null>(null);
-  const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const lastForegroundCheck = useRef(0);
 
-  const guard = useCallback(() => {
-    if (!enabled) {
-      setStatus("disabled");
-      setMessage("Updates are disabled in development builds.");
-      return false;
-    }
-    return true;
+  // Auto-check on first mount and when the app returns to the foreground
+  // (throttled), so updates are picked up without a manual tap.
+  useEffect(() => {
+    if (!enabled) return;
+
+    const runCheck = () => {
+      const now = Date.now();
+      if (now - lastForegroundCheck.current < FOREGROUND_RECHECK_MS) return;
+      lastForegroundCheck.current = now;
+      Updates.checkForUpdateAsync().catch(() => {});
+    };
+
+    runCheck();
+
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") runCheck();
+    });
+    return () => sub.remove();
   }, [enabled]);
 
+  const status: OtaStatus = (() => {
+    if (!enabled) return "disabled";
+    // Actionable states take priority over a transient error so the user can
+    // always act on a downloaded update even if a later check failed.
+    if (isUpdatePending) return "ready";
+    if (isDownloading) return "downloading";
+    if (isChecking) return "checking";
+    if (isUpdateAvailable) return "available";
+    if (checkError || downloadError || initializationError) return "error";
+    if (lastCheckForUpdateTimeSinceRestart) return "up-to-date";
+    return "idle";
+  })();
+
+  const message =
+    checkError?.message ?? downloadError?.message ?? initializationError?.message ?? null;
+
   const check = useCallback(async () => {
-    if (!guard()) return;
-    setStatus("checking");
-    setMessage(null);
-    try {
-      const result = await Updates.checkForUpdateAsync();
-      setLastChecked(new Date());
-      if (result.isAvailable) {
-        setStatus("available");
-      } else {
-        setStatus("up-to-date");
-      }
-    } catch (e: unknown) {
-      setStatus("error");
-      setMessage(e instanceof Error ? e.message : "Couldn’t check for updates.");
-    }
-  }, [guard]);
+    if (!enabled) return;
+    await Updates.checkForUpdateAsync();
+  }, [enabled]);
 
   const download = useCallback(async () => {
-    if (!guard()) return;
-    setStatus("downloading");
-    setMessage(null);
-    try {
-      const result = await Updates.fetchUpdateAsync();
-      if (result.isNew) {
-        setStatus("ready");
-      } else {
-        setLastChecked(new Date());
-        setStatus("up-to-date");
-      }
-    } catch (e: unknown) {
-      setStatus("error");
-      setMessage(e instanceof Error ? e.message : "Couldn’t download the update.");
-    }
-  }, [guard]);
+    if (!enabled) return;
+    await Updates.fetchUpdateAsync();
+  }, [enabled]);
 
   const restart = useCallback(async () => {
-    if (!guard()) return;
-    try {
-      await Updates.reloadAsync();
-    } catch (e: unknown) {
-      setStatus("error");
-      setMessage(e instanceof Error ? e.message : "Couldn’t restart the app.");
-    }
-  }, [guard]);
+    if (!enabled) return;
+    // Reloads into the downloaded update — the canonical "apply on restart".
+    await Updates.reloadAsync();
+  }, [enabled]);
 
   return {
     enabled,
-    version,
-    channel: Updates.channel,
-    runtimeVersion: Updates.runtimeVersion,
-    updateId: Updates.updateId,
-    isEmbeddedLaunch: Updates.isEmbeddedLaunch,
     status,
     message,
-    lastChecked,
+    channel: currentlyRunning.channel ?? Updates.channel ?? null,
+    runtimeVersion: currentlyRunning.runtimeVersion ?? Updates.runtimeVersion ?? null,
+    isEmbeddedLaunch: currentlyRunning.isEmbeddedLaunch,
+    runningUpdateId: currentlyRunning.updateId ?? null,
+    runningUpdateCreatedAt: currentlyRunning.createdAt ?? null,
+    pendingUpdateId: downloadedUpdate?.updateId ?? null,
+    lastChecked: lastCheckForUpdateTimeSinceRestart ?? null,
     check,
     download,
     restart,

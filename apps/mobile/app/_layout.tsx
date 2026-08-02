@@ -32,6 +32,7 @@ import { useOnlineStore, useOnline } from "../src/lib/online";
 import { scheduleProactiveRefresh } from "../src/lib/api/client";
 import { ToastHost } from "../src/components/ui/ToastHost";
 import { Banner } from "../src/components/ui/Banner";
+import { UpdateReadyWatcher } from "../src/components/UpdateReadyWatcher";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { fontAssets } from "../src/theme/tokens";
 import SPLASH_LOGO from "../assets/splash-logo.png";
@@ -153,6 +154,7 @@ function RootShell() {
       </Stack>
       <ConnectionBanner />
       <ToastHost />
+      <UpdateReadyWatcher />
       {showSplash && <BrandSplash />}
     </>
   );
