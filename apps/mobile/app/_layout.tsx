@@ -4,24 +4,25 @@
  *
  * Launch sequence: the native splash is held (expo-splash-screen) while fonts +
  * persisted stores hydrate. Once hydrated, the navigator mounts underneath a
- * branded "Ordo" launch overlay, the native splash is dismissed, and the overlay
- * fades out — revealing the login or bookmarks screen — once the route has
- * reconciled with the auth status and a minimum brand beat has elapsed. The
- * overlay guarantees the wrong group (e.g. login for an authenticated user) is
- * never visible during the auth redirect.
+ * branded launch overlay that renders the Ordo logo on the theme background —
+ * pixel-matched to the native splash, so the native→JS handoff is invisible.
+ * The native splash is only dismissed once that overlay has painted (effect +
+ * rAF), eliminating any gap frame. The overlay then stays up until the route has
+ * reconciled with the auth status AND a minimum brand beat has elapsed, after
+ * which it fades out smoothly — the only motion in the sequence. The overlay
+ * guarantees the wrong group (e.g. login for an authenticated user) is never
+ * visible during the auth redirect.
  */
 import React, { useEffect } from "react";
+import { Dimensions, Image } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import Animated, {
-  FadeOut,
-  withTiming,
-  type EntryExitAnimationFunction,
-} from "react-native-reanimated";
+import * as Font from "expo-font";
+import { Asset } from "expo-asset";
+import Animated, { FadeOut } from "react-native-reanimated";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClientProvider } from "@tanstack/react-query";
-import * as Font from "expo-font";
 import { ThemeProvider, useTheme } from "../src/theme/ThemeProvider";
 import { queryClient } from "../src/lib/query-client";
 import { useAuthStore } from "../src/store/auth";
@@ -31,9 +32,11 @@ import { useOnlineStore, useOnline } from "../src/lib/online";
 import { scheduleProactiveRefresh } from "../src/lib/api/client";
 import { ToastHost } from "../src/components/ui/ToastHost";
 import { Banner } from "../src/components/ui/Banner";
-import { Text } from "../src/components/ui/Text";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { fontAssets } from "../src/theme/tokens";
+import SPLASH_LOGO from "../assets/splash-logo.png";
+
+const SCREEN = Dimensions.get("window");
 
 // Hold the native splash as early as possible so it covers JS load + hydration
 // (otherwise its auto-hide leaves a white frame before React paints).
@@ -41,24 +44,20 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Brand beat: keep the launch overlay up for at least this long once mounted.
 const MIN_SPLASH_MS = 600;
+// Smoothness of the overlay fade-out (the only animation in the launch).
+const FADE_OUT_MS = 320;
 
-const enterFadeScale: EntryExitAnimationFunction = () => {
-  "worklet";
-  return {
-    initialValues: { opacity: 0, transform: [{ scale: 0.9 }] },
-    animations: {
-      opacity: withTiming(1, { duration: 320 }),
-      transform: [{ scale: withTiming(1, { duration: 320 }) }],
-    },
-  };
-};
-
+/**
+ * Branded launch overlay. Renders the transparent Ordo logo full-screen
+ * (`resizeMode: contain`) on the theme background — identical to the native
+ * splash — so the handoff is seamless. No entering animation: it is at full
+ * opacity on the first paint. Only the exit (fade-out) is animated.
+ */
 function BrandSplash() {
   const { palette } = useTheme();
   return (
     <Animated.View
-      entering={enterFadeScale}
-      exiting={FadeOut.duration(220)}
+      exiting={FadeOut.duration(FADE_OUT_MS)}
       style={{
         position: "absolute",
         top: 0,
@@ -70,9 +69,11 @@ function BrandSplash() {
         backgroundColor: palette.background,
       }}
     >
-      <Text variant="wordmark" color="accent" style={{ fontSize: 52 }}>
-        Ordo
-      </Text>
+      <Image
+        source={SPLASH_LOGO}
+        style={{ width: SCREEN.width, height: SCREEN.height }}
+        resizeMode="contain"
+      />
     </Animated.View>
   );
 }
@@ -96,9 +97,14 @@ function RootShell() {
   const tokens = useAuthStore((s) => s.tokens);
   const [minElapsed, setMinElapsed] = React.useState(false);
 
-  // The branded overlay has painted — hand off from the native splash.
+  // The branded overlay has committed — dismiss the native splash on the next
+  // frame so it has definitely painted, leaving no gap frame in between. The
+  // overlay is pixel-matched to the native splash, so this handoff is invisible.
   useEffect(() => {
-    SplashScreen.hide();
+    const raf = requestAnimationFrame(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    });
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   // Minimum brand display so the launch reads as intentional, not a flicker.
@@ -138,7 +144,7 @@ function RootShell() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: palette.background },
-          animation: "slide_from_right",
+          animation: "fade",
           animationDuration: 260,
         }}
       >
@@ -158,6 +164,9 @@ export default function RootLayout() {
   useEffect(() => {
     (async () => {
       await Font.loadAsync(fontAssets);
+      // Decode the splash logo before the overlay mounts so its first paint is
+      // instant and seamless with the native splash.
+      await Asset.loadAsync(SPLASH_LOGO);
       await Promise.all([
         useSettingsStore.getState().hydrate(),
         useFolderTokenStore.getState().hydrate(),

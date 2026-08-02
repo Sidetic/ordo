@@ -7,6 +7,7 @@ import React from "react";
 import { ScrollView, StyleSheet, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "../ui/Text";
+import { Logo } from "../ui/Logo";
 import { useTheme } from "../../theme/ThemeProvider";
 import { layout, spacing } from "../../theme/tokens";
 
@@ -39,7 +40,8 @@ export function AuthShell({ title, subtitle, children, footer, bottomAffix, styl
         keyboardDismissMode="on-drag"
       >
         <View style={[styles.inner, { maxWidth: layout.maxContentWidth }, style]}>
-          <Text variant="header" align="center">{title}</Text>
+          <Logo size={64} />
+          <Text variant="header" align="center" style={{ marginTop: spacing[20] }}>{title}</Text>
           {subtitle ? (
             <Text variant="body" color="secondary" align="center" style={{ marginTop: spacing[6] }}>{subtitle}</Text>
           ) : null}
