@@ -23,7 +23,7 @@ const {
 const withAndroidBuild = (config) => {
   // ── AndroidManifest.xml ────────────────────────────────────────────────
   // Force usesCleartextTraffic=true. Expo SDK 52's prebuild-config silently
-  // drops the `android.usesCleartextTraffic` field from app.json, so without
+  // drops the `android.usesCleartextTraffic` field from app.config.js, so without
   // this OkHttp refuses to open HTTP connections on Android 9+ (API 28+) —
   // the socket factory throws before connect(), the request never reaches the
   // network, and the fetch hangs indefinitely with zero packets on the wire.
