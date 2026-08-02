@@ -40,7 +40,7 @@ export function AuthShell({ title, subtitle, children, footer, bottomAffix, styl
         keyboardDismissMode="on-drag"
       >
         <View style={[styles.inner, { maxWidth: layout.maxContentWidth }, style]}>
-          <Logo size={64} />
+          <Logo />
           <Text variant="header" align="center" style={{ marginTop: spacing[20] }}>{title}</Text>
           {subtitle ? (
             <Text variant="body" color="secondary" align="center" style={{ marginTop: spacing[6] }}>{subtitle}</Text>
