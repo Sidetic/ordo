@@ -30,10 +30,16 @@ module.exports = {
   version: "0.1.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
+  icon: "./assets/icon.png",
   splash: {
-    image: "./assets/splash.png",
+    image: "./assets/splash-logo.png",
+    resizeMode: "contain",
     backgroundColor: "#EFE7D2",
-    dark: { image: "./assets/splash.png", backgroundColor: "#1A1A16" },
+    dark: {
+      image: "./assets/splash-logo.png",
+      resizeMode: "contain",
+      backgroundColor: "#1A1A16",
+    },
   },
   newArchEnabled: false,
   updates: {
@@ -55,6 +61,10 @@ module.exports = {
   android: {
     package: "com.axolet.ordo",
     usesCleartextTraffic: true,
+    adaptiveIcon: {
+      foregroundImage: "./assets/adaptive-icon-foreground.png",
+      backgroundColor: "#EFE7D2",
+    },
   },
   ios: {
     infoPlist: {
