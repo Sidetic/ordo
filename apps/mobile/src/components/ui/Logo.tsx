@@ -1,24 +1,23 @@
 /**
- * Ordo brand mark — the transparent logo used for in-app branding (e.g. the
- * auth screens). The asset is the same transparent variant used on the splash,
- * so the mark sits cleanly on the themed background. Height follows the logo's
- * native aspect ratio from the given width.
+ * Ordo brand mark for in-app branding (e.g. the auth screens). Uses a tight
+ * crop of the transparent logo so the coral mark sits compactly on the themed
+ * background. Height follows the asset's aspect ratio from the given width.
  */
 import React from "react";
 import { Image, StyleSheet } from "react-native";
-import SPLASH_LOGO from "../../../assets/splash-logo.png";
+import LOGO_MARK from "../../../assets/logo-mark.png";
 
-const ASPECT = 531 / 702;
+const ASPECT = 468 / 509;
 
 export interface LogoProps {
-  /** Rendered width in px; height follows the logo's aspect ratio. Defaults to 80. */
+  /** Rendered width in px; height follows the mark's aspect ratio. Defaults to 56. */
   width?: number;
 }
 
-export function Logo({ width = 80 }: LogoProps) {
+export function Logo({ width = 56 }: LogoProps) {
   return (
     <Image
-      source={SPLASH_LOGO}
+      source={LOGO_MARK}
       style={[styles.logo, { width, aspectRatio: ASPECT }]}
       resizeMode="contain"
       accessibilityLabel="Ordo"
