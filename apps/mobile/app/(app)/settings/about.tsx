@@ -18,7 +18,7 @@ import { useOtaUpdate } from "../../../src/hooks/use-ota-update";
 import { useTheme } from "../../../src/theme/ThemeProvider";
 import { spacing } from "../../../src/theme/tokens";
 
-const REPO_URL = "https://github.com/Sidetic/ordo";
+const REPO_URL = "https://github.com/axoletlabs/ordo";
 const PUBLISHED_YEAR = 2025;
 
 function SectionLabel({ children }: { children: string }) {
@@ -111,14 +111,14 @@ export default function AboutScreen() {
         <SettingRow
           icon="logo-github"
           label="Source"
-          value="github.com/Sidetic/ordo"
+          value="github.com/axoletlabs/ordo"
           onPress={() => Linking.openURL(REPO_URL).catch(() => {})}
           showChevron
         />
         <SettingRow icon="shield-checkmark-outline" label="License" value="AGPL-3.0" divider={false} />
 
         <Text variant="caption" color="tertiary" align="center" style={styles.footer}>
-          © {PUBLISHED_YEAR} Sidetic
+          © {PUBLISHED_YEAR} Axolet Labs
         </Text>
       </ScrollView>
     </View>
