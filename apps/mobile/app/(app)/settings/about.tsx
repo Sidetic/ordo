@@ -19,7 +19,7 @@ import { useTheme } from "../../../src/theme/ThemeProvider";
 import { spacing } from "../../../src/theme/tokens";
 
 const REPO_URL = "https://github.com/axoletlabs/ordo";
-const PUBLISHED_YEAR = 2025;
+const PUBLISHED_YEAR = 2026;
 
 function SectionLabel({ children }: { children: string }) {
   return (
