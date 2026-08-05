@@ -15,6 +15,7 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanim
 import { Text } from "./Text";
 import { Button } from "./Button";
 import { PressableScale } from "./PressableScale";
+import { toast } from "./toast-store";
 import { useOtaUpdate } from "../../hooks/use-ota-update";
 import { useTheme } from "../../theme/ThemeProvider";
 import { radius, spacing } from "../../theme/tokens";
@@ -38,6 +39,10 @@ function Spinner({ color }: { color: string }) {
 function Status({ ota }: { ota: ReturnType<typeof useOtaUpdate> }) {
   const { palette } = useTheme();
 
+  // Checking is already communicated by the button spinner. A successful
+  // no-update result is surfaced as a toast instead of adding another row.
+  if (ota.status === "idle" || ota.status === "checking" || ota.status === "up-to-date") return null;
+
   // Remount on status change so entering/exiting produce a clean cross-fade.
   return (
     <Animated.View
@@ -49,16 +54,8 @@ function Status({ ota }: { ota: ReturnType<typeof useOtaUpdate> }) {
         <Text variant="footnote" color="tertiary" style={styles.statusNote}>
           Automatic updates run in production builds.
         </Text>
-      ) : ota.status === "checking" ? (
-        <StatusLine icon={<Spinner color={palette.textTertiary} />} text="Checking for updates…" />
       ) : ota.status === "downloading" ? (
         <StatusLine icon={<Spinner color={palette.textTertiary} />} text="Downloading update…" />
-      ) : ota.status === "up-to-date" ? (
-        <StatusLine
-          icon={<Ionicons name="checkmark-circle" size={16} color={palette.green} />}
-          text="You’re on the latest version"
-          color={palette.text}
-        />
       ) : ota.status === "available" ? (
         <View style={styles.actionBlock}>
           <StatusLine
@@ -122,6 +119,17 @@ function Status({ ota }: { ota: ReturnType<typeof useOtaUpdate> }) {
 export function OtaUpdateCard() {
   const ota = useOtaUpdate();
   const { palette } = useTheme();
+  const manualCheck = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!manualCheck.current) return;
+    if (ota.status === "up-to-date") {
+      manualCheck.current = false;
+      toast.show("You’re up to date.", { tone: "success", duration: 3000 });
+    } else if (ota.status !== "checking" && ota.status !== "idle") {
+      manualCheck.current = false;
+    }
+  }, [ota.status]);
 
   return (
     <Animated.View
@@ -139,8 +147,9 @@ export function OtaUpdateCard() {
           loading={ota.status === "checking"}
           disabled={!ota.enabled}
           onPress={() => {
+            manualCheck.current = true;
             haptics.light();
-            void ota.check();
+            void ota.check().catch(() => {});
           }}
         />
       </View>

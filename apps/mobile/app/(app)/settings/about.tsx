@@ -1,5 +1,5 @@
 /**
- * About Ordo — identity, build origin, and the OTA update card.
+ * About — identity, build origin, and the OTA update card.
  *
  * Build facts (version, commit) come from useBuildInfo (stamped at build time
  * via app.config.js); runtime/OTA facts (embedded vs OTA, fingerprint, channel)
@@ -41,27 +41,13 @@ export default function AboutScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
-      <Header title="About Ordo" showBack onBack={() => (router.canGoBack() ? router.back() : router.replace("/settings"))} />
+      <Header title="About" showBack onBack={() => (router.canGoBack() ? router.back() : router.replace("/settings"))} />
       <ScrollView contentContainerStyle={{ paddingBottom: spacing[40] }} showsVerticalScrollIndicator={false}>
-        {/* Hero */}
         <View style={styles.hero}>
-          <Text variant="wordmark" color="accent" style={styles.wordmark}>
-            Ordo
-          </Text>
-          <Text variant="title3" style={styles.tagline}>
-            The app that keeps your life in order.
-          </Text>
-          <Text variant="body" color="secondary" style={styles.description}>
-            A secure, self-hostable bookmark reader — save any URL, read it clean, and organize it into folders.
+          <Text variant="display" align="center" style={styles.tagline}>
+            The app that keeps your life in order
           </Text>
         </View>
-
-        {/* What you get */}
-        <SectionLabel>What you get</SectionLabel>
-        <SettingRow icon="bookmark-outline" label="Bookmarks" value="Save any URL" />
-        <SettingRow icon="book-outline" label="Reader mode" value="Clean, offline articles" />
-        <SettingRow icon="folder-open-outline" label="Folders" value="Organize & protect" />
-        <SettingRow icon="server-outline" label="Self-hostable" value="SQLite or Postgres" divider={false} />
 
         {/* Version */}
         <SectionLabel>Version</SectionLabel>
@@ -126,10 +112,8 @@ export default function AboutScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { paddingHorizontal: spacing[20], paddingTop: spacing[24], paddingBottom: spacing[8] },
-  wordmark: { fontSize: 44, marginBottom: spacing[6] },
-  tagline: { marginBottom: spacing[8] },
-  description: { lineHeight: 20 },
+  hero: { paddingHorizontal: spacing[28], paddingTop: spacing[32], paddingBottom: spacing[12] },
+  tagline: { maxWidth: 320, alignSelf: "center", lineHeight: 29, letterSpacing: -0.35 },
   sectionLabel: { paddingHorizontal: spacing[20], paddingTop: spacing[24], paddingBottom: spacing[8] },
   helper: { paddingHorizontal: spacing[20], paddingTop: spacing[8] },
   originRow: { paddingHorizontal: spacing[20], paddingVertical: spacing[12], flexDirection: "row", alignItems: "center", justifyContent: "space-between" },

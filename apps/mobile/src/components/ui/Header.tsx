@@ -1,7 +1,7 @@
 /**
  * Screen header with optional back button, title, and trailing action.
- * Faithful to ordo: bg, no elevation, Inter Tight title (tight tracking),
- * compact 32×24 trailing icon buttons.
+ * Compact detail headers keep the title centered on the same row as the
+ * controls; large tab headers retain their stacked treatment.
  */
 import React from "react";
 import { StyleSheet, View } from "react-native";
@@ -34,9 +34,28 @@ export function Header({ title, subtitle, showBack, onBack, right, large }: Head
     else if (router.canGoBack()) router.back();
   };
 
+  if (large) {
+    return (
+      <View style={[styles.largeWrap, { paddingTop: insets.top + spacing[8], borderBottomColor: palette.border }]}>
+        <View style={styles.row}>
+          <View style={styles.backBtn} />
+          {right ? <View style={styles.right}>{right}</View> : <View style={styles.right} />}
+        </View>
+        <View style={styles.largeTitles}>
+          <Text variant="title1" numberOfLines={1}>{title}</Text>
+          {subtitle ? (
+            <Text variant="footnote" color="secondary" numberOfLines={1} style={{ marginTop: spacing[2] }}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.wrap, { paddingTop: insets.top + spacing[8], borderBottomColor: palette.border }]}>
-      <View style={styles.row}>
+    <View style={[styles.compactWrap, { paddingTop: insets.top + spacing[8], borderBottomColor: palette.border }]}>
+      <View style={styles.compactRow}>
         {showBack ? (
           <PressableScale style={styles.backBtn} scaleTo={0.85} onPress={handleBack} hitSlop={8}>
             <Ionicons name="chevron-back" size={24} color={palette.text} />
@@ -44,25 +63,28 @@ export function Header({ title, subtitle, showBack, onBack, right, large }: Head
         ) : (
           <View style={styles.backBtn} />
         )}
+        <View pointerEvents="none" style={styles.compactTitle}>
+          <Text variant="header" align="center" numberOfLines={1}>{title}</Text>
+        </View>
         {right ? <View style={styles.right}>{right}</View> : <View style={styles.right} />}
       </View>
-      <View style={[styles.titles, !large && styles.compact]}>
-        <Text variant={large ? "title1" : "headline"} numberOfLines={1}>{title}</Text>
-        {subtitle ? (
-          <Text variant="footnote" color="secondary" numberOfLines={1} style={{ marginTop: spacing[2] }}>
-            {subtitle}
-          </Text>
-        ) : null}
-      </View>
+      {subtitle ? (
+        <Text variant="footnote" color="secondary" align="center" numberOfLines={1} style={styles.compactSubtitle}>
+          {subtitle}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: spacing[12], paddingBottom: spacing[8] },
+  largeWrap: { paddingHorizontal: spacing[12], paddingBottom: spacing[8] },
+  compactWrap: { paddingHorizontal: spacing[4], paddingBottom: spacing[8] },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 36 },
+  compactRow: { minHeight: 36, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backBtn: { width: 36, height: 32, alignItems: "center", justifyContent: "center" },
   right: { minWidth: 36, alignItems: "flex-end", justifyContent: "center" },
-  titles: { marginTop: spacing[4], paddingHorizontal: spacing[4] },
-  compact: { marginTop: 0 },
+  largeTitles: { marginTop: spacing[4], paddingHorizontal: spacing[4] },
+  compactTitle: { position: "absolute", top: 0, bottom: 0, left: 48, right: 48, alignItems: "center", justifyContent: "center" },
+  compactSubtitle: { marginTop: spacing[2], paddingHorizontal: 48 },
 });
