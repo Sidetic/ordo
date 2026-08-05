@@ -61,6 +61,15 @@ module.exports = {
   android: {
     package: "com.axolet.ordo",
     usesCleartextTraffic: true,
+    splash: {
+      image: "./assets/splash-logo.png",
+      resizeMode: "native",
+      backgroundColor: "#EFE7D2",
+      dark: {
+        image: "./assets/splash-logo.png",
+        backgroundColor: "#1A1A16",
+      },
+    },
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon-foreground.png",
       backgroundColor: "#EFE7D2",

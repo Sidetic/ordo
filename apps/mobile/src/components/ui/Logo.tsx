@@ -10,11 +10,11 @@ import LOGO_MARK from "../../../assets/logo-mark.png";
 const ASPECT = 468 / 509;
 
 export interface LogoProps {
-  /** Rendered width in px; height follows the mark's aspect ratio. Defaults to 56. */
+  /** Rendered width in px; height follows the mark's aspect ratio. Defaults to 40. */
   width?: number;
 }
 
-export function Logo({ width = 56 }: LogoProps) {
+export function Logo({ width = 40 }: LogoProps) {
   return (
     <Image
       source={LOGO_MARK}
