@@ -21,9 +21,9 @@ import { spacing } from "../../../src/theme/tokens";
 const REPO_URL = "https://github.com/axoletlabs/ordo";
 const PUBLISHED_YEAR = 2026;
 
-function SectionLabel({ children }: { children: string }) {
+function SectionLabel({ children, compact }: { children: string; compact?: boolean }) {
   return (
-    <Text variant="caption" color="secondary" style={styles.sectionLabel}>
+    <Text variant="caption" color="secondary" style={[styles.sectionLabel, compact && styles.compactSectionLabel]}>
       {children.toUpperCase()}
     </Text>
   );
@@ -44,13 +44,13 @@ export default function AboutScreen() {
       <Header title="About" showBack onBack={() => (router.canGoBack() ? router.back() : router.replace("/settings"))} />
       <ScrollView contentContainerStyle={{ paddingBottom: spacing[40] }} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <Text variant="display" align="center" style={styles.tagline}>
+          <Text variant="callout" align="center" style={styles.tagline}>
             The app that keeps your life in order
           </Text>
         </View>
 
         {/* Version */}
-        <SectionLabel>Version</SectionLabel>
+        <SectionLabel compact>Version</SectionLabel>
         <SettingRow icon="pricetag-outline" label="Version" value={`v${build.version}`} />
         <SettingRow icon="git-commit-outline" label="Commit" value={commit} divider={!build.gitDirty} />
         {build.gitDirty ? (
@@ -112,9 +112,10 @@ export default function AboutScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { paddingHorizontal: spacing[28], paddingTop: spacing[32], paddingBottom: spacing[12] },
-  tagline: { maxWidth: 320, alignSelf: "center", lineHeight: 29, letterSpacing: -0.35 },
+  hero: { paddingHorizontal: spacing[28], paddingTop: spacing[16] },
+  tagline: { maxWidth: 300, alignSelf: "center", lineHeight: 21 },
   sectionLabel: { paddingHorizontal: spacing[20], paddingTop: spacing[24], paddingBottom: spacing[8] },
+  compactSectionLabel: { paddingTop: spacing[16] },
   helper: { paddingHorizontal: spacing[20], paddingTop: spacing[8] },
   originRow: { paddingHorizontal: spacing[20], paddingVertical: spacing[12], flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   fpWrap: { paddingHorizontal: spacing[16], paddingTop: spacing[4] },
