@@ -16,12 +16,10 @@ export interface AuthShellProps {
   subtitle?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  /** Pinned to the bottom of the viewport (above the safe-area inset), outside the scroll content. */
-  bottomAffix?: React.ReactNode;
   style?: ViewStyle;
 }
 
-export function AuthShell({ title, subtitle, children, footer, bottomAffix, style }: AuthShellProps) {
+export function AuthShell({ title, subtitle, children, footer, style }: AuthShellProps) {
   const { palette } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -32,8 +30,7 @@ export function AuthShell({ title, subtitle, children, footer, bottomAffix, styl
           styles.container,
           {
             paddingTop: insets.top + spacing[24],
-            // Extra bottom padding so centered content never sits under the pinned affix.
-            paddingBottom: insets.bottom + spacing[24] + spacing[32],
+            paddingBottom: insets.bottom + spacing[24],
           },
         ]}
         keyboardShouldPersistTaps="handled"
@@ -51,15 +48,6 @@ export function AuthShell({ title, subtitle, children, footer, bottomAffix, styl
           {footer ? <View style={styles.footer}>{footer}</View> : null}
         </View>
       </ScrollView>
-
-      {bottomAffix ? (
-        <View
-          pointerEvents="box-none"
-          style={[styles.bottomAffix, { paddingBottom: insets.bottom + spacing[12] }]}
-        >
-          {bottomAffix}
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -74,13 +62,4 @@ const styles = StyleSheet.create({
   },
   inner: { width: "100%", alignSelf: "center" },
   footer: { marginTop: spacing[24] },
-  bottomAffix: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: "center",
-    paddingHorizontal: spacing[24],
-    paddingTop: spacing[8],
-  },
 });

@@ -9,7 +9,6 @@ import { Input } from "../../src/components/ui/Input";
 import { Button } from "../../src/components/ui/Button";
 import { Text } from "../../src/components/ui/Text";
 import { EyeToggle } from "../../src/components/ui/EyeToggle";
-import { OtaUpdateLink } from "../../src/components/ui/OtaUpdater";
 import { useRegister } from "../../src/hooks/use-auth-actions";
 import { useServerInfo } from "../../src/hooks/queries";
 import { errorMessage } from "../../src/lib/error-message";
@@ -64,7 +63,6 @@ export default function RegisterScreen() {
             </Link>
           </View>
         }
-        bottomAffix={<OtaUpdateLink />}
       >
       {!registrationEnabled ? (
         <View style={[styles.disabledCard]}>

@@ -1,9 +1,8 @@
 /**
  * OTA update UI built on `expo-updates`.
  *  - <OtaUpdateCard />  status card for the About screen (check / download / restart)
- *  - <OtaUpdateLink />  compact inline control for auth screens
  *
- * expo-updates only runs in release builds, so both gracefully report a
+ * expo-updates only runs in release builds, so the card gracefully reports a
  * disabled state during development. Status swaps cross-fade via Reanimated
  * entering/exiting transitions, and the card animates its height with a layout
  * transition so changes never jump.
@@ -14,7 +13,6 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { Text } from "./Text";
 import { Button } from "./Button";
-import { PressableScale } from "./PressableScale";
 import { toast } from "./toast-store";
 import { useOtaUpdate } from "../../hooks/use-ota-update";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -173,62 +171,6 @@ function Meta({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function OtaUpdateLink() {
-  const ota = useOtaUpdate();
-  const { palette } = useTheme();
-
-  if (!ota.enabled) return null;
-
-  const busy = ota.status === "checking" || ota.status === "downloading";
-  const label = (() => {
-    switch (ota.status) {
-      case "checking":
-        return "Checking…";
-      case "downloading":
-        return "Updating…";
-      case "up-to-date":
-        return "Up to date";
-      case "available":
-      case "ready":
-        return "Restart to finish";
-      case "error":
-        return "Tap to retry";
-      default:
-        return "Check for updates";
-    }
-  })();
-
-  const onTap = () => {
-    haptics.light();
-    if (ota.status === "ready") void ota.restart();
-    else if (ota.status === "available") void ota.download();
-    else void ota.check();
-  };
-
-  return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel="Check for app updates"
-      scaleTo={0.96}
-      onPress={onTap}
-      style={styles.link}
-    >
-      {busy ? (
-        <Spinner color={palette.textTertiary} />
-      ) : (
-        <Ionicons
-          name="refresh"
-          size={13}
-          color={ota.status === "error" ? palette.danger : palette.textTertiary}
-        />
-      )}
-      <Text variant="footnote" color={ota.status === "error" ? "danger" : "tertiary"}>
-        {label}
-      </Text>
-    </PressableScale>
-  );
-}
-
 const styles = StyleSheet.create({
   card: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -247,11 +189,4 @@ const styles = StyleSheet.create({
   actionBtn: { width: "100%" },
   statusNote: { marginTop: spacing[4] },
   statusLine: { flexDirection: "row", alignItems: "center", gap: spacing[8] },
-  link: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing[6],
-    paddingVertical: spacing[8],
-  },
 });
