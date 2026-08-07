@@ -8,8 +8,12 @@ export const authApi = {
   register: (body: { username: string; email: string; password: string }) =>
     api.post<typeof AuthRoutes.register.response>(AuthRoutes.register.path, body, { auth: false }),
 
-  login: (body: { identifier: string; password: string }) =>
-    api.post<typeof AuthRoutes.login.response>(AuthRoutes.login.path, body, { auth: false }),
+  login: ({ identifier, password }: { identifier: string; password: string }) =>
+    api.post<typeof AuthRoutes.login.response>(
+      AuthRoutes.login.path,
+      identifier.includes("@") ? { email: identifier, password } : { identifier, password },
+      { auth: false },
+    ),
 
   me: () => api.get<typeof AuthRoutes.me.response>(AuthRoutes.me.path),
 
