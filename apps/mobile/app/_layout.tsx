@@ -27,7 +27,10 @@ import { UpdateReadyWatcher } from "../src/components/UpdateReadyWatcher";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { LaunchSplash } from "../src/components/LaunchSplash";
 import { fontAssets } from "../src/theme/tokens";
-import { useUpdateRestartStore } from "../src/store/update-restart";
+import {
+  markRestartSplashPresented,
+  useUpdateRestartStore,
+} from "../src/store/update-restart";
 
 // Hold the native splash as early as possible so it covers JS load + hydration
 // (otherwise its auto-hide leaves a white frame before React paints).
@@ -83,7 +86,7 @@ function RootShell() {
   // the wrong group (e.g. login for an authenticated user) is never shown.
   const routeMatchesAuth =
     status !== "loading" &&
-    (status === "authenticated" ? segments[0] !== "(auth)" : segments[0] === "(auth)");
+    (status === "authenticated" ? segments[0] === "(app)" : segments[0] === "(auth)");
 
   const showSplash = !routeMatchesAuth || !minElapsed;
 
@@ -107,7 +110,9 @@ function RootShell() {
       <ConnectionBanner />
       <ToastHost />
       <UpdateReadyWatcher />
-      {(showSplash || restarting) && <LaunchSplash />}
+      {(showSplash || restarting) && (
+        <LaunchSplash onPresented={restarting ? markRestartSplashPresented : undefined} />
+      )}
     </>
   );
 }

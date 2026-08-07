@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { StyleSheet, useColorScheme, View } from "react-native";
 import { Logo, SPLASH_LOGO_WIDTH } from "./ui/Logo";
 
@@ -8,9 +8,15 @@ const SPLASH_BACKGROUND = {
 } as const;
 
 /** React fallback matching the native splash for JS reloads and handoff gaps. */
-export function LaunchSplash() {
+export function LaunchSplash({ onPresented }: { onPresented?: () => void }) {
   const colorScheme = useColorScheme();
   const backgroundColor = SPLASH_BACKGROUND[colorScheme === "dark" ? "dark" : "light"];
+
+  useEffect(() => {
+    if (!onPresented) return;
+    const frame = requestAnimationFrame(onPresented);
+    return () => cancelAnimationFrame(frame);
+  }, [onPresented]);
 
   return (
     <View
