@@ -12,14 +12,15 @@ export interface FABProps {
   icon?: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
   testID?: string;
+  bottom?: number;
 }
 
-export function FAB({ icon = "add", onPress, testID }: FABProps) {
+export function FAB({ icon = "add", onPress, testID, bottom = spacing[20] }: FABProps) {
   const { palette, shadows } = useTheme();
   return (
     <PressableScale
       testID={testID}
-      style={[styles.fab, { backgroundColor: palette.accent }, shadows.level2]}
+      style={[styles.fab, { backgroundColor: palette.accent, bottom }, shadows.level2]}
       scaleTo={0.9}
       onPress={onPress}
     >
@@ -32,7 +33,6 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: spacing[20],
-    bottom: spacing[20],
     width: 48,
     height: 48,
     borderRadius: 24,

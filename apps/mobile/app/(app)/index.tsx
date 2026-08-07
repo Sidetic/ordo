@@ -5,6 +5,7 @@
 import React, { useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FlashList } from "@shopify/flash-list";
 import { Header } from "../../src/components/ui/Header";
 import { FAB } from "../../src/components/ui/FAB";
@@ -22,11 +23,15 @@ import { haptics } from "../../src/lib/haptics";
 import { toast } from "../../src/components/ui/toast-store";
 import { errorMessage } from "../../src/lib/error-message";
 import { spacing } from "../../src/theme/tokens";
+import { useSettingsStore } from "../../src/store/settings";
 import type { FolderDto } from "@ordo/shared";
 
 export default function FoldersScreen() {
   const { palette } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const floatingNavigation = useSettingsStore((s) => s.navigationStyle === "floating");
+  const bottomClearance = spacing[96] + Math.max(insets.bottom - spacing[12], 0);
   const { data: folders, isLoading, isFetching, refetch, error } = useFolders();
   const create = useCreateFolder();
 
@@ -83,7 +88,10 @@ export default function FoldersScreen() {
           )}
           estimatedItemSize={68}
           ItemSeparatorComponent={() => <View style={{ height: spacing[10] }} />}
-          contentContainerStyle={{ paddingHorizontal: spacing[16], paddingBottom: spacing[96] }}
+          contentContainerStyle={{
+            paddingHorizontal: spacing[16],
+            paddingBottom: floatingNavigation ? bottomClearance : spacing[96],
+          }}
           refreshing={isFetching && !isLoading}
           onRefresh={() => refetch()}
           ListEmptyComponent={
@@ -98,7 +106,11 @@ export default function FoldersScreen() {
         />
       )}
 
-      <FAB onPress={() => setCreateOpen(true)} testID="new-folder-fab" />
+      <FAB
+        onPress={() => setCreateOpen(true)}
+        testID="new-folder-fab"
+        bottom={floatingNavigation ? bottomClearance : spacing[20]}
+      />
 
       <Sheet visible={createOpen} onDismiss={() => setCreateOpen(false)}>
         <Text variant="title3" style={{ marginBottom: spacing[16] }}>New folder</Text>

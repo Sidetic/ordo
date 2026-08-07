@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../src/components/ui/Header";
@@ -15,11 +16,15 @@ import { useInfiniteSearch } from "../../src/hooks/use-bookmarks";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { flattenPages } from "../../src/lib/api/query-keys";
 import { spacing } from "../../src/theme/tokens";
+import { useSettingsStore } from "../../src/store/settings";
 import type { BookmarkDto } from "@ordo/shared";
 
 export default function SearchScreen() {
   const { palette } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const floatingNavigation = useSettingsStore((s) => s.navigationStyle === "floating");
+  const bottomClearance = spacing[96] + Math.max(insets.bottom - spacing[12], 0);
   const [input, setInput] = useState("");
   const [q, setQ] = useState("");
 
@@ -66,7 +71,7 @@ export default function SearchScreen() {
             <BookmarkRow bookmark={item} onPress={openReader} onMore={() => {}} />
           )}
           estimatedItemSize={108}
-          contentContainerStyle={{ paddingBottom: spacing[96] }}
+          contentContainerStyle={{ paddingBottom: floatingNavigation ? bottomClearance : spacing[96] }}
           onEndReached={() => {
             if (search.hasNextPage && !search.isFetchingNextPage) search.fetchNextPage();
           }}
