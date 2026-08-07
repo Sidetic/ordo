@@ -15,8 +15,6 @@ import Animated, {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
-  withSequence,
   withTiming,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,8 +23,8 @@ import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
 import { PressableScale } from "../ui/PressableScale";
+import { ServerProbeLog } from "../ui/ServerProbeLog";
 import { useTheme } from "../../theme/ThemeProvider";
-import { terminalPalette } from "../../theme/theme";
 import { fontSize, radius, resolveFont, spacing } from "../../theme/tokens";
 import { haptics } from "../../lib/haptics";
 import { useSettingsStore } from "../../store/settings";
@@ -35,48 +33,7 @@ import {
   normalizeServerUrl,
   probeServer,
   type ProbeStep,
-  type ProbeStepState,
 } from "../../lib/server-probe";
-
-function BlinkingCursor() {
-  const o = useSharedValue(1);
-  useEffect(() => {
-    o.value = withRepeat(
-      withSequence(withTiming(0.15, { duration: 420 }), withTiming(1, { duration: 420 })),
-      -1,
-    );
-  }, [o]);
-  const s = useAnimatedStyle(() => ({ opacity: o.value }));
-  return (
-    <Animated.Text style={[styles.cursor, { fontFamily: resolveFont("mono", "400") }, s]}>{">"}</Animated.Text>
-  );
-}
-
-function stepColor(state: ProbeStepState): string {
-  switch (state) {
-    case "success":
-      return terminalPalette.green;
-    case "failure":
-      return terminalPalette.coral;
-    default:
-      return terminalPalette.teal;
-  }
-}
-
-function suffixFor(step: ProbeStep): string | null {
-  switch (step.state) {
-    case "pending":
-      return "...";
-    case "success": {
-      const parts: string[] = ["ok"];
-      if (step.detail) parts.push(step.detail);
-      if (step.latencyMs != null) parts.push(`${step.latencyMs}ms`);
-      return parts.join(" · ");
-    }
-    case "failure":
-      return step.detail ? `fail · ${step.detail}` : "fail";
-  }
-}
 
 /**
  * Change button that sits greyed-out (neutral fill + muted label) until the
@@ -227,7 +184,7 @@ export function ServerConnectSheet({
     const recheck = await probeServer(normalized);
     setConfirming(false);
     if (recheck.status === "up" && recheck.url) {
-      setServerUrl(recheck.url);
+      await setServerUrl(recheck.url);
       onDismiss();
       onSaved?.();
     } else {
@@ -267,64 +224,7 @@ export function ServerConnectSheet({
 
       {/* Terminal log */}
       {!isUnchanged ? (
-        <View style={[styles.terminal, { backgroundColor: terminalPalette.bg, borderColor: palette.border }]}>
-          {steps.length === 0 ? (
-            <Text
-              style={{
-                fontFamily: resolveFont("mono", "400"),
-                fontSize: 11.5,
-                color: terminalPalette.mute,
-              }}
-            >
-              {"> awaiting url..."}
-            </Text>
-          ) : (
-            steps.map((step, i) => {
-              const suffix = suffixFor(step);
-              return (
-                <View key={i} style={styles.termLine}>
-                  <Text
-                    style={{
-                      fontFamily: resolveFont("mono", "400"),
-                      fontSize: 11.5,
-                      color: terminalPalette.mute,
-                    }}
-                  >
-                    {">"}
-                  </Text>
-                  <Text
-                    style={{
-                      flex: 1,
-                      fontFamily: resolveFont("mono", "400"),
-                      fontSize: 11.5,
-                      color: terminalPalette.text,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {step.command}
-                  </Text>
-                  {suffix ? (
-                    <Text
-                      style={{
-                        fontFamily: resolveFont("mono", "600"),
-                        fontSize: 11.5,
-                        color: stepColor(step.state),
-                      }}
-                      numberOfLines={1}
-                    >
-                      {suffix}
-                    </Text>
-                  ) : null}
-                </View>
-              );
-            })
-          )}
-          {probing ? (
-            <View style={[styles.termLine, { marginTop: 2 }]}>
-              <BlinkingCursor />
-            </View>
-          ) : null}
-        </View>
+        <ServerProbeLog steps={steps} probing={probing} />
       ) : null}
 
       {/* Current hint */}
@@ -367,16 +267,6 @@ export function ServerConnectSheet({
 const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "flex-start", gap: spacing[12] },
   headerIcon: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
-  terminal: {
-    marginTop: spacing[14],
-    paddingHorizontal: spacing[14],
-    paddingVertical: spacing[12],
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    minHeight: 64,
-  },
-  termLine: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 1 },
-  cursor: { fontSize: 12, color: terminalPalette.teal, marginTop: 2 },
   currentRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: spacing[10] },
   actions: { flexDirection: "row", alignItems: "center", marginTop: spacing[20] },
   changeBtn: {

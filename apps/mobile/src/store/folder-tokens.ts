@@ -21,7 +21,7 @@ export interface FolderTokenState {
   get: (folderId: string) => string | null;
   set: (folderId: string, token: string, expiresInSec: number) => void;
   clear: (folderId: string) => void;
-  clearAll: () => void;
+  clearAll: () => Promise<void>;
 }
 
 const now = () => Date.now();
@@ -64,8 +64,8 @@ export const useFolderTokenStore = create<FolderTokenState>((set, get) => ({
     void secureSet(StorageKeys.FOLDER_TOKENS, next);
   },
 
-  clearAll: () => {
+  clearAll: async () => {
     set({ tokens: {} });
-    void secureSet(StorageKeys.FOLDER_TOKENS, {});
+    await secureSet(StorageKeys.FOLDER_TOKENS, {});
   },
 }));

@@ -105,7 +105,7 @@ export function useLogout() {
     },
     onSettled: () => {
       cancelProactiveRefresh();
-      clear();
+      void clear();
       queryClient.clear();
     },
   });

@@ -28,7 +28,7 @@ export interface AuthState {
   setTokens: (tokens: AuthTokens) => void;
   /** Replace only the user (used after profile edits). */
   setUser: (user: UserDto) => void;
-  clear: () => void;
+  clear: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -64,8 +64,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     void secureSet(StorageKeys.AUTH, { user, tokens });
   },
 
-  clear: () => {
+  clear: async () => {
     set({ user: null, tokens: null, status: "unauthenticated" });
-    void secureDelete(StorageKeys.AUTH);
+    await secureDelete(StorageKeys.AUTH);
   },
 }));

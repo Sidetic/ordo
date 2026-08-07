@@ -130,7 +130,7 @@ async function doRefresh(): Promise<boolean> {
   const { tokens, setTokens, clear } = useAuthStore.getState();
   const refreshToken = tokens?.refreshToken;
   if (!refreshToken) {
-    clear();
+    void clear();
     return false;
   }
   try {
@@ -150,7 +150,7 @@ async function doRefresh(): Promise<boolean> {
     scheduleProactiveRefresh(data.tokens?.expiresIn as number);
     return true;
   } catch {
-    clear();
+    void clear();
     return false;
   }
 }
@@ -229,7 +229,7 @@ async function request<T>(
       throw new ApiClientError(401, { code: "session_revoked", message: "Session expired" });
     }
     // If the server says the session is gone, make sure we clear local state.
-    if (err.sessionGone) useAuthStore.getState().clear();
+    if (err.sessionGone) void useAuthStore.getState().clear();
     throw err;
   }
 }

@@ -20,9 +20,12 @@ export function markRestartSplashPresented(): void {
   resolve?.();
 }
 
-/** Paint the branded fallback before expo-updates replaces the JS runtime. */
-export async function restartForUpdate(): Promise<void> {
-  if (useUpdateRestartStore.getState().restarting) return;
+/** Paint the branded fallback before replacing the JS runtime. */
+export async function restartRuntime(beforeReload?: () => Promise<void>): Promise<void> {
+  if (useUpdateRestartStore.getState().restarting) {
+    await beforeReload?.();
+    return;
+  }
 
   const splashPresented = new Promise<void>((resolve) => {
     resolveRestartSplash = resolve;
@@ -35,10 +38,15 @@ export async function restartForUpdate(): Promise<void> {
   resolveRestartSplash = null;
 
   try {
+    await beforeReload?.();
     await Updates.reloadAsync();
   } catch (error) {
     resolveRestartSplash = null;
     useUpdateRestartStore.setState({ restarting: false });
     throw error;
   }
+}
+
+export function restartForUpdate(): Promise<void> {
+  return restartRuntime();
 }
