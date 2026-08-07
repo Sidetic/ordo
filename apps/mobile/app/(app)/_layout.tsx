@@ -60,11 +60,11 @@ export default function AppLayout() {
               ...shadows.level3,
             }
           : {
-              backgroundColor: palette.background,
+              backgroundColor: palette.surface,
               height: layout.tabBarHeight + insets.bottom,
               paddingBottom: insets.bottom,
-              borderTopWidth: 1,
-              borderTopColor: palette.border,
+              borderWidth: 0,
+              borderTopWidth: 0,
               shadowOpacity: 0,
               elevation: 0,
             },
