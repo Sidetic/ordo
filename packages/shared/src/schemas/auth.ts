@@ -26,10 +26,17 @@ export const RegisterSchema = z.object({
 });
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 
-export const LoginSchema = z.object({
-  email,
-  password,
-});
+const loginIdentifier = z.string().trim().min(1, { message: "Enter your email or username" }).max(254);
+export const LoginSchema = z
+  .union([
+    z.object({ identifier: loginIdentifier, password }),
+    // Keep accepting the original payload while installed clients update.
+    z.object({ email, password }),
+  ])
+  .transform((input) => ({
+    identifier: "identifier" in input ? input.identifier : input.email,
+    password: input.password,
+  }));
 export type LoginInput = z.infer<typeof LoginSchema>;
 
 export const RefreshSchema = z.object({

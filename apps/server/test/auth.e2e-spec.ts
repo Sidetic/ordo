@@ -68,6 +68,16 @@ describe("Auth (e2e)", () => {
       expect(res.body.error.code).toBe(ErrorCode.EMAIL_ALREADY_EXISTS);
     });
 
+    it("rejects duplicate usernames with 409", async () => {
+      await registerUser(ctx.app, "first@ordo.app", "supersecret", "same-name");
+      const res = await request(ctx.app.getHttpServer())
+        .post("/api/auth/register")
+        .set("x-client-type", "mobile")
+        .send({ username: "same-name", email: "second@ordo.app", password: "supersecret" })
+        .expect(409);
+      expect(res.body.error.code).toBe(ErrorCode.CONFLICT);
+    });
+
     it("validates the payload", async () => {
       const res = await request(ctx.app.getHttpServer())
         .post("/api/auth/register")
@@ -88,12 +98,22 @@ describe("Auth (e2e)", () => {
       expect(res.body.tokens.accessToken).toBeTruthy();
     });
 
+    it("logs in with a username", async () => {
+      await registerUser(ctx.app, "username-login@ordo.app", "supersecret", "login-name");
+      const res = await request(ctx.app.getHttpServer())
+        .post("/api/auth/login")
+        .set("x-client-type", "mobile")
+        .send({ identifier: "login-name", password: "supersecret" })
+        .expect(200);
+      expect(res.body.user.email).toBe("username-login@ordo.app");
+    });
+
     it("rejects wrong password with 401", async () => {
       await registerUser(ctx.app, "bob2@ordo.app", "supersecret");
       const res = await request(ctx.app.getHttpServer())
         .post("/api/auth/login")
         .set("x-client-type", "mobile")
-        .send({ email: "bob2@ordo.app", password: "wrongpassword" })
+        .send({ identifier: "bob2@ordo.app", password: "wrongpassword" })
         .expect(401);
       expect(res.body.error.code).toBe(ErrorCode.INVALID_CREDENTIALS);
     });
@@ -102,7 +122,7 @@ describe("Auth (e2e)", () => {
       const res = await request(ctx.app.getHttpServer())
         .post("/api/auth/login")
         .set("x-client-type", "mobile")
-        .send({ email: "ghost@ordo.app", password: "whatever123" })
+        .send({ identifier: "ghost@ordo.app", password: "whatever123" })
         .expect(401);
       expect(res.body.error.code).toBe(ErrorCode.INVALID_CREDENTIALS);
     });
@@ -174,7 +194,7 @@ describe("Auth (e2e)", () => {
       const second = await request(ctx.app.getHttpServer())
         .post("/api/auth/login")
         .set("x-client-type", "mobile")
-        .send({ email: "grace@ordo.app", password: "password123" })
+        .send({ identifier: "grace@ordo.app", password: "password123" })
         .expect(200);
 
       const agent = request
@@ -333,7 +353,7 @@ describe("Auth (e2e)", () => {
         const second = await request(pctx.app.getHttpServer())
           .post("/api/auth/login")
           .set("x-client-type", "mobile")
-          .send({ email: "pwd2@ordo.app", password: "password123" })
+          .send({ identifier: "pwd2@ordo.app", password: "password123" })
           .expect(200);
 
         const agent = request

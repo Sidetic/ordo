@@ -25,7 +25,7 @@ export default function LoginScreen() {
   const serverUrl = useSettingsStore((s) => s.serverUrl);
   const login = useLogin();
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [showServer, setShowServer] = useState(false);
@@ -33,7 +33,7 @@ export default function LoginScreen() {
 
   const submit = async () => {
     setFormError("");
-    const parsed = LoginSchema.safeParse({ email: email.trim().toLowerCase(), password });
+    const parsed = LoginSchema.safeParse({ identifier, password });
     if (!parsed.success) {
       setFormError(parsed.error.issues[0]?.message || "Please check your input.");
       return;
@@ -61,12 +61,13 @@ export default function LoginScreen() {
         }
       >
         <Input
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
-          keyboardType="email-address"
-          textContentType="emailAddress"
+          label="Email or username"
+          value={identifier}
+          onChangeText={setIdentifier}
+          placeholder="you@example.com or username"
+          textContentType="username"
+          autoComplete="username"
+          importantForAutofill="yes"
           error={formError || undefined}
         />
         <View style={{ height: spacing[16] }} />

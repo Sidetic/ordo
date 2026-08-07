@@ -68,7 +68,7 @@ export class AuthController {
   @Post("login")
   @HttpCode(200)
   async login(
-    @Body(new ZodValidationPipe(LoginSchema)) body: { email: string; password: string },
+    @Body(new ZodValidationPipe(LoginSchema)) body: { identifier: string; password: string },
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {

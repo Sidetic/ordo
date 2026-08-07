@@ -49,7 +49,9 @@ export const AuthRoutes = {
   login: {
     path: `${API_PREFIX}/auth/login`,
     method: "POST",
-    body: {} as { email: string; password: string },
+    body: {} as
+      | { identifier: string; password: string }
+      | { email: string; password: string },
     query: {} as Empty,
     params: {} as Empty,
     response: {} as AuthResponse,

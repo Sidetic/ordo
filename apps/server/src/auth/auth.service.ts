@@ -46,16 +46,23 @@ export class AuthService {
     }
 
     const email = input.email.toLowerCase().trim();
-    const existing = await this.prisma.user.findUnique({ where: { email } });
-    if (existing) {
+    const username = input.username.trim();
+    const [existingEmail, existingUsername] = await Promise.all([
+      this.prisma.user.findUnique({ where: { email } }),
+      this.prisma.user.findUnique({ where: { username } }),
+    ]);
+    if (existingEmail) {
       throw new AppError(ErrorCode.EMAIL_ALREADY_EXISTS, "An account with this email already exists");
+    }
+    if (existingUsername) {
+      throw new AppError(ErrorCode.CONFLICT, "This username is already taken");
     }
 
     const passwordHash = await bcrypt.hash(input.password, BCRYPT_COST);
 
     const user = await this.prisma.user.create({
       data: {
-        username: input.username.trim(),
+        username,
         email,
         passwordHash,
         folders: {
@@ -74,17 +81,19 @@ export class AuthService {
   }
 
   async login(
-    input: { email: string; password: string },
+    input: { identifier: string; password: string },
     meta: ClientMeta,
   ): Promise<AuthResponse> {
-    const email = input.email.toLowerCase().trim();
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const identifier = input.identifier.trim();
+    const user = identifier.includes("@")
+      ? await this.prisma.user.findUnique({ where: { email: identifier.toLowerCase() } })
+      : await this.prisma.user.findUnique({ where: { username: identifier } });
     if (!user) {
-      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email or password");
+      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email, username, or password");
     }
     const ok = await bcrypt.compare(input.password, user.passwordHash);
     if (!ok) {
-      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email or password");
+      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email, username, or password");
     }
     if (this.cfg.emailVerificationRequired && user.emailVerifiedAt === null) {
       throw new AppError(
@@ -164,9 +173,14 @@ export class AuthService {
   }
 
   async changeUsername(userId: string, newUsername: string): Promise<UserDto> {
+    const username = newUsername.trim();
+    const existing = await this.prisma.user.findUnique({ where: { username } });
+    if (existing && existing.id !== userId) {
+      throw new AppError(ErrorCode.CONFLICT, "This username is already taken");
+    }
     const user = await this.prisma.user.update({
       where: { id: userId },
-      data: { username: newUsername.trim() },
+      data: { username },
     });
     return toUserDto(user);
   }

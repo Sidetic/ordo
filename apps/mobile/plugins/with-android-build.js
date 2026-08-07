@@ -2,6 +2,7 @@ const {
   withAppBuildGradle,
   withGradleProperties,
   withAndroidManifest,
+  withMainActivity,
   withAndroidStyles,
   AndroidConfig,
 } = require('expo/config-plugins');
@@ -25,6 +26,21 @@ const { assignStylesValue, getAppThemeGroup } = AndroidConfig.Styles;
  *     splits for a single fast APK.
  */
 const withAndroidBuild = (config) => {
+  // Capture is allowed by default, but explicitly clear FLAG_SECURE in case a
+  // generated activity or dependency applies it before React Native starts.
+  config = withMainActivity(config, (c) => {
+    const code = c.modResults.contents;
+    const clearSecureFlag =
+      'window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);';
+    if (!code.includes(clearSecureFlag)) {
+      c.modResults.contents = code.replace(
+        /super\.onCreate\(([^)]*)\)/,
+        `super.onCreate($1)\n    ${clearSecureFlag}`
+      );
+    }
+    return c;
+  });
+
   // ── AndroidManifest.xml ────────────────────────────────────────────────
   // Force usesCleartextTraffic=true. Expo SDK 52's prebuild-config silently
   // drops the `android.usesCleartextTraffic` field from app.config.js, so without
