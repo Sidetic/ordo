@@ -5,7 +5,7 @@
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Header } from "../../../src/components/ui/Header";
+import { SettingsPage } from "../../../src/components/settings/SettingsPage";
 import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
 import { useChangePassword } from "../../../src/hooks/use-auth-actions";
@@ -48,8 +48,7 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <Header title="Password" showBack subtitle="Other devices will be signed out." />
+    <SettingsPage title="Password">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
@@ -101,6 +100,6 @@ export default function ChangePasswordScreen() {
           />
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SettingsPage>
   );
 }

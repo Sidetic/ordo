@@ -6,7 +6,7 @@
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Header } from "../../../src/components/ui/Header";
+import { SettingsPage } from "../../../src/components/settings/SettingsPage";
 import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
 import { useRequestEmailChange } from "../../../src/hooks/use-auth-actions";
@@ -49,8 +49,7 @@ export default function ChangeEmailScreen() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <Header title="Email" showBack subtitle="Used to sign in to your account." />
+    <SettingsPage title="Email">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
@@ -100,6 +99,6 @@ export default function ChangeEmailScreen() {
           />
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SettingsPage>
   );
 }

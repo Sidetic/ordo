@@ -7,10 +7,12 @@ import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../src/theme/ThemeProvider";
-import { layout } from "../../src/theme/tokens";
+import { layout, radius, spacing } from "../../src/theme/tokens";
 import { useValidateSession } from "../../src/hooks/queries";
 import { useAuthStore } from "../../src/store/auth";
+import { useSettingsStore } from "../../src/store/settings";
 import { ActivityIndicator, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const HIDDEN = {
   href: null,
@@ -18,8 +20,11 @@ const HIDDEN = {
 };
 
 export default function AppLayout() {
-  const { palette } = useTheme();
+  const { palette, shadows } = useTheme();
+  const insets = useSafeAreaInsets();
   const status = useAuthStore((s) => s.status);
+  const navigationStyle = useSettingsStore((s) => s.navigationStyle);
+  const floating = navigationStyle === "floating";
   // Reconcile local session with the server once authenticated.
   useValidateSession();
 
@@ -38,12 +43,38 @@ export default function AppLayout() {
         headerShown: false,
         tabBarActiveTintColor: palette.accent,
         tabBarInactiveTintColor: palette.textTertiary,
-        tabBarStyle: {
-          backgroundColor: palette.background,
-          height: layout.tabBarHeight,
+        tabBarActiveBackgroundColor: floating ? palette.accentSoft : "transparent",
+        tabBarStyle: floating
+          ? {
+              position: "absolute",
+              left: spacing[16],
+              right: spacing[16],
+              bottom: Math.max(insets.bottom, spacing[12]),
+              height: layout.tabBarHeight + spacing[8],
+              paddingHorizontal: spacing[4],
+              paddingVertical: spacing[4],
+              backgroundColor: palette.surfaceElevated,
+              borderWidth: 1,
+              borderColor: palette.borderStrong,
+              borderRadius: radius["3xl"],
+              ...shadows.level3,
+            }
+          : {
+              backgroundColor: palette.background,
+              height: layout.tabBarHeight + insets.bottom,
+              paddingBottom: insets.bottom,
+              borderTopWidth: 1,
+              borderTopColor: palette.border,
+              shadowOpacity: 0,
+              elevation: 0,
+            },
+        tabBarLabelStyle: {
+          fontFamily: "InterTight_500Medium",
+          fontSize: floating ? 11 : 10,
         },
-        tabBarLabelStyle: { fontFamily: "InterTight_500Medium", fontSize: 10 },
-        tabBarItemStyle: { paddingVertical: 8 },
+        tabBarItemStyle: floating
+          ? { margin: spacing[4], borderRadius: radius.xl, overflow: "hidden" }
+          : { paddingVertical: spacing[8] },
       }}
     >
       <Tabs.Screen
@@ -72,7 +103,9 @@ export default function AppLayout() {
       <Tabs.Screen name="reader/[id]" options={HIDDEN} />
       <Tabs.Screen name="settings/sessions" options={HIDDEN} />
       <Tabs.Screen name="settings/about" options={HIDDEN} />
-      <Tabs.Screen name="settings/username" options={HIDDEN} />
+      <Tabs.Screen name="settings/account" options={HIDDEN} />
+      <Tabs.Screen name="settings/appearance" options={HIDDEN} />
+      <Tabs.Screen name="settings/server" options={HIDDEN} />
       <Tabs.Screen name="settings/email" options={HIDDEN} />
       <Tabs.Screen name="settings/verify-email" options={HIDDEN} />
       <Tabs.Screen name="settings/password" options={HIDDEN} />

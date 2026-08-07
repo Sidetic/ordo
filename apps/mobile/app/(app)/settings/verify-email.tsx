@@ -5,7 +5,7 @@
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Header } from "../../../src/components/ui/Header";
+import { SettingsPage } from "../../../src/components/settings/SettingsPage";
 import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
 import { useResendEmailChange, useVerifyEmailChange } from "../../../src/hooks/use-auth-actions";
@@ -52,8 +52,7 @@ export default function VerifyEmailChangeScreen() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <Header title="Verify new email" showBack subtitle={`Enter the code sent to ${target}.`} />
+    <SettingsPage title="Verify new email">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
@@ -70,6 +69,7 @@ export default function VerifyEmailChangeScreen() {
             placeholder="Enter code"
             autoCapitalize="none"
             autoCorrect={false}
+            helper={`Code sent to ${target}.`}
             error={formError || undefined}
           />
           <View style={{ height: spacing[24] }} />
@@ -84,6 +84,6 @@ export default function VerifyEmailChangeScreen() {
           />
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SettingsPage>
   );
 }

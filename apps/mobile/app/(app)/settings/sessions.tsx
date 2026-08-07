@@ -4,7 +4,7 @@
 import React from "react";
 import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Header } from "../../../src/components/ui/Header";
+import { SettingsPage } from "../../../src/components/settings/SettingsPage";
 import { Text } from "../../../src/components/ui/Text";
 import { Badge } from "../../../src/components/ui/Badge";
 import { Button } from "../../../src/components/ui/Button";
@@ -46,9 +46,7 @@ export default function SessionsScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: palette.background }}>
-      <Header title="Active sessions" showBack subtitle="Devices currently signed in to your account" />
-
+    <SettingsPage title="Active sessions">
       {error && !sessions ? (
         <EmptyState
           icon="cloud-offline-outline"
@@ -104,7 +102,7 @@ export default function SessionsScreen() {
           }
         />
       )}
-    </View>
+    </SettingsPage>
   );
 }
 
