@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { AppState } from "react-native";
 import * as Updates from "expo-updates";
+import { restartForUpdate } from "../store/update-restart";
 
 export type OtaStatus =
   | "disabled"
@@ -111,8 +112,8 @@ export function useOtaUpdate(): UseOtaUpdate {
 
   const restart = useCallback(async () => {
     if (!enabled) return;
-    // Reloads into the downloaded update — the canonical "apply on restart".
-    await Updates.reloadAsync();
+    // Reloads into the downloaded update after the branded fallback paints.
+    await restartForUpdate();
   }, [enabled]);
 
   return {

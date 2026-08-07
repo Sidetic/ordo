@@ -25,11 +25,14 @@ import { ToastHost } from "../src/components/ui/ToastHost";
 import { Banner } from "../src/components/ui/Banner";
 import { UpdateReadyWatcher } from "../src/components/UpdateReadyWatcher";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
+import { LaunchSplash } from "../src/components/LaunchSplash";
 import { fontAssets } from "../src/theme/tokens";
+import { useUpdateRestartStore } from "../src/store/update-restart";
 
 // Hold the native splash as early as possible so it covers JS load + hydration
 // (otherwise its auto-hide leaves a white frame before React paints).
 SplashScreen.preventAutoHideAsync().catch(() => {});
+SplashScreen.setOptions({ duration: 200, fade: true });
 
 // Brand beat: keep the native splash up for at least this long once mounted.
 const MIN_SPLASH_MS = 600;
@@ -51,6 +54,7 @@ function RootShell() {
   const segments = useSegments();
   const status = useAuthStore((s) => s.status);
   const tokens = useAuthStore((s) => s.tokens);
+  const restarting = useUpdateRestartStore((s) => s.restarting);
   const [minElapsed, setMinElapsed] = React.useState(false);
 
   // Minimum brand display so the launch reads as intentional, not a flicker.
@@ -103,6 +107,7 @@ function RootShell() {
       <ConnectionBanner />
       <ToastHost />
       <UpdateReadyWatcher />
+      {(showSplash || restarting) && <LaunchSplash />}
     </>
   );
 }
@@ -112,14 +117,25 @@ export default function RootLayout() {
 
   useEffect(() => {
     (async () => {
-      await Font.loadAsync(fontAssets);
-      await Promise.all([
+      const results = await Promise.allSettled([
+        Font.loadAsync(fontAssets),
         useSettingsStore.getState().hydrate(),
         useFolderTokenStore.getState().hydrate(),
+        useOnlineStore.getState().init(),
       ]);
-      await useAuthStore.getState().hydrate();
-      await useOnlineStore.getState().init();
-      setBooted(true);
+
+      for (const result of results) {
+        if (result.status === "rejected") console.warn("App bootstrap task failed", result.reason);
+      }
+
+      try {
+        await useAuthStore.getState().hydrate();
+      } catch (error) {
+        console.warn("Auth bootstrap failed", error);
+        useAuthStore.setState({ user: null, tokens: null, status: "unauthenticated" });
+      } finally {
+        setBooted(true);
+      }
     })();
   }, []);
 
@@ -128,7 +144,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
-            <ErrorBoundary>{booted ? <RootShell /> : null}</ErrorBoundary>
+            <ErrorBoundary>{booted ? <RootShell /> : <LaunchSplash />}</ErrorBoundary>
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

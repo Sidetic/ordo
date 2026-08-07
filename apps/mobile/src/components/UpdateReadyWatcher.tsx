@@ -5,8 +5,8 @@
  * is just the proactive, anywhere-in-the-app nudge. Renderless.
  */
 import { useEffect, useRef } from "react";
-import * as Updates from "expo-updates";
 import { useOtaUpdate } from "../hooks/use-ota-update";
+import { restartForUpdate } from "../store/update-restart";
 import { toast } from "./ui/toast-store";
 import { haptics } from "../lib/haptics";
 
@@ -30,7 +30,7 @@ export function UpdateReadyWatcher() {
         label: "Restart",
         onPress: () => {
           if (!ota.enabled) return;
-          Updates.reloadAsync().catch(() => {});
+          restartForUpdate().catch(() => toast.error("Update restart failed"));
         },
       },
     });

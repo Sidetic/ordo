@@ -4,30 +4,38 @@
  * background. Height follows the asset's aspect ratio from the given width.
  */
 import React from "react";
-import { Image, StyleSheet } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 import LOGO_MARK from "../../../assets/logo-mark.png";
 
 const ASPECT = 468 / 509;
+export const AUTH_LOGO_WIDTH = 40;
+export const SPLASH_LOGO_WIDTH = 120;
 
 export interface LogoProps {
-  /** Rendered width in px; height follows the mark's aspect ratio. Defaults to 40. */
+  /** Rendered width in dp; height follows the mark's aspect ratio. */
   width?: number;
 }
 
-export function Logo({ width = 40 }: LogoProps) {
+export function Logo({ width = AUTH_LOGO_WIDTH }: LogoProps) {
   return (
-    <Image
-      source={LOGO_MARK}
-      style={[styles.logo, { width, aspectRatio: ASPECT }]}
-      resizeMode="contain"
-      accessibilityLabel="Ordo"
-      accessibilityRole="image"
-    />
+    <View style={[styles.frame, { width, height: width / ASPECT }]}>
+      <Image
+        source={LOGO_MARK}
+        style={styles.logo}
+        resizeMode="contain"
+        accessibilityLabel="Ordo"
+        accessibilityRole="image"
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  logo: {
+  frame: {
     alignSelf: "center",
+  },
+  logo: {
+    width: "100%",
+    height: "100%",
   },
 });

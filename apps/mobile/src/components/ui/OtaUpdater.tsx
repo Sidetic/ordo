@@ -85,7 +85,7 @@ function Status({ ota }: { ota: ReturnType<typeof useOtaUpdate> }) {
             size="md"
             onPress={() => {
               haptics.medium();
-              void ota.restart();
+              void ota.restart().catch(() => toast.error("Update restart failed"));
             }}
             style={styles.actionBtn}
           />

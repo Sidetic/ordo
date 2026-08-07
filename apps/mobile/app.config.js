@@ -31,22 +31,30 @@ module.exports = {
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   icon: "./assets/icon.png",
-  splash: {
-    image: "./assets/splash-logo.png",
-    resizeMode: "contain",
-    backgroundColor: "#EFE7D2",
-    dark: {
-      image: "./assets/splash-logo.png",
-      resizeMode: "contain",
-      backgroundColor: "#1A1A16",
-    },
-  },
+  backgroundColor: "#EFE7D2",
   newArchEnabled: false,
   updates: {
     url: "https://u.expo.dev/c044b586-2816-42c7-b564-bef8556e21da",
   },
   runtimeVersion: { policy: "fingerprint" },
-  plugins: ["expo-asset", "./plugins/with-updates-channel.js", "./plugins/with-android-build.js"],
+  plugins: [
+    "expo-asset",
+    [
+      "expo-splash-screen",
+      {
+        image: "./assets/logo-mark.png",
+        imageWidth: 120,
+        resizeMode: "contain",
+        backgroundColor: "#EFE7D2",
+        dark: {
+          image: "./assets/logo-mark.png",
+          backgroundColor: "#1A1A16",
+        },
+      },
+    ],
+    "./plugins/with-updates-channel.js",
+    "./plugins/with-android-build.js",
+  ],
   extra: {
     eas: {
       projectId: "c044b586-2816-42c7-b564-bef8556e21da",
@@ -61,15 +69,6 @@ module.exports = {
   android: {
     package: "com.axolet.ordo",
     usesCleartextTraffic: true,
-    splash: {
-      image: "./assets/splash-logo.png",
-      resizeMode: "native",
-      backgroundColor: "#EFE7D2",
-      dark: {
-        image: "./assets/splash-logo.png",
-        backgroundColor: "#1A1A16",
-      },
-    },
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon-foreground.png",
       backgroundColor: "#EFE7D2",
