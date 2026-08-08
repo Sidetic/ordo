@@ -60,7 +60,7 @@ export default function AppLayout() {
               ...shadows.level3,
             }
           : {
-              backgroundColor: palette.surface,
+              backgroundColor: palette.amoled ? palette.background : palette.surface,
               height: layout.tabBarHeight + insets.bottom,
               paddingBottom: insets.bottom,
               borderWidth: 0,
@@ -71,10 +71,11 @@ export default function AppLayout() {
         tabBarLabelStyle: {
           fontFamily: "InterTight_500Medium",
           fontSize: floating ? 11 : 10,
+          lineHeight: floating ? 15 : 14,
         },
         tabBarItemStyle: floating
           ? { margin: spacing[4], borderRadius: radius.xl, overflow: "hidden" }
-          : { paddingVertical: spacing[8] },
+          : undefined,
       }}
     >
       <Tabs.Screen
