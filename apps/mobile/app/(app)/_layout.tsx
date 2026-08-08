@@ -24,7 +24,9 @@ export default function AppLayout() {
   const insets = useSafeAreaInsets();
   const status = useAuthStore((s) => s.status);
   const navigationStyle = useSettingsStore((s) => s.navigationStyle);
+  const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
   const floating = navigationStyle === "floating";
+  const tabBarHeight = showNavigationLabels ? layout.tabBarHeight : layout.touchTargetMin;
   // Reconcile local session with the server once authenticated.
   useValidateSession();
 
@@ -43,6 +45,7 @@ export default function AppLayout() {
         headerShown: false,
         tabBarActiveTintColor: palette.accent,
         tabBarInactiveTintColor: palette.textTertiary,
+        tabBarShowLabel: showNavigationLabels,
         tabBarActiveBackgroundColor: floating ? palette.accentSoft : "transparent",
         tabBarStyle: floating
           ? {
@@ -50,7 +53,7 @@ export default function AppLayout() {
               left: spacing[16],
               right: spacing[16],
               bottom: Math.max(insets.bottom, spacing[12]),
-              height: layout.tabBarHeight + spacing[8],
+              height: tabBarHeight + spacing[8],
               paddingHorizontal: spacing[4],
               paddingVertical: spacing[4],
               backgroundColor: palette.surfaceElevated,
@@ -61,7 +64,7 @@ export default function AppLayout() {
             }
           : {
               backgroundColor: palette.amoled ? palette.background : palette.surface,
-              height: layout.tabBarHeight + insets.bottom,
+              height: tabBarHeight + insets.bottom,
               paddingBottom: insets.bottom,
               borderWidth: 0,
               borderTopWidth: 0,
@@ -73,8 +76,15 @@ export default function AppLayout() {
           fontSize: floating ? 11 : 10,
           lineHeight: floating ? 15 : 14,
         },
+        // React Navigation leaves an icon-only item slightly above center.
+        tabBarIconStyle: showNavigationLabels ? undefined : { transform: [{ translateY: spacing[2] }] },
         tabBarItemStyle: floating
-          ? { margin: spacing[4], borderRadius: radius.xl, overflow: "hidden" }
+          ? {
+              marginHorizontal: spacing[4],
+              marginVertical: showNavigationLabels ? spacing[4] : 0,
+              borderRadius: radius.xl,
+              overflow: "hidden",
+            }
           : undefined,
       }}
     >

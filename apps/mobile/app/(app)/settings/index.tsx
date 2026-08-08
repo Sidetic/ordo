@@ -2,6 +2,7 @@
 import React from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Header } from "../../../src/components/ui/Header";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { Button } from "../../../src/components/ui/Button";
@@ -16,10 +17,14 @@ import { spacing } from "../../../src/theme/tokens";
 export default function SettingsScreen() {
   const { palette } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const serverUrl = useSettingsStore((s) => s.serverUrl);
   const navigationStyle = useSettingsStore((s) => s.navigationStyle);
+  const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
   const logout = useLogout();
+  const floatingBottomClearance =
+    (showNavigationLabels ? spacing[96] : spacing[80]) + Math.max(insets.bottom - spacing[12], 0);
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
@@ -27,7 +32,7 @@ export default function SettingsScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: navigationStyle === "floating" ? spacing[96] : spacing[40] },
+          { paddingBottom: navigationStyle === "floating" ? floatingBottomClearance : spacing[40] },
         ]}
         showsVerticalScrollIndicator={false}
       >

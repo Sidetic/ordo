@@ -31,9 +31,11 @@ export default function AppearanceScreen() {
   const themeMode = useSettingsStore((s) => s.themeMode);
   const amoled = useSettingsStore((s) => s.amoled);
   const navigationStyle = useSettingsStore((s) => s.navigationStyle);
+  const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const setAmoled = useSettingsStore((s) => s.setAmoled);
   const setNavigationStyle = useSettingsStore((s) => s.setNavigationStyle);
+  const setShowNavigationLabels = useSettingsStore((s) => s.setShowNavigationLabels);
   const isDarkActive = palette.mode === "dark";
 
   return (
@@ -71,6 +73,11 @@ export default function AppearanceScreen() {
             onChange={setNavigationStyle}
           />
         </View>
+        <SettingRow
+          label="Show labels"
+          right={<Toggle value={showNavigationLabels} onValueChange={setShowNavigationLabels} />}
+          divider={false}
+        />
       </SettingsScrollView>
     </SettingsPage>
   );

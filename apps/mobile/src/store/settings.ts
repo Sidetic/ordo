@@ -1,5 +1,5 @@
 /**
- * Client/UI settings store: server URL, theme mode, AMOLED and navigation style.
+ * Client/UI settings store: server URL, theme mode, AMOLED and navigation preferences.
  * Persisted to AsyncStorage (non-secret). Hydrated explicitly on app start.
  */
 import { create } from "zustand";
@@ -14,6 +14,7 @@ export interface SettingsState {
   themeMode: ThemeMode;
   amoled: boolean;
   navigationStyle: NavigationStyle;
+  showNavigationLabels: boolean;
   hydrated: boolean;
 
   hydrate: () => Promise<void>;
@@ -21,6 +22,7 @@ export interface SettingsState {
   setThemeMode: (mode: ThemeMode) => void;
   setAmoled: (on: boolean) => void;
   setNavigationStyle: (style: NavigationStyle) => void;
+  setShowNavigationLabels: (show: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -28,6 +30,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   themeMode: "system",
   amoled: false,
   navigationStyle: "docked",
+  showNavigationLabels: true,
   hydrated: false,
 
   hydrate: async () => {
@@ -37,6 +40,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       themeMode: saved?.themeMode ?? "system",
       amoled: saved?.amoled ?? false,
       navigationStyle: saved?.navigationStyle === "floating" ? "floating" : "docked",
+      showNavigationLabels: saved?.showNavigationLabels !== false,
       hydrated: true,
     });
   },
@@ -56,5 +60,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setNavigationStyle: (navigationStyle) => {
     set({ navigationStyle });
     void prefsSet(StorageKeys.SETTINGS, { ...get(), navigationStyle });
+  },
+  setShowNavigationLabels: (showNavigationLabels) => {
+    set({ showNavigationLabels });
+    void prefsSet(StorageKeys.SETTINGS, { ...get(), showNavigationLabels });
   },
 }));

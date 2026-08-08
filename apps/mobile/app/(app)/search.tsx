@@ -24,7 +24,9 @@ export default function SearchScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const floatingNavigation = useSettingsStore((s) => s.navigationStyle === "floating");
-  const bottomClearance = spacing[96] + Math.max(insets.bottom - spacing[12], 0);
+  const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
+  const bottomClearance =
+    (showNavigationLabels ? spacing[96] : spacing[80]) + Math.max(insets.bottom - spacing[12], 0);
   const [input, setInput] = useState("");
   const [q, setQ] = useState("");
 

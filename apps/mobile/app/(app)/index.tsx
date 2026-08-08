@@ -31,7 +31,9 @@ export default function FoldersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const floatingNavigation = useSettingsStore((s) => s.navigationStyle === "floating");
-  const bottomClearance = spacing[96] + Math.max(insets.bottom - spacing[12], 0);
+  const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
+  const bottomClearance =
+    (showNavigationLabels ? spacing[96] : spacing[80]) + Math.max(insets.bottom - spacing[12], 0);
   const { data: folders, isLoading, isFetching, refetch, error } = useFolders();
   const create = useCreateFolder();
 
