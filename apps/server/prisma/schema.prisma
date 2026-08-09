@@ -47,6 +47,8 @@ model Session {
   refreshTokenHash      String   @unique
   refreshTokenExpiresAt DateTime
   deviceInfo            String?
+  deviceName            String?
+  deviceType            String?
   ip                    String?
   lastSeenAt            DateTime @default(now())
   createdAt             DateTime @default(now())

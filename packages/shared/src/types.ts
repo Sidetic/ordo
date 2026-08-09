@@ -11,11 +11,15 @@ export interface UserDto {
 export interface SessionDto {
   id: string;
   deviceInfo: string | null;
+  deviceName: string | null;
+  deviceType: SessionDeviceType;
   ip: string | null;
   lastSeenAt: string;
   createdAt: string;
   current: boolean;
 }
+
+export type SessionDeviceType = "phone" | "tablet" | "desktop" | "tv" | "unknown";
 
 /** Returned to mobile clients; web clients rely on cookies. */
 export interface AuthTokens {

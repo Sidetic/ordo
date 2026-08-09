@@ -146,6 +146,31 @@ describe("Auth (e2e)", () => {
       expect(res.body).toHaveLength(1);
       expect(res.body[0].current).toBe(true);
     });
+
+    it("captures the device name and type for a session", async () => {
+      const auth = await request(ctx.app.getHttpServer())
+        .post("/api/auth/register")
+        .set("x-client-type", "mobile")
+        .set("x-device-name", encodeURIComponent("Riley's Pixel"))
+        .set("x-device-type", "phone")
+        .send({ username: "riley", email: "riley@ordo.app", password: "password123" })
+        .expect(201);
+
+      expect(auth.body.session).toMatchObject({
+        deviceName: "Riley's Pixel",
+        deviceType: "phone",
+      });
+
+      const sessions = await request(ctx.app.getHttpServer())
+        .get("/api/auth/sessions")
+        .auth(auth.body.tokens.accessToken, { type: "bearer" })
+        .expect(200);
+      expect(sessions.body[0]).toMatchObject({
+        deviceName: "Riley's Pixel",
+        deviceType: "phone",
+        current: true,
+      });
+    });
   });
 
   describe("refresh + logout", () => {

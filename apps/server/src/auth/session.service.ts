@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type { Session } from "@prisma/client";
-import { ErrorCode } from "@ordo/shared";
+import { ErrorCode, type SessionDeviceType } from "@ordo/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { AppError } from "../common/errors/app-error.js";
 import type { TokenPair } from "./token.service.js";
@@ -22,13 +22,15 @@ export class SessionService {
 
   async create(
     userId: string,
-    meta: { deviceInfo: string; ip: string },
+    meta: { deviceInfo: string; deviceName: string | null; deviceType: SessionDeviceType; ip: string },
   ): Promise<{ session: Session; tokens: TokenPair }> {
     const pair = this.tokens.generatePair();
     const session = await this.prisma.session.create({
       data: {
         userId,
         deviceInfo: meta.deviceInfo,
+        deviceName: meta.deviceName,
+        deviceType: meta.deviceType,
         ip: meta.ip,
         accessTokenHash: pair.accessHash,
         accessTokenExpiresAt: pair.accessTokenExpiresAt,
@@ -69,7 +71,10 @@ export class SessionService {
   }
 
   /** Rotate the token pair on an existing session (rotating refresh token). */
-  async rotate(refreshToken: string): Promise<{ session: Session; tokens: TokenPair }> {
+  async rotate(
+    refreshToken: string,
+    meta?: { deviceInfo: string; deviceName: string | null; deviceType: SessionDeviceType },
+  ): Promise<{ session: Session; tokens: TokenPair }> {
     const hash = this.tokens.hash(refreshToken);
     const session = await this.prisma.session.findUnique({
       where: { refreshTokenHash: hash },
@@ -91,6 +96,11 @@ export class SessionService {
         refreshTokenHash: pair.refreshHash,
         refreshTokenExpiresAt: pair.refreshTokenExpiresAt,
         lastSeenAt: new Date(),
+        ...(meta && {
+          deviceInfo: meta.deviceInfo,
+          deviceName: meta.deviceName,
+          deviceType: meta.deviceType,
+        }),
       },
     });
     return { session: updated, tokens: pair };
@@ -123,6 +133,8 @@ export class SessionService {
       select: {
         id: true,
         deviceInfo: true,
+        deviceName: true,
+        deviceType: true,
         ip: true,
         lastSeenAt: true,
         createdAt: true,

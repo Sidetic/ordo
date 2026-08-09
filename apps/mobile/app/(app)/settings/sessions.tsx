@@ -22,6 +22,7 @@ import { spacing } from "../../../src/theme/tokens";
 import type { SessionDto } from "@ordo/shared";
 
 function deviceLabel(s: SessionDto): string {
+  if (s.deviceName) return s.deviceName;
   const ua = s.deviceInfo ?? "";
   if (/iphone/i.test(ua)) return "iPhone";
   if (/ipad/i.test(ua)) return "iPad";
@@ -30,6 +31,33 @@ function deviceLabel(s: SessionDto): string {
   if (/windows/i.test(ua)) return "Windows";
   if (/linux/i.test(ua)) return "Linux";
   return s.deviceInfo || "This device";
+}
+
+function deviceDescription(s: SessionDto): string {
+  const ua = s.deviceInfo ?? "";
+  const os = /android/i.test(ua)
+    ? "Android"
+    : /iphone|ipad|ios/i.test(ua)
+      ? "iOS"
+      : /windows/i.test(ua)
+        ? "Windows"
+        : /mac/i.test(ua)
+          ? "macOS"
+          : /linux/i.test(ua)
+            ? "Linux"
+            : null;
+  const type = s.deviceType === "unknown"
+    ? null
+    : `${s.deviceType[0].toUpperCase()}${s.deviceType.slice(1)}`;
+  return [os, type].filter(Boolean).join(" · ") || "Unknown device type";
+}
+
+function deviceIcon(s: SessionDto): keyof typeof Ionicons.glyphMap {
+  if (s.deviceType === "phone") return "phone-portrait-outline";
+  if (s.deviceType === "tablet") return "tablet-portrait-outline";
+  if (s.deviceType === "desktop") return "desktop-outline";
+  if (s.deviceType === "tv") return "tv-outline";
+  return "hardware-chip-outline";
 }
 
 export default function SessionsScreen() {
@@ -70,13 +98,16 @@ export default function SessionsScreen() {
             <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <View style={styles.cardHead}>
                 <View style={[styles.iconWrap, { backgroundColor: palette.surfaceSecondary }]}>
-                  <Ionicons name="hardware-chip-outline" size={18} color={palette.accent} />
+                  <Ionicons name={deviceIcon(item)} size={18} color={palette.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={styles.titleRow}>
                     <Text variant="bodyStrong" numberOfLines={1}>{deviceLabel(item)}</Text>
                     {item.current ? <Badge tone="accent">This device</Badge> : null}
                   </View>
+                  <Text variant="footnote" color="tertiary" numberOfLines={1}>
+                    {deviceDescription(item)}
+                  </Text>
                   <Text variant="footnote" color="tertiary" numberOfLines={1}>
                     {item.ip ?? "Unknown IP"} · active {timeAgo(item.lastSeenAt)}
                   </Text>

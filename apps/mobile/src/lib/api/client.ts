@@ -15,10 +15,14 @@ import {
   AuthRoutes,
   CLIENT_TYPE_HEADER,
   CLIENT_TYPE_MOBILE,
+  DEVICE_NAME_HEADER,
+  DEVICE_TYPE_HEADER,
   FOLDER_TOKEN_HEADER,
   REFRESH_TOKEN_HEADER,
   type ApiError,
+  type SessionDeviceType,
 } from "@ordo/shared";
+import * as Device from "expo-device";
 import { useAuthStore } from "../../store/auth";
 import { useFolderTokenStore } from "../../store/folder-tokens";
 import { useSettingsStore } from "../../store/settings";
@@ -119,6 +123,21 @@ function jsonHeaders(extra: Record<string, string>): Record<string, string> {
   return { "content-type": "application/json", accept: "application/json", ...extra };
 }
 
+function deviceHeaders(): Record<string, string> {
+  const types: Partial<Record<Device.DeviceType, SessionDeviceType>> = {
+    [Device.DeviceType.PHONE]: "phone",
+    [Device.DeviceType.TABLET]: "tablet",
+    [Device.DeviceType.DESKTOP]: "desktop",
+    [Device.DeviceType.TV]: "tv",
+  };
+  const name = Device.deviceName || Device.modelName || Device.osName || "Unknown device";
+
+  return {
+    [DEVICE_NAME_HEADER]: encodeURIComponent(name),
+    [DEVICE_TYPE_HEADER]: types[Device.deviceType ?? Device.DeviceType.UNKNOWN] ?? "unknown",
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /* Refresh: single-flight so concurrent 401s share one refresh.        */
 /* ------------------------------------------------------------------ */
@@ -141,6 +160,7 @@ async function doRefresh(): Promise<boolean> {
         headers: jsonHeaders({
           [CLIENT_TYPE_HEADER]: CLIENT_TYPE_MOBILE,
           [REFRESH_TOKEN_HEADER]: refreshToken,
+          ...deviceHeaders(),
         }),
       },
     );
@@ -198,6 +218,7 @@ async function request<T>(
 
   const headers: Record<string, string> = {
     [CLIENT_TYPE_HEADER]: CLIENT_TYPE_MOBILE,
+    ...deviceHeaders(),
   };
   if (auth && tokens?.accessToken) {
     headers.authorization = `Bearer ${tokens.accessToken}`;

@@ -17,13 +17,21 @@ export function toUserDto(u: User): UserDto {
 }
 
 export function toSessionDto(
-  s: Pick<Session, "id" | "deviceInfo" | "ip" | "lastSeenAt" | "createdAt"> & {
+  s: Pick<Session, "id" | "deviceInfo" | "deviceName" | "deviceType" | "ip" | "lastSeenAt" | "createdAt"> & {
     current?: boolean;
   },
 ): SessionDto {
   return {
     id: s.id,
     deviceInfo: s.deviceInfo,
+    deviceName: s.deviceName,
+    deviceType:
+      s.deviceType === "phone" ||
+      s.deviceType === "tablet" ||
+      s.deviceType === "desktop" ||
+      s.deviceType === "tv"
+        ? s.deviceType
+        : "unknown",
     ip: s.ip,
     lastSeenAt: s.lastSeenAt.toISOString(),
     createdAt: s.createdAt.toISOString(),

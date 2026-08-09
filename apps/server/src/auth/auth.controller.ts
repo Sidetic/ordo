@@ -31,7 +31,7 @@ import {
 } from "../common/decorators/current-user.decorator.js";
 import { AuthService } from "./auth.service.js";
 import {
-  getDeviceInfo,
+  getDeviceMetadata,
   getClientIp,
   getAccessToken,
   getRefreshToken,
@@ -58,7 +58,7 @@ export class AuthController {
   ): Promise<AuthResponse> {
     const mobile = isMobileClient(req);
     const result = await this.auth.register(body, {
-      deviceInfo: getDeviceInfo(req),
+      ...getDeviceMetadata(req),
       ip: getClientIp(req),
     });
     if (!mobile) setAuthCookies(res, result.tokens);
@@ -74,7 +74,7 @@ export class AuthController {
   ): Promise<AuthResponse> {
     const mobile = isMobileClient(req);
     const result = await this.auth.login(body, {
-      deviceInfo: getDeviceInfo(req),
+      ...getDeviceMetadata(req),
       ip: getClientIp(req),
     });
     if (!mobile) setAuthCookies(res, result.tokens);
@@ -88,7 +88,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {
     const mobile = isMobileClient(req);
-    const result = await this.auth.refresh(getRefreshToken(req));
+    const result = await this.auth.refresh(getRefreshToken(req), getDeviceMetadata(req));
     if (!mobile) setAuthCookies(res, result.tokens);
     return this.maybeStripTokens(result, mobile);
   }

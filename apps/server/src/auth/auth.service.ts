@@ -1,9 +1,11 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import bcrypt from "bcryptjs";
+import type { Session } from "@prisma/client";
 import {
   DEFAULT_FOLDER_NAME,
   ErrorCode,
   type AuthResponse,
+  type SessionDeviceType,
   type SessionDto,
   type UserDto,
 } from "@ordo/shared";
@@ -22,6 +24,8 @@ const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 interface ClientMeta {
   deviceInfo: string;
+  deviceName: string | null;
+  deviceType: SessionDeviceType;
   ip: string;
 }
 
@@ -77,7 +81,7 @@ export class AuthService {
     }
 
     const { session, tokens } = await this.sessions.create(user.id, meta);
-    return this.buildAuthResponse(user, session.id, tokens);
+    return this.buildAuthResponse(user, session, tokens);
   }
 
   async login(
@@ -103,20 +107,20 @@ export class AuthService {
     }
 
     const { session, tokens } = await this.sessions.create(user.id, meta);
-    return this.buildAuthResponse(user, session.id, tokens);
+    return this.buildAuthResponse(user, session, tokens);
   }
 
-  async refresh(refreshToken: string | null | undefined): Promise<AuthResponse> {
+  async refresh(refreshToken: string | null | undefined, meta?: Omit<ClientMeta, "ip">): Promise<AuthResponse> {
     if (!refreshToken) {
       throw new AppError(ErrorCode.SESSION_REVOKED, "This session is no longer valid");
     }
-    const { session, tokens } = await this.sessions.rotate(refreshToken);
+    const { session, tokens } = await this.sessions.rotate(refreshToken, meta);
     const user = await this.prisma.user.findUnique({ where: { id: session.userId } });
     if (!user) {
       await this.sessions.revokeByAccessHash(tokens.accessHash).catch(() => undefined);
       throw new AppError(ErrorCode.SESSION_REVOKED, "This session is no longer valid");
     }
-    return this.buildAuthResponse(user, session.id, tokens);
+    return this.buildAuthResponse(user, session, tokens);
   }
 
   async logout(sessionId: string, accessToken: string | null): Promise<void> {
@@ -294,7 +298,7 @@ export class AuthService {
 
   private buildAuthResponse(
     user: { id: string; username: string; email: string; emailVerifiedAt: Date | null; createdAt: Date },
-    sessionId: string,
+    session: Session,
     tokens: { accessToken: string; refreshToken: string; expiresIn: number },
   ): AuthResponse {
     return {
@@ -305,14 +309,7 @@ export class AuthService {
         emailVerified: user.emailVerifiedAt !== null,
         createdAt: user.createdAt.toISOString(),
       },
-      session: {
-        id: sessionId,
-        deviceInfo: null,
-        ip: null,
-        lastSeenAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        current: true,
-      },
+      session: toSessionDto({ ...session, current: true }),
       tokens: {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,

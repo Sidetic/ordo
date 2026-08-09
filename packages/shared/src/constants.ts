@@ -4,6 +4,10 @@
 export const CLIENT_TYPE_HEADER = "x-client-type";
 export const CLIENT_TYPE_MOBILE = "mobile";
 
+/** Best-effort device metadata used to identify active sessions. */
+export const DEVICE_NAME_HEADER = "x-device-name";
+export const DEVICE_TYPE_HEADER = "x-device-type";
+
 /** Header carrying the short-lived folder unlock token. */
 export const FOLDER_TOKEN_HEADER = "x-folder-token";
 

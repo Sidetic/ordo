@@ -29,6 +29,7 @@
     "expo": "~52.0.30",
     "expo-asset": "^11.0.5",
     "expo-constants": "~17.0.5",
+    "expo-device": "~7.0.3",
     "expo-file-system": "~18.0.12",
     "expo-haptics": "~14.0.1",
     "expo-linking": "~7.0.5",
