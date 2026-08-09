@@ -91,7 +91,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: spacing[12] },
-  destinations: { paddingTop: spacing[4] },
+  content: { paddingTop: spacing[4] },
+  destinations: { paddingTop: spacing[2] },
   signout: { paddingHorizontal: spacing[16], paddingTop: spacing[32] },
 });

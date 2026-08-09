@@ -73,11 +73,13 @@ export default function AppearanceScreen() {
             onChange={setNavigationStyle}
           />
         </View>
-        <SettingRow
-          label="Show labels"
-          right={<Toggle value={showNavigationLabels} onValueChange={setShowNavigationLabels} />}
-          divider={false}
-        />
+        <View style={styles.navigationPreference}>
+          <SettingRow
+            label="Show labels"
+            right={<Toggle value={showNavigationLabels} onValueChange={setShowNavigationLabels} />}
+            divider={false}
+          />
+        </View>
       </SettingsScrollView>
     </SettingsPage>
   );
@@ -85,5 +87,6 @@ export default function AppearanceScreen() {
 
 const styles = StyleSheet.create({
   segmentedWrap: { paddingHorizontal: spacing[16], paddingTop: spacing[4] },
+  navigationPreference: { paddingHorizontal: spacing[4] },
   helper: { paddingHorizontal: spacing[20], paddingTop: spacing[8] },
 });

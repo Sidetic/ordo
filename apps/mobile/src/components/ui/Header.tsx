@@ -36,12 +36,19 @@ export function Header({ title, subtitle, showBack, onBack, right, large }: Head
 
   if (large) {
     return (
-      <View style={[styles.largeWrap, { paddingTop: insets.top + spacing[8], borderBottomColor: palette.border }]}>
-        <View style={styles.row}>
-          <View style={styles.backBtn} />
-          {right ? <View style={styles.right}>{right}</View> : <View style={styles.right} />}
-        </View>
-        <View style={styles.largeTitles}>
+      <View
+        style={[
+          styles.largeWrap,
+          { paddingTop: insets.top + spacing[4], borderBottomColor: palette.border },
+        ]}
+      >
+        {right ? (
+          <View style={styles.row}>
+            <View style={styles.backBtn} />
+            <View style={styles.right}>{right}</View>
+          </View>
+        ) : null}
+        <View style={[styles.largeTitles, !right && styles.largeTitlesWithoutControls]}>
           <Text variant="title1" numberOfLines={1}>{title}</Text>
           {subtitle ? (
             <Text variant="footnote" color="secondary" numberOfLines={1} style={{ marginTop: spacing[2] }}>
@@ -78,13 +85,14 @@ export function Header({ title, subtitle, showBack, onBack, right, large }: Head
 }
 
 const styles = StyleSheet.create({
-  largeWrap: { paddingHorizontal: spacing[12], paddingBottom: spacing[8] },
-  compactWrap: { paddingHorizontal: spacing[4], paddingBottom: spacing[8] },
+  largeWrap: { paddingHorizontal: spacing[12], paddingBottom: spacing[6] },
+  compactWrap: { paddingHorizontal: spacing[4], paddingBottom: spacing[4] },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 36 },
   compactRow: { minHeight: 36, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backBtn: { width: 36, height: 32, alignItems: "center", justifyContent: "center" },
   right: { minWidth: 36, alignItems: "flex-end", justifyContent: "center" },
   largeTitles: { marginTop: spacing[4], paddingHorizontal: spacing[4] },
+  largeTitlesWithoutControls: { marginTop: 0 },
   compactTitle: { position: "absolute", top: 0, bottom: 0, left: 48, right: 48, alignItems: "center", justifyContent: "center" },
   compactSubtitle: { marginTop: spacing[2], paddingHorizontal: 48 },
 });

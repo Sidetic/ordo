@@ -81,7 +81,7 @@ export default function AppLayout() {
         tabBarItemStyle: floating
           ? {
               marginHorizontal: spacing[4],
-              marginVertical: showNavigationLabels ? spacing[4] : 0,
+              marginVertical: spacing[4],
               borderRadius: radius.xl,
               overflow: "hidden",
             }

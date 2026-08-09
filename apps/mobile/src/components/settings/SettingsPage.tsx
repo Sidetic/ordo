@@ -67,8 +67,8 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: spacing[40] },
   sectionLabel: {
     paddingHorizontal: spacing[20],
-    paddingTop: spacing[24],
+    paddingTop: spacing[20],
     paddingBottom: spacing[8],
   },
-  compactSectionLabel: { paddingTop: spacing[16] },
+  compactSectionLabel: { paddingTop: spacing[8] },
 });

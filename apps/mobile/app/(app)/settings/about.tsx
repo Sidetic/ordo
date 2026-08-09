@@ -105,7 +105,7 @@ export default function AboutScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { paddingHorizontal: spacing[28], paddingTop: spacing[16] },
+  hero: { paddingHorizontal: spacing[28], paddingTop: spacing[8] },
   tagline: { maxWidth: 300, alignSelf: "center", lineHeight: 21 },
   helper: { paddingHorizontal: spacing[20], paddingTop: spacing[8] },
   originRow: { paddingHorizontal: spacing[20], paddingVertical: spacing[12], flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
