@@ -1,9 +1,9 @@
 /**
  * Register screen. Respects server registration status (info.registrationEnabled).
  */
-import React, { useState } from "react";
-import { StyleSheet, View } from "react-native";
-import { Link } from "expo-router";
+import React, { useCallback, useState } from "react";
+import { BackHandler, StyleSheet, View } from "react-native";
+import { Link, useFocusEffect, useRouter } from "expo-router";
 import { AuthShell } from "../../src/components/auth/AuthShell";
 import { Input } from "../../src/components/ui/Input";
 import { Button } from "../../src/components/ui/Button";
@@ -17,6 +17,7 @@ import { spacing } from "../../src/theme/tokens";
 import { RegisterSchema } from "@ordo/shared";
 
 export default function RegisterScreen() {
+  const router = useRouter();
   const register = useRegister();
   const { data: info } = useServerInfo();
   const registrationEnabled = info?.registrationEnabled ?? true;
@@ -27,6 +28,16 @@ export default function RegisterScreen() {
   const [confirm, setConfirm] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [formError, setFormError] = useState("");
+
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+        router.replace("/(auth)/login");
+        return true;
+      });
+      return () => subscription.remove();
+    }, [router]),
+  );
 
   const submit = async () => {
     setFormError("");
