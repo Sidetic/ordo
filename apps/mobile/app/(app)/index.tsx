@@ -5,7 +5,6 @@
 import React, { useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FlashList } from "@shopify/flash-list";
 import { Header } from "../../src/components/ui/Header";
 import { FAB } from "../../src/components/ui/FAB";
@@ -18,22 +17,18 @@ import { EmptyState } from "../../src/components/ui/EmptyState";
 import { FolderRow } from "../../src/components/bookmarks/FolderRow";
 import { FolderActionsSheet } from "../../src/components/bookmarks/FolderActionsSheet";
 import { useFolders, useCreateFolder } from "../../src/hooks/use-folders";
+import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metrics";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { haptics } from "../../src/lib/haptics";
 import { toast } from "../../src/components/ui/toast-store";
 import { errorMessage } from "../../src/lib/error-message";
 import { spacing } from "../../src/theme/tokens";
-import { useSettingsStore } from "../../src/store/settings";
 import type { FolderDto } from "@ordo/shared";
 
 export default function FoldersScreen() {
   const { palette } = useTheme();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const floatingNavigation = useSettingsStore((s) => s.navigationStyle === "floating");
-  const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
-  const bottomClearance =
-    (showNavigationLabels ? spacing[96] : spacing[80]) + Math.max(insets.bottom - spacing[12], 0);
+  const { floating: floatingNavigation, clearance: bottomClearance } = useFloatingDockMetrics();
   const { data: folders, isLoading, isFetching, refetch, error } = useFolders();
   const create = useCreateFolder();
 

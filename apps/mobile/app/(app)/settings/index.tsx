@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Header } from "../../../src/components/ui/Header";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { Button } from "../../../src/components/ui/Button";
@@ -11,6 +10,7 @@ import { Text } from "../../../src/components/ui/Text";
 import { useAuthStore } from "../../../src/store/auth";
 import { useSettingsStore } from "../../../src/store/settings";
 import { useLogout } from "../../../src/hooks/use-auth-actions";
+import { useFloatingDockMetrics } from "../../../src/hooks/use-floating-dock-metrics";
 import { useTheme } from "../../../src/theme/ThemeProvider";
 import { hostOf } from "../../../src/lib/server-probe";
 import { radius, spacing } from "../../../src/theme/tokens";
@@ -18,15 +18,12 @@ import { radius, spacing } from "../../../src/theme/tokens";
 export default function SettingsScreen() {
   const { palette, shadows } = useTheme();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const serverUrl = useSettingsStore((s) => s.serverUrl);
-  const navigationStyle = useSettingsStore((s) => s.navigationStyle);
-  const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
+  const { floating: floatingNavigation, clearance: floatingBottomClearance } =
+    useFloatingDockMetrics();
   const logout = useLogout();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
-  const floatingBottomClearance =
-    (showNavigationLabels ? spacing[96] : spacing[80]) + Math.max(insets.bottom - spacing[12], 0);
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
@@ -34,7 +31,7 @@ export default function SettingsScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: navigationStyle === "floating" ? floatingBottomClearance : spacing[40] },
+          { paddingBottom: floatingNavigation ? floatingBottomClearance : spacing[40] },
         ]}
         showsVerticalScrollIndicator={false}
       >

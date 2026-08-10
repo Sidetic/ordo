@@ -15,19 +15,18 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useToastStore, type Toast } from "./toast-store";
 import { Text } from "./Text";
 import { PressableScale } from "./PressableScale";
 import { useTheme } from "../../theme/ThemeProvider";
 import { radius, springs, spacing } from "../../theme/tokens";
+import { useFloatingDockMetrics } from "../../hooks/use-floating-dock-metrics";
 
 const SWIPE_THRESHOLD = 80;
 const SWIPE_VELOCITY = 600;
 
 function ToastItem({ toast }: { toast: Toast }) {
   const { palette, shadows } = useTheme();
-  const insets = useSafeAreaInsets();
   const dismiss = useToastStore((s) => s.dismiss);
   const dismissed = useRef(false);
 
@@ -85,7 +84,6 @@ function ToastItem({ toast }: { toast: Toast }) {
           {
             backgroundColor: palette.text,
             borderRadius: radius.xl,
-            marginBottom: insets.bottom + spacing[16],
           },
           shadows.level2,
           animStyle,
@@ -116,8 +114,12 @@ function ToastItem({ toast }: { toast: Toast }) {
 
 export function ToastHost() {
   const toasts = useToastStore((s) => s.toasts);
+  const { overlayClearance } = useFloatingDockMetrics();
   return (
-    <Animated.View pointerEvents="box-none" style={styles.host}>
+    <Animated.View
+      pointerEvents="box-none"
+      style={[styles.host, { paddingBottom: overlayClearance }]}
+    >
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} />
       ))}

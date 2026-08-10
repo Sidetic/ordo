@@ -4,7 +4,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../src/components/ui/Header";
@@ -13,20 +12,16 @@ import { EmptyState } from "../../src/components/ui/EmptyState";
 import { BookmarkListSkeleton } from "../../src/components/ui/BookmarkListSkeleton";
 import { BookmarkRow } from "../../src/components/bookmarks/BookmarkRow";
 import { useInfiniteSearch } from "../../src/hooks/use-bookmarks";
+import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metrics";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { flattenPages } from "../../src/lib/api/query-keys";
 import { spacing } from "../../src/theme/tokens";
-import { useSettingsStore } from "../../src/store/settings";
 import type { BookmarkDto } from "@ordo/shared";
 
 export default function SearchScreen() {
   const { palette } = useTheme();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const floatingNavigation = useSettingsStore((s) => s.navigationStyle === "floating");
-  const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
-  const bottomClearance =
-    (showNavigationLabels ? spacing[96] : spacing[80]) + Math.max(insets.bottom - spacing[12], 0);
+  const { floating: floatingNavigation, clearance: bottomClearance } = useFloatingDockMetrics();
   const [input, setInput] = useState("");
   const [q, setQ] = useState("");
 

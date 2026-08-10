@@ -81,6 +81,10 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
   }, [visible, folder]);
 
   const close = () => onDismiss();
+  const showMode = (nextMode: Mode) => {
+    setError("");
+    setMode(nextMode);
+  };
 
   const doRename = async () => {
     if (!folder) return;
@@ -117,6 +121,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
 
   const doRemovePassword = async () => {
     if (!folder) return;
+    setError("");
     try {
       await foldersApi.removePassword(folder.id);
       clearToken(folder.id);
@@ -124,12 +129,13 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
       toast.success("Protection removed");
       close();
     } catch (e) {
-      toast.error(errorMessage(e));
+      setError(errorMessage(e));
     }
   };
 
   const doExport = async (format: "json" | "html") => {
     if (!folder) return;
+    setError("");
     try {
       const res = await foldersApi.export(folder.id, format);
       const body = await res.text();
@@ -144,12 +150,13 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
       });
       close();
     } catch (e) {
-      toast.error(errorMessage(e, "Export failed."));
+      setError(errorMessage(e, "Export failed."));
     }
   };
 
   const doDelete = async () => {
     if (!folder) return;
+    setError("");
     try {
       await del.mutateAsync(folder.id);
       clearToken(folder.id);
@@ -157,7 +164,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
       onDeleted?.(folder.id);
       close();
     } catch (e) {
-      toast.error(errorMessage(e));
+      setError(errorMessage(e));
     }
   };
 
@@ -174,12 +181,17 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
       {mode === "menu" ? (
         <>
           <Text variant="title3" numberOfLines={1} style={{ marginBottom: spacing[8] }}>{folder.name}</Text>
+          {error ? (
+            <Text variant="footnote" color="danger" style={{ marginBottom: spacing[8] }}>
+              {error}
+            </Text>
+          ) : null}
           <View>
-            <Row icon="create-outline" label="Rename" onPress={() => setMode("rename")} />
+            <Row icon="create-outline" label="Rename" onPress={() => showMode("rename")} />
             {folder.protected ? (
               <Row icon="lock-open-outline" label="Remove password" onPress={doRemovePassword} />
             ) : (
-              <Row icon="lock-closed-outline" label="Set password" onPress={() => setMode("password")} />
+              <Row icon="lock-closed-outline" label="Set password" onPress={() => showMode("password")} />
             )}
             <Row icon="code-slash-outline" label="Export as JSON" onPress={() => doExport("json")} />
             <Row icon="globe-outline" label="Export as HTML" onPress={() => doExport("html")} />
@@ -202,7 +214,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
           <View style={{ height: spacing[20] }} />
           <Button label="Save" block size="lg" onPress={doRename} loading={rename.isPending} />
           <View style={{ height: spacing[10] }} />
-          <Button label="Cancel" variant="ghost" block onPress={() => setMode("menu")} />
+          <Button label="Cancel" variant="ghost" block onPress={() => showMode("menu")} />
         </>
       ) : null}
 
@@ -224,7 +236,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
           <View style={{ height: spacing[20] }} />
           <Button label="Set password" block size="lg" onPress={doSetPassword} />
           <View style={{ height: spacing[10] }} />
-          <Button label="Cancel" variant="ghost" block onPress={() => setMode("menu")} />
+          <Button label="Cancel" variant="ghost" block onPress={() => showMode("menu")} />
         </>
       ) : null}
 

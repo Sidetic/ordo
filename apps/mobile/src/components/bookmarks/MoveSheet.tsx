@@ -1,7 +1,7 @@
 /**
  * Sheet to move a bookmark into another folder.
  */
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { FlatList, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Sheet } from "../ui/Sheet";
@@ -27,24 +27,35 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
   const { palette } = useTheme();
   const { data: folders } = useFolders();
   const move = useMoveBookmark(fromFolderId);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (visible) setError("");
+  }, [visible]);
 
   const destinations = (folders ?? []).filter((f) => f.id !== fromFolderId);
 
   const pick = async (folder: FolderDto) => {
     if (!bookmark) return;
+    setError("");
     haptics.light();
     try {
       await move.mutateAsync({ id: bookmark.id, toFolderId: folder.id });
       toast.success(`Moved to ${folder.name}`);
       onDismiss();
     } catch (e) {
-      toast.error(errorMessage(e));
+      setError(errorMessage(e));
     }
   };
 
   return (
     <Sheet visible={visible} onDismiss={onDismiss}>
       <Text variant="title3" style={{ marginBottom: spacing[16] }}>Move to folder</Text>
+      {error ? (
+        <Text variant="footnote" color="danger" style={{ marginBottom: spacing[12] }}>
+          {error}
+        </Text>
+      ) : null}
       {destinations.length === 0 ? (
         <Text variant="body" color="secondary">No other folders available.</Text>
       ) : (

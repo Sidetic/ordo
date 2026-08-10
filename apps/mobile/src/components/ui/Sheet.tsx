@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
   Keyboard,
+  Modal,
   Pressable,
   StyleSheet,
   View,
@@ -15,7 +16,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
   Easing,
   runOnJS,
@@ -100,48 +101,61 @@ export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, content
   if (!mounted) return null;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents={visible ? "auto" : "none"}>
-      {/*
-        Backdrop = animated dim (non-interactive) + a transparent Pressable that
-        reliably captures outside taps. Using Pressable (not a raw onTouchEnd on
-        the dim) so the tap is captured consistently on web and native and never
-        leaks through to the screen behind, which previously left a blank screen.
-      */}
-      <Animated.View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { backgroundColor: palette.overlay }, scrimStyle]}
-      />
-      <Pressable style={StyleSheet.absoluteFill} onPress={dismiss} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="box-none"
+    <Modal
+      visible={mounted}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={dismiss}
+    >
+      <GestureHandlerRootView
+        accessibilityViewIsModal
+        style={styles.root}
+        pointerEvents={visible ? "auto" : "none"}
       >
-        <GestureDetector gesture={pan}>
-          <Animated.View
-            style={[
-              styles.panel,
-              {
-                backgroundColor: palette.surface,
-                borderColor: palette.border,
-                borderRadius: radius["2xl"],
-                paddingBottom: insets.bottom + spacing[12],
-                maxHeight: `${Math.round(maxFraction * 100)}%`,
-              },
-              panelStyle,
-              contentStyle,
-            ]}
-          >
-            <View style={[styles.grab, { backgroundColor: palette.borderStrong }]} />
-            {children}
-          </Animated.View>
-        </GestureDetector>
-      </KeyboardAvoidingView>
-    </View>
+        {/*
+          Backdrop = animated dim (non-interactive) + a transparent Pressable that
+          reliably captures outside taps. Using Pressable (not a raw onTouchEnd on
+          the dim) so the tap is captured consistently on web and native and never
+          leaks through to the screen behind, which previously left a blank screen.
+        */}
+        <Animated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { backgroundColor: palette.overlay }, scrimStyle]}
+        />
+        <Pressable style={StyleSheet.absoluteFill} onPress={dismiss} />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="box-none"
+        >
+          <GestureDetector gesture={pan}>
+            <Animated.View
+              style={[
+                styles.panel,
+                {
+                  backgroundColor: palette.surface,
+                  borderColor: palette.border,
+                  borderRadius: radius["2xl"],
+                  paddingBottom: insets.bottom + spacing[12],
+                  maxHeight: `${Math.round(maxFraction * 100)}%`,
+                },
+                panelStyle,
+                contentStyle,
+              ]}
+            >
+              <View style={[styles.grab, { backgroundColor: palette.borderStrong }]} />
+              {children}
+            </Animated.View>
+          </GestureDetector>
+        </KeyboardAvoidingView>
+      </GestureHandlerRootView>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   panel: {
     position: "absolute",
     bottom: 0,

@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { layout, radius, spacing } from "../../src/theme/tokens";
 import { useValidateSession } from "../../src/hooks/queries";
+import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metrics";
 import { useAuthStore } from "../../src/store/auth";
 import { useSettingsStore } from "../../src/store/settings";
 import { ActivityIndicator, View } from "react-native";
@@ -23,9 +24,8 @@ export default function AppLayout() {
   const { palette, shadows } = useTheme();
   const insets = useSafeAreaInsets();
   const status = useAuthStore((s) => s.status);
-  const navigationStyle = useSettingsStore((s) => s.navigationStyle);
   const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
-  const floating = navigationStyle === "floating";
+  const { floating, bottom: floatingBottom, height: floatingHeight } = useFloatingDockMetrics();
   const tabBarHeight = showNavigationLabels ? layout.tabBarHeight : layout.touchTargetMin;
   // Reconcile local session with the server once authenticated.
   useValidateSession();
@@ -52,8 +52,8 @@ export default function AppLayout() {
               position: "absolute",
               start: spacing[16],
               end: spacing[16],
-              bottom: Math.max(insets.bottom, spacing[12]),
-              height: tabBarHeight + spacing[8],
+              bottom: floatingBottom,
+              height: floatingHeight,
               paddingHorizontal: spacing[4],
               paddingVertical: spacing[4],
               backgroundColor: palette.surfaceElevated,
