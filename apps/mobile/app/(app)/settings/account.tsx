@@ -1,6 +1,6 @@
 /** Account identity and security settings. */
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView, Platform, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { ChangeUsernameSchema } from "@ordo/shared";
 import {
