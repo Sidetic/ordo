@@ -1,18 +1,21 @@
 /** Settings hub: focused destinations for account and app preferences. */
-import React from "react";
+import React, { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Header } from "../../../src/components/ui/Header";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { Button } from "../../../src/components/ui/Button";
+import { Sheet } from "../../../src/components/ui/Sheet";
+import { Text } from "../../../src/components/ui/Text";
 import { useAuthStore } from "../../../src/store/auth";
 import { useSettingsStore } from "../../../src/store/settings";
 import { useLogout } from "../../../src/hooks/use-auth-actions";
 import { useTheme } from "../../../src/theme/ThemeProvider";
 import { hostOf } from "../../../src/lib/server-probe";
 import { haptics } from "../../../src/lib/haptics";
-import { spacing } from "../../../src/theme/tokens";
+import { radius, spacing } from "../../../src/theme/tokens";
 
 export default function SettingsScreen() {
   const { palette } = useTheme();
@@ -23,6 +26,7 @@ export default function SettingsScreen() {
   const navigationStyle = useSettingsStore((s) => s.navigationStyle);
   const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
   const logout = useLogout();
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
   const floatingBottomClearance =
     (showNavigationLabels ? spacing[96] : spacing[80]) + Math.max(insets.bottom - spacing[12], 0);
 
@@ -79,13 +83,46 @@ export default function SettingsScreen() {
             block
             size="lg"
             loading={logout.isPending}
+            onPress={() => setConfirmingLogout(true)}
+          />
+        </View>
+      </ScrollView>
+
+      <Sheet
+        visible={confirmingLogout}
+        onDismiss={logout.isPending ? () => {} : () => setConfirmingLogout(false)}
+      >
+        <View style={styles.confirmHeader}>
+          <View style={[styles.confirmIcon, { backgroundColor: palette.dangerSoft }]}>
+            <Ionicons name="log-out-outline" size={20} color={palette.danger} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text variant="title2">Sign out?</Text>
+            <Text variant="footnote" color="secondary" style={styles.confirmCopy}>
+              You will need to sign in again to access your bookmarks.
+            </Text>
+          </View>
+        </View>
+        <View style={styles.actions}>
+          <Button
+            label="Cancel"
+            variant="secondary"
+            disabled={logout.isPending}
+            onPress={() => setConfirmingLogout(false)}
+            style={{ flex: 1 }}
+          />
+          <Button
+            label="Sign out"
+            variant="danger"
+            loading={logout.isPending}
             onPress={() => {
               haptics.medium();
               logout.mutate();
             }}
+            style={{ flex: 1 }}
           />
         </View>
-      </ScrollView>
+      </Sheet>
     </View>
   );
 }
@@ -94,4 +131,14 @@ const styles = StyleSheet.create({
   content: { paddingTop: spacing[4] },
   destinations: { paddingTop: spacing[2] },
   signout: { paddingHorizontal: spacing[16], paddingTop: spacing[32] },
+  confirmHeader: { flexDirection: "row", alignItems: "flex-start", gap: spacing[12] },
+  confirmIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmCopy: { marginTop: spacing[2] },
+  actions: { flexDirection: "row", gap: spacing[10], marginTop: spacing[20] },
 });
