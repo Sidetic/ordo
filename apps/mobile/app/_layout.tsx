@@ -111,7 +111,10 @@ function RootShell() {
       <ToastHost />
       <UpdateReadyWatcher />
       {(showSplash || restarting) && (
-        <LaunchSplash onPresented={restarting ? markRestartSplashPresented : undefined} />
+        <LaunchSplash
+          transitionIn={restarting}
+          onPresented={restarting ? markRestartSplashPresented : undefined}
+        />
       )}
     </>
   );

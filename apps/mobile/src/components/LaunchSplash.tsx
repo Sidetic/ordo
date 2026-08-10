@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { StyleSheet, useColorScheme, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, Easing, StyleSheet, useColorScheme } from "react-native";
 import { Logo, SPLASH_LOGO_WIDTH } from "./ui/Logo";
 
 const SPLASH_BACKGROUND = {
@@ -7,26 +7,59 @@ const SPLASH_BACKGROUND = {
   dark: "#1A1A16",
 } as const;
 
+interface LaunchSplashProps {
+  transitionIn?: boolean;
+  onPresented?: () => void;
+}
+
 /** React fallback matching the native splash for JS reloads and handoff gaps. */
-export function LaunchSplash({ onPresented }: { onPresented?: () => void }) {
+export function LaunchSplash({ transitionIn = false, onPresented }: LaunchSplashProps) {
   const colorScheme = useColorScheme();
   const backgroundColor = SPLASH_BACKGROUND[colorScheme === "dark" ? "dark" : "light"];
+  const progress = useRef(new Animated.Value(transitionIn ? 0 : 1)).current;
 
   useEffect(() => {
     if (!onPresented) return;
-    const frame = requestAnimationFrame(onPresented);
-    return () => cancelAnimationFrame(frame);
-  }, [onPresented]);
+    if (!transitionIn) {
+      const frame = requestAnimationFrame(onPresented);
+      return () => cancelAnimationFrame(frame);
+    }
+
+    progress.setValue(0);
+    const animation = Animated.timing(progress, {
+      toValue: 1,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+    animation.start(({ finished }) => {
+      if (finished) onPresented();
+    });
+    return () => animation.stop();
+  }, [onPresented, progress, transitionIn]);
 
   return (
-    <View
+    <Animated.View
       pointerEvents="auto"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[styles.root, { backgroundColor }]}
+      style={[styles.root, { backgroundColor, opacity: progress }]}
     >
-      <Logo width={SPLASH_LOGO_WIDTH} />
-    </View>
+      <Animated.View
+        style={{
+          transform: [
+            {
+              scale: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.97, 1],
+              }),
+            },
+          ],
+        }}
+      >
+        <Logo width={SPLASH_LOGO_WIDTH} />
+      </Animated.View>
+    </Animated.View>
   );
 }
 
