@@ -33,7 +33,12 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRow
         },
       ]}
     >
-      <PressableScale style={styles.body} onPress={() => onPress(bookmark)}>
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityState={{ selected: !!selected }}
+        style={styles.body}
+        onPress={() => onPress(bookmark)}
+      >
         <View style={styles.topRow}>
           <View style={[styles.dot, { backgroundColor: bookmark.isRead ? "transparent" : palette.accent }]} />
           <Text variant="monoSmall" color="tertiary" numberOfLines={1} style={styles.domain}>
@@ -54,6 +59,8 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRow
 
       {onMore ? (
         <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={`More actions for ${bookmark.title || domainFromUrl(bookmark.url)}`}
           style={styles.moreBtn}
           scaleTo={0.85}
           onPress={() => onMore(bookmark)}

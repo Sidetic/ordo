@@ -9,7 +9,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../../src/components/ui/Header";
-import { FAB } from "../../../src/components/ui/FAB";
+import { FAB, FABLayer } from "../../../src/components/ui/FAB";
 import { Button } from "../../../src/components/ui/Button";
 import { PressableScale } from "../../../src/components/ui/PressableScale";
 import { ScreenContent } from "../../../src/components/ui/ScreenContent";
@@ -42,8 +42,9 @@ export default function FolderDetailScreen() {
   const { palette } = useTheme();
   const router = useRouter();
   const { hasDetailPane } = useResponsiveLayout();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, bookmark } = useLocalSearchParams<{ id: string; bookmark?: string }>();
   const folderId = Array.isArray(id) ? id[0] : id;
+  const selectedBookmarkId = Array.isArray(bookmark) ? bookmark[0] : bookmark;
 
   const { data: folders } = useFolders();
   const folder = useMemo(() => folders?.find((f) => f.id === folderId), [folders, folderId]);
@@ -57,7 +58,6 @@ export default function FolderDetailScreen() {
   const [moveTarget, setMoveTarget] = useState<BookmarkDto | null>(null);
   const [actionBm, setActionBm] = useState<BookmarkDto | null>(null);
   const [folderActions, setFolderActions] = useState(false);
-  const [selectedBookmarkId, setSelectedBookmarkId] = useState<string | null>(null);
 
   const protectedError = !!bookmarks.error && isFolderProtected(bookmarks.error);
   const items = useMemo(() => flattenPages(bookmarks.data?.pages ?? []), [bookmarks.data]);
@@ -65,14 +65,17 @@ export default function FolderDetailScreen() {
   const hasUnread = (folder?.unreadCount ?? 0) > 0;
 
   React.useEffect(() => {
-    if (selectedBookmarkId && !items.some((item) => item.id === selectedBookmarkId)) {
-      setSelectedBookmarkId(null);
+    if (!hasDetailPane && selectedBookmarkId) {
+      router.replace(`/reader/${selectedBookmarkId}`);
     }
-  }, [items, selectedBookmarkId]);
+  }, [hasDetailPane, router, selectedBookmarkId]);
 
   const openReader = (b: BookmarkDto) => {
     if (hasDetailPane) {
-      setSelectedBookmarkId(b.id);
+      router.push({
+        pathname: "/folder/[id]",
+        params: { id: folderId, bookmark: b.id },
+      });
       return;
     }
     router.push(`/reader/${b.id}`);
@@ -105,7 +108,7 @@ export default function FolderDetailScreen() {
     });
   };
 
-  const listContentPadding = spacing[32];
+  const listContentPadding = spacing[96];
   const listPane = (
     <FlashList
       data={items}
@@ -224,11 +227,13 @@ export default function FolderDetailScreen() {
       )}
 
       {!protectedError && !hasDetailPane ? (
-        <FAB
-          onPress={() => setAddOpen(true)}
-          testID="add-bookmark-fab"
-          maxContentWidth={layout.maxContentWidth}
-        />
+        <FABLayer maxWidth={layout.maxContentWidth}>
+          <FAB
+            onPress={() => setAddOpen(true)}
+            testID="add-bookmark-fab"
+            right={spacing[20]}
+          />
+        </FABLayer>
       ) : null}
 
       <AddBookmarkSheet

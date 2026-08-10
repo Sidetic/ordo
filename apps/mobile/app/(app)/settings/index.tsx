@@ -14,7 +14,7 @@ import { useLogout } from "../../../src/hooks/use-auth-actions";
 import { useFloatingDockMetrics } from "../../../src/hooks/use-floating-dock-metrics";
 import { useTheme } from "../../../src/theme/ThemeProvider";
 import { hostOf } from "../../../src/lib/server-probe";
-import { radius, spacing } from "../../../src/theme/tokens";
+import { layout, radius, spacing } from "../../../src/theme/tokens";
 
 export default function SettingsScreen() {
   const { palette, shadows } = useTheme();
@@ -28,7 +28,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
-      <Header title="Settings" large />
+      <Header title="Settings" large maxWidth={layout.maxSettingsWidth} />
       <ScrollView
         contentContainerStyle={[
           styles.content,

@@ -2,7 +2,7 @@
  * Floating action button faithful to ordo-archive: 48px coral circle, white icon.
  */
 import React from "react";
-import { StyleSheet, useWindowDimensions } from "react-native";
+import { StyleSheet, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PressableScale } from "./PressableScale";
@@ -18,6 +18,22 @@ export interface FABProps {
   maxContentWidth?: number;
 }
 
+interface FABLayerProps {
+  children: React.ReactNode;
+  maxWidth: number;
+}
+
+/** Centers an absolute FAB against the current navigation scene, not the window. */
+export function FABLayer({ children, maxWidth }: FABLayerProps) {
+  return (
+    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+      <View pointerEvents="box-none" style={[styles.layer, { maxWidth }]}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
 export function FAB({
   icon = "add",
   onPress,
@@ -29,12 +45,10 @@ export function FAB({
   const { palette, shadows } = useTheme();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const right =
-    rightOverride ??
-    Math.max(
-      insets.right + spacing[20],
-      (width - Math.min(width, maxContentWidth)) / 2 + spacing[20],
-    );
+  const right = Math.max(
+    insets.right + spacing[20],
+    rightOverride ?? (width - Math.min(width, maxContentWidth)) / 2 + spacing[20],
+  );
   return (
     <PressableScale
       testID={testID}
@@ -48,6 +62,7 @@ export function FAB({
 }
 
 const styles = StyleSheet.create({
+  layer: { flex: 1, width: "100%", alignSelf: "center" },
   fab: {
     position: "absolute",
     width: 48,

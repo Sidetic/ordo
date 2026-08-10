@@ -30,6 +30,7 @@ export function SettingsPage({ title, children, right }: SettingsPageProps) {
         title={title}
         showBack
         right={right}
+        maxWidth={layout.maxSettingsWidth}
         onBack={() => (router.canGoBack() ? router.back() : router.replace("/settings"))}
       />
       {children}

@@ -7,7 +7,7 @@ import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Header } from "../../src/components/ui/Header";
-import { FAB } from "../../src/components/ui/FAB";
+import { FAB, FABLayer } from "../../src/components/ui/FAB";
 import { Sheet } from "../../src/components/ui/Sheet";
 import { Input } from "../../src/components/ui/Input";
 import { Button } from "../../src/components/ui/Button";
@@ -33,7 +33,6 @@ export default function FoldersScreen() {
   const { width, isTablet, isDesktop } = useResponsiveLayout();
   const {
     visible: floatingNavigation,
-    sideNavigation,
     clearance: bottomClearance,
   } = useFloatingDockMetrics();
   const { data: folders, isLoading, isFetching, refetch, error } = useFolders();
@@ -69,7 +68,7 @@ export default function FoldersScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
-      <Header title="Folders" large />
+      <Header title="Folders" large maxWidth={layout.maxContentWidth} />
 
       {error && !folders ? (
         <ScreenContent maxWidth={layout.maxContentWidth} style={{ flex: 1, justifyContent: "center" }}>
@@ -116,11 +115,7 @@ export default function FoldersScreen() {
             estimatedItemSize={68}
             ItemSeparatorComponent={() => <View style={{ height: spacing[10] }} />}
             contentContainerStyle={{
-              paddingBottom: floatingNavigation
-                ? bottomClearance
-                : sideNavigation
-                  ? spacing[32]
-                  : spacing[96],
+              paddingBottom: floatingNavigation ? bottomClearance : spacing[96],
               paddingTop: spacing[8],
             }}
             refreshing={isFetching && !isLoading}
@@ -138,12 +133,14 @@ export default function FoldersScreen() {
         </ScreenContent>
       )}
 
-      <FAB
-        onPress={() => setCreateOpen(true)}
-        testID="new-folder-fab"
-        bottom={floatingNavigation ? bottomClearance : spacing[20]}
-        maxContentWidth={layout.maxContentWidth}
-      />
+      <FABLayer maxWidth={layout.maxContentWidth}>
+        <FAB
+          onPress={() => setCreateOpen(true)}
+          testID="new-folder-fab"
+          bottom={floatingNavigation ? bottomClearance : spacing[20]}
+          right={spacing[20]}
+        />
+      </FABLayer>
 
       <Sheet visible={createOpen} onDismiss={() => setCreateOpen(false)}>
         <Text variant="title3" style={{ marginBottom: spacing[16] }}>New folder</Text>

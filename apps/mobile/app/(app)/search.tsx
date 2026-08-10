@@ -3,7 +3,7 @@
  */
 import React, { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../src/components/ui/Header";
@@ -25,38 +25,54 @@ import type { BookmarkDto } from "@ordo/shared";
 export default function SearchScreen() {
   const { palette } = useTheme();
   const router = useRouter();
+  const params = useLocalSearchParams<{ query?: string; bookmark?: string }>();
   const { hasDetailPane } = useResponsiveLayout();
   const {
     visible: floatingNavigation,
     sideNavigation,
     clearance: bottomClearance,
   } = useFloatingDockMetrics();
-  const [input, setInput] = useState("");
-  const [q, setQ] = useState("");
-  const [selectedBookmarkId, setSelectedBookmarkId] = useState<string | null>(null);
+  const routeQuery = Array.isArray(params.query) ? params.query[0] ?? "" : params.query ?? "";
+  const selectedBookmarkId = Array.isArray(params.bookmark)
+    ? params.bookmark[0]
+    : params.bookmark;
+  const [input, setInput] = useState(routeQuery);
+  const [q, setQ] = useState(routeQuery);
 
   // Debounce the query (300ms) so typing stays smooth.
   useEffect(() => {
-    const t = setTimeout(() => setQ(input.trim()), 300);
+    const t = setTimeout(() => {
+      const nextQuery = input.trim();
+      setQ(nextQuery);
+      if (nextQuery !== routeQuery) {
+        router.setParams({ query: nextQuery || undefined, bookmark: undefined });
+      }
+    }, 300);
     return () => clearTimeout(t);
-  }, [input]);
+  }, [input, routeQuery, router]);
 
   const search = useInfiniteSearch(q);
   const items = useMemo(() => flattenPages(search.data?.pages ?? []), [search.data]);
 
   useEffect(() => {
-    setSelectedBookmarkId(null);
-  }, [q]);
+    if (routeQuery !== q) {
+      setInput(routeQuery);
+      setQ(routeQuery);
+    }
+  }, [q, routeQuery]);
 
   useEffect(() => {
-    if (selectedBookmarkId && !items.some((item) => item.id === selectedBookmarkId)) {
-      setSelectedBookmarkId(null);
+    if (!hasDetailPane && selectedBookmarkId) {
+      router.replace(`/reader/${selectedBookmarkId}`);
     }
-  }, [items, selectedBookmarkId]);
+  }, [hasDetailPane, router, selectedBookmarkId]);
 
   const openReader = (b: BookmarkDto) => {
     if (hasDetailPane) {
-      setSelectedBookmarkId(b.id);
+      router.push({
+        pathname: "/search",
+        params: { query: q, bookmark: b.id },
+      });
       return;
     }
     router.push(`/reader/${b.id}`);
