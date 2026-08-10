@@ -110,10 +110,9 @@ jobs:
   ota:
     needs: detect
     # Publishes a JS-only update (EAS Update) to the production channel on
-    # every push to main. Binaries built with expo-updates check this channel
-    # on launch and pull the latest JS without a new APK release. Native
-    # changes still require a new build.
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.publish_ota == true)
+    # OTA-eligible pushes to main. Commits marked with -apk are routed to the
+    # APK build instead so native changes are always available to install.
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.should_build != 'true') || (github.event_name == 'workflow_dispatch' && inputs.publish_ota == true)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
