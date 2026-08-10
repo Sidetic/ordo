@@ -28,18 +28,16 @@ jobs:
     outputs:
       version: ${{ steps.info.outputs.version }}
       version_code: ${{ steps.info.outputs.version_code }}
-      should_build: ${{ steps.info.outputs.should_build }}
+      should_build: ${{ steps.route.outputs.should_build }}
       is_release: ${{ steps.info.outputs.is_release }}
       build_ref: ${{ steps.info.outputs.build_ref }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Gather trigger info
         id: info
-        env:
-          COMMIT_MSG: ${{ github.event.head_commit.message || github.event.release.body || '' }}
-          EVENT: ${{ github.event_name }}
-          BUILD_INPUT: ${{ inputs.build_apk }}
         run: |
           VERSION=$(node -e "console.log(require('./apps/mobile/app.config.js').version)")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -48,19 +46,75 @@ jobs:
           echo "version_code=$(( ${{ github.run_number }} * 10000 ))" >> "$GITHUB_OUTPUT"
           echo "build_ref=${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
-          if [ "$EVENT" = "release" ]; then
+          if [ "${{ github.event_name }}" = "release" ]; then
             echo "is_release=true" >> "$GITHUB_OUTPUT"
-            echo "should_build=true" >> "$GITHUB_OUTPUT"
           else
             echo "is_release=false" >> "$GITHUB_OUTPUT"
-            MSG=$(echo "$COMMIT_MSG" | head -1)
-            if [[ "$EVENT" = "workflow_dispatch" && "$BUILD_INPUT" = "true" ]]; then
-              echo "should_build=true" >> "$GITHUB_OUTPUT"
-            elif [[ "$MSG" == *-apk ]]; then
-              echo "should_build=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "should_build=false" >> "$GITHUB_OUTPUT"
-            fi
+          fi
+
+      - name: Setup pnpm for OTA eligibility check
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js for OTA eligibility check
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Check Android native fingerprint
+        id: eligibility
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          CURRENT_SHA: ${{ github.sha }}
+          PREVIOUS_SHA: ${{ github.event.before }}
+        run: |
+          if [[ "$PREVIOUS_SHA" =~ ^0+$ ]]; then
+            echo "native_changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git checkout --detach "$PREVIOUS_SHA"
+          pnpm install --frozen-lockfile --config.dangerouslyAllowAllBuilds=true
+          pnpm --dir apps/mobile exec fingerprint fingerprint:generate --platform android > /tmp/fingerprint-previous.json
+
+          git checkout --detach "$CURRENT_SHA"
+          pnpm install --frozen-lockfile --config.dangerouslyAllowAllBuilds=true
+          pnpm --dir apps/mobile exec fingerprint fingerprint:generate --platform android > /tmp/fingerprint-current.json
+
+          # Build metadata changes every commit but does not affect native compatibility.
+          for fingerprint in /tmp/fingerprint-previous.json /tmp/fingerprint-current.json; do
+            jq 'del(.hash) | .sources |= map(if .type == "contents" and .id == "expoConfig" then .contents |= (fromjson | del(.extra.ordo) | tojson) | del(.hash) else . end)' \
+              "$fingerprint" > "$fingerprint.normalized"
+          done
+
+          if cmp -s /tmp/fingerprint-previous.json.normalized /tmp/fingerprint-current.json.normalized; then
+            echo "native_changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "native_changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Select OTA or APK build
+        id: route
+        env:
+          BUILD_INPUT: ${{ inputs.build_apk }}
+          COMMIT_MSG: ${{ github.event.head_commit.message || github.event.release.body || '' }}
+          # Treat an inconclusive fingerprint check as native-incompatible.
+          NATIVE_CHANGED: ${{ steps.eligibility.outputs.native_changed || 'true' }}
+        run: |
+          MSG=$(echo "$COMMIT_MSG" | head -1)
+          if [[ "${{ github.event_name }}" = "release" ]]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" = "workflow_dispatch" && "$BUILD_INPUT" = "true" ]]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$MSG" == *-apk ]]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" = "push" && "${{ github.ref }}" = "refs/heads/main" && "$NATIVE_CHANGED" = "true" ]]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Validate release tag matches app version
@@ -110,8 +164,8 @@ jobs:
   ota:
     needs: detect
     # Publishes a JS-only update (EAS Update) to the production channel on
-    # OTA-eligible pushes to main. Commits marked with -apk are routed to the
-    # APK build instead so native changes are always available to install.
+    # OTA-eligible pushes to main. Native fingerprint changes and commits
+    # explicitly marked with -apk are routed to an installable APK instead.
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.should_build != 'true') || (github.event_name == 'workflow_dispatch' && inputs.publish_ota == true)
     runs-on: ubuntu-latest
     steps:
