@@ -1,13 +1,12 @@
 /** Settings hub: focused destinations for account and app preferences. */
 import React, { useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Header } from "../../../src/components/ui/Header";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { Button } from "../../../src/components/ui/Button";
-import { Sheet } from "../../../src/components/ui/Sheet";
 import { Text } from "../../../src/components/ui/Text";
 import { useAuthStore } from "../../../src/store/auth";
 import { useSettingsStore } from "../../../src/store/settings";
@@ -18,7 +17,7 @@ import { haptics } from "../../../src/lib/haptics";
 import { radius, spacing } from "../../../src/theme/tokens";
 
 export default function SettingsScreen() {
-  const { palette } = useTheme();
+  const { palette, shadows } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
@@ -88,41 +87,63 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
-      <Sheet
+      <Modal
         visible={confirmingLogout}
-        onDismiss={logout.isPending ? () => {} : () => setConfirmingLogout(false)}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={logout.isPending ? () => {} : () => setConfirmingLogout(false)}
       >
-        <View style={styles.confirmHeader}>
-          <View style={[styles.confirmIcon, { backgroundColor: palette.dangerSoft }]}>
-            <Ionicons name="log-out-outline" size={20} color={palette.danger} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text variant="title2">Sign out?</Text>
-            <Text variant="footnote" color="secondary" style={styles.confirmCopy}>
-              You will need to sign in again to access your bookmarks.
-            </Text>
-          </View>
-        </View>
-        <View style={styles.actions}>
-          <Button
-            label="Cancel"
-            variant="secondary"
+        <View style={styles.modalRoot}>
+          <Pressable
+            style={[StyleSheet.absoluteFill, { backgroundColor: palette.overlay }]}
             disabled={logout.isPending}
             onPress={() => setConfirmingLogout(false)}
-            style={{ flex: 1 }}
           />
-          <Button
-            label="Sign out"
-            variant="danger"
-            loading={logout.isPending}
-            onPress={() => {
-              haptics.medium();
-              logout.mutate();
-            }}
-            style={{ flex: 1 }}
-          />
+          <View
+            accessibilityViewIsModal
+            style={[
+              styles.dialog,
+              {
+                backgroundColor: palette.surface,
+                borderColor: palette.borderStrong,
+                ...shadows.level3,
+              },
+            ]}
+          >
+            <View style={styles.confirmHeader}>
+              <View style={[styles.confirmIcon, { backgroundColor: palette.dangerSoft }]}>
+                <Ionicons name="log-out-outline" size={20} color={palette.danger} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="title2">Sign out?</Text>
+                <Text variant="footnote" color="secondary" style={styles.confirmCopy}>
+                  You will need to sign in again to access your saves.
+                </Text>
+              </View>
+            </View>
+            <View style={styles.actions}>
+              <Button
+                label="Cancel"
+                variant="secondary"
+                disabled={logout.isPending}
+                onPress={() => setConfirmingLogout(false)}
+                style={{ flex: 1 }}
+              />
+              <Button
+                label="Sign out"
+                variant="danger"
+                loading={logout.isPending}
+                onPress={() => {
+                  haptics.medium();
+                  logout.mutate();
+                }}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
         </View>
-      </Sheet>
+      </Modal>
     </View>
   );
 }
@@ -131,7 +152,20 @@ const styles = StyleSheet.create({
   content: { paddingTop: spacing[4] },
   destinations: { paddingTop: spacing[2] },
   signout: { paddingHorizontal: spacing[16], paddingTop: spacing[32] },
-  confirmHeader: { flexDirection: "row", alignItems: "flex-start", gap: spacing[12] },
+  modalRoot: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing[20],
+  },
+  dialog: {
+    width: "100%",
+    maxWidth: 420,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius["2xl"],
+    padding: spacing[20],
+  },
+  confirmHeader: { flexDirection: "row", alignItems: "center", gap: spacing[12] },
   confirmIcon: {
     width: 38,
     height: 38,
