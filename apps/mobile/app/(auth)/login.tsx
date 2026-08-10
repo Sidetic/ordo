@@ -64,7 +64,7 @@ export default function LoginScreen() {
           label="Email or username"
           value={identifier}
           onChangeText={setIdentifier}
-          placeholder="you@example.com or username"
+          placeholder="Email or username"
           textContentType="username"
           autoComplete="username"
           importantForAutofill="yes"
