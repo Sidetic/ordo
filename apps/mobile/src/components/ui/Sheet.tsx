@@ -1,12 +1,12 @@
 /**
- * Bottom sheet modal: dim scrim + spring-in panel, dismissable by tap or
- * swipe-down. Driven by a single `translateY` shared value so the enter/exit
- * animation is always correct (no off-screen-first-paint races). Stays mounted
- * through the exit animation, then unmounts.
+ * Bottom sheet modal with independently eased panel and scrim motion,
+ * dismissable by tap or swipe-down. Stays mounted through the exit animation,
+ * then unmounts.
  */
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
+  Keyboard,
   Pressable,
   StyleSheet,
   View,
@@ -17,8 +17,7 @@ import {
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  Extrapolation,
-  interpolate,
+  Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -30,6 +29,8 @@ import { useTheme } from "../../theme/ThemeProvider";
 import { radius, springs, spacing } from "../../theme/tokens";
 
 const SCREEN_H = Dimensions.get("window").height;
+const ENTER_EASING = Easing.bezier(0.22, 1, 0.36, 1);
+const EXIT_EASING = Easing.bezier(0.4, 0, 1, 1);
 
 export interface SheetProps {
   visible: boolean;
@@ -45,25 +46,30 @@ export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, content
   const insets = useSafeAreaInsets();
   // Panel translateY. 0 = fully open; SCREEN_H = fully hidden (off-screen).
   const ty = useSharedValue(SCREEN_H);
+  const scrim = useSharedValue(0);
   const startTy = useSharedValue(0);
   const [mounted, setMounted] = useState(visible);
 
   useEffect(() => {
     if (visible) {
       setMounted(true);
-      ty.value = withSpring(0, springs.gentle);
+      ty.value = withTiming(0, { duration: 320, easing: ENTER_EASING });
+      scrim.value = withTiming(1, { duration: 220 });
     } else if (mounted) {
-      // NOTE: do not pass a custom easing here. RN's `Easing` is not a Reanimated
-      // worklet, so Reanimated throws inside the dismiss worklet on native
-      // (assertEasingIsWorklet) — which silently white-screens the app. Reanimated's
-      // default easing (inOut(quad)) is a valid worklet and looks near-identical.
-      ty.value = withTiming(SCREEN_H, { duration: 200 }, (finished) => {
+      Keyboard.dismiss();
+      scrim.value = withTiming(0, { duration: 180 });
+      ty.value = withTiming(SCREEN_H, { duration: 240, easing: EXIT_EASING }, (finished) => {
         if (finished) runOnJS(setMounted)(false);
       });
     }
-  }, [visible]);
+  }, [visible, scrim, ty]);
 
   const dismiss = useCallback(() => onDismiss(), [onDismiss]);
+  const finishGestureDismiss = useCallback(() => {
+    Keyboard.dismiss();
+    setMounted(false);
+    dismiss();
+  }, [dismiss]);
 
   const pan = Gesture.Pan()
     .onBegin(() => {
@@ -74,14 +80,17 @@ export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, content
     })
     .onEnd((e) => {
       if (ty.value > 100 || e.velocityY > 600) {
-        ty.value = withSpring(SCREEN_H, springs.snappy, () => runOnJS(dismiss)());
+        scrim.value = withTiming(0, { duration: 180 });
+        ty.value = withTiming(SCREEN_H, { duration: 220, easing: EXIT_EASING }, (finished) => {
+          if (finished) runOnJS(finishGestureDismiss)();
+        });
       } else {
         ty.value = withSpring(0, springs.gentle);
       }
     });
 
   const scrimStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(ty.value, [0, SCREEN_H], [1, 0], Extrapolation.CLAMP),
+    opacity: scrim.value,
   }));
 
   const panelStyle = useAnimatedStyle(() => ({
@@ -91,7 +100,7 @@ export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, content
   if (!mounted) return null;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="auto">
+    <View style={StyleSheet.absoluteFill} pointerEvents={visible ? "auto" : "none"}>
       {/*
         Backdrop = animated dim (non-interactive) + a transparent Pressable that
         reliably captures outside taps. Using Pressable (not a raw onTouchEnd on
