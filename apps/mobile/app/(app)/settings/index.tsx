@@ -13,7 +13,6 @@ import { useSettingsStore } from "../../../src/store/settings";
 import { useLogout } from "../../../src/hooks/use-auth-actions";
 import { useTheme } from "../../../src/theme/ThemeProvider";
 import { hostOf } from "../../../src/lib/server-probe";
-import { haptics } from "../../../src/lib/haptics";
 import { radius, spacing } from "../../../src/theme/tokens";
 
 export default function SettingsScreen() {
@@ -105,40 +104,38 @@ export default function SettingsScreen() {
             style={[
               styles.dialog,
               {
-                backgroundColor: palette.surface,
-                borderColor: palette.borderStrong,
+                backgroundColor: palette.surfaceElevated,
+                borderColor: palette.border,
                 ...shadows.level3,
               },
             ]}
           >
-            <View style={styles.confirmHeader}>
+            <View style={styles.confirmContent}>
               <View style={[styles.confirmIcon, { backgroundColor: palette.dangerSoft }]}>
-                <Ionicons name="log-out-outline" size={20} color={palette.danger} />
+                <Ionicons name="log-out-outline" size={22} color={palette.danger} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text variant="title2">Sign out?</Text>
-                <Text variant="footnote" color="secondary" style={styles.confirmCopy}>
-                  You will need to sign in again to access your saves.
-                </Text>
-              </View>
+              <Text variant="title1" align="center">
+                Sign out?
+              </Text>
+              <Text variant="body" color="secondary" align="center" style={styles.confirmCopy}>
+                You'll need to sign in again to access your saves.
+              </Text>
             </View>
             <View style={styles.actions}>
               <Button
-                label="Cancel"
-                variant="secondary"
-                disabled={logout.isPending}
-                onPress={() => setConfirmingLogout(false)}
-                style={{ flex: 1 }}
+                label="Sign out"
+                variant="primary"
+                size="lg"
+                loading={logout.isPending}
+                onPress={() => logout.mutate()}
+                style={styles.action}
               />
               <Button
-                label="Sign out"
-                variant="danger"
-                loading={logout.isPending}
-                onPress={() => {
-                  haptics.medium();
-                  logout.mutate();
-                }}
-                style={{ flex: 1 }}
+                label="Cancel"
+                variant="ghost"
+                disabled={logout.isPending}
+                onPress={() => setConfirmingLogout(false)}
+                style={styles.action}
               />
             </View>
           </View>
@@ -160,19 +157,23 @@ const styles = StyleSheet.create({
   },
   dialog: {
     width: "100%",
-    maxWidth: 420,
+    maxWidth: 340,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius["2xl"],
-    padding: spacing[20],
+    borderRadius: radius["3xl"],
+    paddingHorizontal: spacing[24],
+    paddingTop: spacing[24],
+    paddingBottom: spacing[16],
   },
-  confirmHeader: { flexDirection: "row", alignItems: "center", gap: spacing[12] },
+  confirmContent: { alignItems: "center" },
   confirmIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.lg,
+    width: 48,
+    height: 48,
+    borderRadius: radius["2xl"],
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: spacing[16],
   },
-  confirmCopy: { marginTop: spacing[2] },
-  actions: { flexDirection: "row", gap: spacing[10], marginTop: spacing[20] },
+  confirmCopy: { marginTop: spacing[8], maxWidth: 250 },
+  actions: { gap: spacing[4], marginTop: spacing[24] },
+  action: { width: "100%" },
 });
