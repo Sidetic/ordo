@@ -11,7 +11,7 @@ import { layout, radius, spacing } from "../../src/theme/tokens";
 import { useValidateSession } from "../../src/hooks/queries";
 import { useAuthStore } from "../../src/store/auth";
 import { useSettingsStore } from "../../src/store/settings";
-import { ActivityIndicator, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const HIDDEN = {
@@ -22,7 +22,6 @@ const HIDDEN = {
 export default function AppLayout() {
   const { palette, shadows } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width: windowWidth } = useWindowDimensions();
   const status = useAuthStore((s) => s.status);
   const navigationStyle = useSettingsStore((s) => s.navigationStyle);
   const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
@@ -51,8 +50,8 @@ export default function AppLayout() {
         tabBarStyle: floating
           ? {
               position: "absolute",
-              left: spacing[16],
-              width: windowWidth - spacing[16] * 2,
+              start: spacing[16],
+              end: spacing[16],
               bottom: Math.max(insets.bottom, spacing[12]),
               height: tabBarHeight + spacing[8],
               paddingHorizontal: spacing[4],
