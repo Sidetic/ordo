@@ -7,6 +7,7 @@ import { Header } from "../../../src/components/ui/Header";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { Button } from "../../../src/components/ui/Button";
 import { Text } from "../../../src/components/ui/Text";
+import { SettingsContent } from "../../../src/components/settings/SettingsPage";
 import { useAuthStore } from "../../../src/store/auth";
 import { useSettingsStore } from "../../../src/store/settings";
 import { useLogout } from "../../../src/hooks/use-auth-actions";
@@ -20,7 +21,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const serverUrl = useSettingsStore((s) => s.serverUrl);
-  const { floating: floatingNavigation, clearance: floatingBottomClearance } =
+  const { visible: floatingNavigation, clearance: floatingBottomClearance } =
     useFloatingDockMetrics();
   const logout = useLogout();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
@@ -35,52 +36,54 @@ export default function SettingsScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.destinations}>
-          <SettingRow
-            icon="person-circle-outline"
-            label="Account"
-            value={user?.username ?? "—"}
-            onPress={() => router.push("/settings/account")}
-            showChevron
-          />
-          <SettingRow
-            icon="color-palette-outline"
-            label="Appearance"
-            onPress={() => router.push("/settings/appearance")}
-            showChevron
-          />
-          <SettingRow
-            icon="phone-portrait-outline"
-            label="Active sessions"
-            onPress={() => router.push("/settings/sessions")}
-            showChevron
-          />
-          <SettingRow
-            icon="server-outline"
-            label="Server"
-            value={hostOf(serverUrl)}
-            onPress={() => router.push("/settings/server")}
-            showChevron
-          />
-          <SettingRow
-            icon="information-circle-outline"
-            label="About"
-            onPress={() => router.push("/settings/about")}
-            showChevron
-            divider={false}
-          />
-        </View>
+        <SettingsContent>
+          <View style={styles.destinations}>
+            <SettingRow
+              icon="person-circle-outline"
+              label="Account"
+              value={user?.username ?? "—"}
+              onPress={() => router.push("/settings/account")}
+              showChevron
+            />
+            <SettingRow
+              icon="color-palette-outline"
+              label="Appearance"
+              onPress={() => router.push("/settings/appearance")}
+              showChevron
+            />
+            <SettingRow
+              icon="phone-portrait-outline"
+              label="Active sessions"
+              onPress={() => router.push("/settings/sessions")}
+              showChevron
+            />
+            <SettingRow
+              icon="server-outline"
+              label="Server"
+              value={hostOf(serverUrl)}
+              onPress={() => router.push("/settings/server")}
+              showChevron
+            />
+            <SettingRow
+              icon="information-circle-outline"
+              label="About"
+              onPress={() => router.push("/settings/about")}
+              showChevron
+              divider={false}
+            />
+          </View>
 
-        <View style={styles.signout}>
-          <Button
-            label="Sign out"
-            variant="danger"
-            block
-            size="lg"
-            loading={logout.isPending}
-            onPress={() => setConfirmingLogout(true)}
-          />
-        </View>
+          <View style={styles.signout}>
+            <Button
+              label="Sign out"
+              variant="danger"
+              block
+              size="lg"
+              loading={logout.isPending}
+              onPress={() => setConfirmingLogout(true)}
+            />
+          </View>
+        </SettingsContent>
       </ScrollView>
 
       <Modal

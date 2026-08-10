@@ -2,6 +2,7 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import {
+  SettingsForm,
   SettingsPage,
   SettingsScrollView,
   SettingsSectionLabel,
@@ -42,9 +43,9 @@ export default function AppearanceScreen() {
     <SettingsPage title="Appearance">
       <SettingsScrollView>
         <SettingsSectionLabel compact>Theme</SettingsSectionLabel>
-        <View style={styles.segmentedWrap}>
+        <SettingsForm style={styles.segmentedWrap}>
           <Segmented options={themeOptions} value={themeMode} onChange={setThemeMode} />
-        </View>
+        </SettingsForm>
 
         <SettingsSectionLabel>Display</SettingsSectionLabel>
         <SettingRow
@@ -66,13 +67,13 @@ export default function AppearanceScreen() {
         ) : null}
 
         <SettingsSectionLabel>Navigation</SettingsSectionLabel>
-        <View style={styles.segmentedWrap}>
+        <SettingsForm style={styles.segmentedWrap}>
           <Segmented
             options={navigationOptions}
             value={navigationStyle}
             onChange={setNavigationStyle}
           />
-        </View>
+        </SettingsForm>
         <View style={styles.navigationPreference}>
           <SettingRow
             label="Show labels"

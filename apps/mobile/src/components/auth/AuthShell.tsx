@@ -4,12 +4,20 @@
  * app's Center + SingleChildScrollView + Column layout) and a footer slot.
  */
 import React from "react";
-import { ScrollView, StyleSheet, View, type ViewStyle } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  type ViewStyle,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "../ui/Text";
 import { AUTH_LOGO_WIDTH, Logo } from "../ui/Logo";
 import { useTheme } from "../../theme/ThemeProvider";
 import { layout, spacing } from "../../theme/tokens";
+import { useResponsiveLayout } from "../../hooks/use-responsive-layout";
 
 export interface AuthShellProps {
   title: string;
@@ -22,32 +30,78 @@ export interface AuthShellProps {
 export function AuthShell({ title, subtitle, children, footer, style }: AuthShellProps) {
   const { palette } = useTheme();
   const insets = useSafeAreaInsets();
+  const { width, isLandscape, isTablet } = useResponsiveLayout();
+  const isWideLayout = width >= 960;
+  const compactLandscape = isLandscape && !isTablet && !isWideLayout;
+  const topPadding = insets.top + (compactLandscape ? spacing[16] : spacing[24]);
+  const bottomPadding = insets.bottom + (compactLandscape ? spacing[16] : spacing[24]);
+  const contentTopMargin = compactLandscape ? spacing[20] : spacing[28];
+  const footerTopMargin = compactLandscape ? spacing[20] : spacing[24];
+  const titleTopMargin = compactLandscape ? spacing[14] : spacing[20];
+  const subtitleTopMargin = compactLandscape ? spacing[4] : spacing[6];
+  const horizontalPadding = isWideLayout ? spacing[32] : spacing[24];
+
+  const brandHeader = (
+    <>
+      <Logo width={AUTH_LOGO_WIDTH} />
+      <Text variant="header" align="center" style={{ marginTop: titleTopMargin }}>
+        {title}
+      </Text>
+      {subtitle ? (
+        <Text
+          variant="body"
+          color="secondary"
+          align="center"
+          style={{ marginTop: subtitleTopMargin }}
+        >
+          {subtitle}
+        </Text>
+      ) : null}
+    </>
+  );
+
+  const formBody = (
+    <>
+      <View style={{ marginTop: contentTopMargin }}>{children}</View>
+      {footer ? <View style={[styles.footer, { marginTop: footerTopMargin }]}>{footer}</View> : null}
+    </>
+  );
 
   return (
     <View style={[styles.root, { backgroundColor: palette.background }]}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.container,
-          {
-            paddingTop: insets.top + spacing[24],
-            paddingBottom: insets.bottom + spacing[24],
-          },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.root}
       >
-        <View style={[styles.inner, { maxWidth: layout.maxContentWidth }, style]}>
-          <Logo width={AUTH_LOGO_WIDTH} />
-          <Text variant="header" align="center" style={{ marginTop: spacing[20] }}>{title}</Text>
-          {subtitle ? (
-            <Text variant="body" color="secondary" align="center" style={{ marginTop: spacing[6] }}>{subtitle}</Text>
-          ) : null}
-
-          <View style={{ marginTop: spacing[28] }}>{children}</View>
-
-          {footer ? <View style={styles.footer}>{footer}</View> : null}
-        </View>
-      </ScrollView>
+        <ScrollView
+          contentContainerStyle={[
+            styles.container,
+            isWideLayout ? styles.wideContainer : compactLandscape ? styles.compactContainer : styles.centeredContainer,
+            {
+              paddingTop: topPadding,
+              paddingBottom: bottomPadding,
+              paddingLeft: insets.left + horizontalPadding,
+              paddingRight: insets.right + horizontalPadding,
+            },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          {isWideLayout ? (
+            <View style={styles.wideShell}>
+              <View style={styles.brandPane}>{brandHeader}</View>
+              <View style={styles.formPane}>
+                <View style={[styles.formInner, style]}>{formBody}</View>
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.inner, { maxWidth: layout.maxFormWidth }, style]}>
+              {brandHeader}
+              {formBody}
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -56,10 +110,31 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   container: {
     flexGrow: 1,
-    justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: spacing[24],
   },
+  centeredContainer: { justifyContent: "center" },
+  compactContainer: { justifyContent: "flex-start" },
+  wideContainer: { justifyContent: "center" },
   inner: { width: "100%", alignSelf: "center" },
-  footer: { marginTop: spacing[24] },
+  wideShell: {
+    width: "100%",
+    maxWidth: layout.maxLibraryWidth,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[32],
+  },
+  brandPane: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  formPane: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  formInner: { width: "100%", maxWidth: layout.maxFormWidth },
+  footer: {},
 });

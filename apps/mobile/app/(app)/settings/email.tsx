@@ -4,9 +4,13 @@
  * navigate to the verify screen.
  */
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Platform, View } from "react-native";
 import { useRouter } from "expo-router";
-import { SettingsPage } from "../../../src/components/settings/SettingsPage";
+import {
+  SettingsForm,
+  SettingsPage,
+  SettingsScrollView,
+} from "../../../src/components/settings/SettingsPage";
 import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
 import { useRequestEmailChange } from "../../../src/hooks/use-auth-actions";
@@ -54,51 +58,53 @@ export default function ChangeEmailScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: spacing[20], paddingTop: spacing[20], paddingBottom: spacing[32] }}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
-          <Input
-            label="Current email"
-            value={user?.email ?? ""}
-            onChangeText={() => {}}
-            editable={false}
-          />
-          <View style={{ height: spacing[16] }} />
-          <Input
-            label="New email"
-            value={newEmail}
-            onChangeText={setNewEmail}
-            placeholder="you@example.com"
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            autoCapitalize="none"
-          />
-          <View style={{ height: spacing[16] }} />
-          <Input
-            label="Current password"
-            value={currentPassword}
-            onChangeText={setCurrentPassword}
-            placeholder="Enter your current password"
-            secureTextEntry={!showPwd}
-            textContentType="password"
-            error={formError || undefined}
-            rightAccessory={
-              <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
-            }
-          />
+        <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+          <SettingsForm style={styles.form}>
+            <Input
+              label="Current email"
+              value={user?.email ?? ""}
+              onChangeText={() => {}}
+              editable={false}
+            />
+            <View style={{ height: spacing[16] }} />
+            <Input
+              label="New email"
+              value={newEmail}
+              onChangeText={setNewEmail}
+              placeholder="you@example.com"
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              autoCapitalize="none"
+            />
+            <View style={{ height: spacing[16] }} />
+            <Input
+              label="Current password"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              placeholder="Enter your current password"
+              secureTextEntry={!showPwd}
+              textContentType="password"
+              error={formError || undefined}
+              rightAccessory={
+                <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
+              }
+            />
 
-          <View style={{ height: spacing[24] }} />
-          <Button
-            label="Send verification code"
-            block
-            size="lg"
-            onPress={submit}
-            loading={requestEmailChange.isPending}
-          />
-        </ScrollView>
+            <View style={{ height: spacing[24] }} />
+            <Button
+              label="Send verification code"
+              block
+              size="lg"
+              onPress={submit}
+              loading={requestEmailChange.isPending}
+            />
+          </SettingsForm>
+        </SettingsScrollView>
       </KeyboardAvoidingView>
     </SettingsPage>
   );
 }
+
+const styles = {
+  form: { paddingHorizontal: spacing[20], paddingTop: spacing[20], paddingBottom: spacing[32] },
+};

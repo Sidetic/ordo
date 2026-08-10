@@ -4,7 +4,8 @@
 import React from "react";
 import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SettingsPage } from "../../../src/components/settings/SettingsPage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SettingsContent, SettingsPage } from "../../../src/components/settings/SettingsPage";
 import { Text } from "../../../src/components/ui/Text";
 import { Badge } from "../../../src/components/ui/Badge";
 import { Button } from "../../../src/components/ui/Button";
@@ -18,7 +19,7 @@ import { timeAgo, formatDate } from "../../../src/lib/format";
 import { errorMessage } from "../../../src/lib/error-message";
 import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
-import { spacing } from "../../../src/theme/tokens";
+import { layout, spacing } from "../../../src/theme/tokens";
 import type { SessionDto } from "@ordo/shared";
 
 function deviceLabel(s: SessionDto): string {
@@ -62,6 +63,7 @@ function deviceIcon(s: SessionDto): keyof typeof Ionicons.glyphMap {
 
 export default function SessionsScreen() {
   const { palette } = useTheme();
+  const insets = useSafeAreaInsets();
   const { data: sessions, isLoading, error, refetch } = useSessions();
   const revoke = useRevokeSession();
 
@@ -76,60 +78,77 @@ export default function SessionsScreen() {
   return (
     <SettingsPage title="Active sessions">
       {error && !sessions ? (
-        <EmptyState
-          icon="cloud-offline-outline"
-          title="Couldn't load sessions"
-          message={errorMessage(error)}
-          action={<Button label="Retry" onPress={() => refetch()} />}
-        />
+        <SettingsContent style={styles.stateContent}>
+          <EmptyState
+            icon="cloud-offline-outline"
+            title="Couldn't load sessions"
+            message={errorMessage(error)}
+            action={<Button label="Retry" onPress={() => refetch()} />}
+          />
+        </SettingsContent>
       ) : isLoading ? (
-        <View style={{ paddingHorizontal: spacing[16], paddingTop: spacing[12] }}>
+        <SettingsContent style={styles.loadingContent}>
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} height={72} radiusKey="lg" style={{ marginBottom: spacing[10] }} />
+            <Skeleton key={i} height={72} radiusKey="lg" style={styles.skeleton} />
           ))}
-        </View>
+        </SettingsContent>
       ) : (
         <FlatList
           data={sessions ?? []}
           keyExtractor={(s) => s.id}
-          contentContainerStyle={{ paddingHorizontal: spacing[16], paddingBottom: spacing[32] }}
+          contentContainerStyle={[
+            styles.listContent,
+            {
+              paddingLeft: insets.left,
+              paddingRight: insets.right,
+            },
+            !(sessions?.length ?? 0) && styles.listContentEmpty,
+          ]}
           ItemSeparatorComponent={() => <View style={{ height: spacing[10] }} />}
           renderItem={({ item }) => (
-            <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <View style={styles.cardHead}>
-                <View style={[styles.iconWrap, { backgroundColor: palette.surfaceSecondary }]}>
-                  <Ionicons name={deviceIcon(item)} size={18} color={palette.accent} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.titleRow}>
-                    <Text variant="bodyStrong" numberOfLines={1}>{deviceLabel(item)}</Text>
-                    {item.current ? <Badge tone="accent">This device</Badge> : null}
+            <View style={styles.cardWrap}>
+              <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                <View style={styles.cardHead}>
+                  <View style={[styles.iconWrap, { backgroundColor: palette.surfaceSecondary }]}>
+                    <Ionicons name={deviceIcon(item)} size={18} color={palette.accent} />
                   </View>
-                  <Text variant="footnote" color="tertiary" numberOfLines={1}>
-                    {deviceDescription(item)}
-                  </Text>
-                  <Text variant="footnote" color="tertiary" numberOfLines={1}>
-                    {item.ip ?? "Unknown IP"} · active {timeAgo(item.lastSeenAt)}
-                  </Text>
-                  <Text variant="caption" color="tertiary">Signed in {formatDate(item.createdAt)}</Text>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.titleRow}>
+                      <Text variant="bodyStrong" numberOfLines={1}>{deviceLabel(item)}</Text>
+                      {item.current ? <Badge tone="accent">This device</Badge> : null}
+                    </View>
+                    <Text variant="footnote" color="tertiary" numberOfLines={1}>
+                      {deviceDescription(item)}
+                    </Text>
+                    <Text variant="footnote" color="tertiary" numberOfLines={1}>
+                      {item.ip ?? "Unknown IP"} · active {timeAgo(item.lastSeenAt)}
+                    </Text>
+                    <Text variant="caption" color="tertiary">Signed in {formatDate(item.createdAt)}</Text>
+                  </View>
                 </View>
+                {item.current ? null : (
+                  <PressableScale
+                    style={[styles.revokeBtn, { borderColor: palette.danger }]}
+                    onPress={() => onRevoke(item)}
+                  >
+                    {revoke.isPending && revoke.variables === item.id ? (
+                      <ActivityIndicator size="small" color={palette.danger} />
+                    ) : (
+                      <Text variant="subhead" style={{ color: palette.danger }}>Revoke</Text>
+                    )}
+                  </PressableScale>
+                )}
               </View>
-              {item.current ? null : (
-                <PressableScale
-                  style={[styles.revokeBtn, { borderColor: palette.danger }]}
-                  onPress={() => onRevoke(item)}
-                >
-                  {revoke.isPending && revoke.variables === item.id ? (
-                    <ActivityIndicator size="small" color={palette.danger} />
-                  ) : (
-                    <Text variant="subhead" style={{ color: palette.danger }}>Revoke</Text>
-                  )}
-                </PressableScale>
-              )}
             </View>
           )}
           ListEmptyComponent={
-            <EmptyState icon="phone-portrait-outline" title="No active sessions" message="No other devices are signed in." />
+            <View style={styles.emptyState}>
+              <EmptyState
+                icon="phone-portrait-outline"
+                title="No active sessions"
+                message="No other devices are signed in."
+              />
+            </View>
           }
         />
       )}
@@ -138,9 +157,16 @@ export default function SessionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: spacing[14] },
+  stateContent: { paddingTop: spacing[24], paddingHorizontal: spacing[16] },
+  loadingContent: { paddingTop: spacing[12], paddingHorizontal: spacing[16] },
+  skeleton: { width: "100%", marginBottom: spacing[10] },
+  listContent: { paddingTop: spacing[12], paddingBottom: spacing[32], alignItems: "center" },
+  listContentEmpty: { flexGrow: 1, justifyContent: "center" },
+  cardWrap: { width: "100%", maxWidth: layout.maxSettingsWidth, paddingHorizontal: spacing[16] },
+  card: { width: "100%", borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: spacing[14] },
   cardHead: { flexDirection: "row", gap: spacing[12], alignItems: "flex-start" },
   iconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   titleRow: { flexDirection: "row", alignItems: "center", gap: spacing[8], marginBottom: 2 },
   revokeBtn: { alignSelf: "flex-start", marginTop: spacing[12], paddingHorizontal: spacing[14], paddingVertical: spacing[8], borderRadius: 10, borderWidth: 1 },
+  emptyState: { width: "100%", maxWidth: layout.maxSettingsWidth, paddingHorizontal: spacing[16] },
 });

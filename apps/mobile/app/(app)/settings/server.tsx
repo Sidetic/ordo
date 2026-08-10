@@ -4,6 +4,7 @@ import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  SettingsForm,
   SettingsPage,
   SettingsScrollView,
   SettingsSectionLabel,
@@ -149,7 +150,7 @@ export default function ServerScreen() {
         />
 
         <SettingsSectionLabel>Change server</SettingsSectionLabel>
-        <View style={styles.editor}>
+        <SettingsForm style={styles.editor}>
           <Input
             label="Server URL"
             value={url}
@@ -171,7 +172,7 @@ export default function ServerScreen() {
             onPress={() => void requestSwitch()}
             style={styles.changeButton}
           />
-        </View>
+        </SettingsForm>
       </SettingsScrollView>
 
       <Sheet

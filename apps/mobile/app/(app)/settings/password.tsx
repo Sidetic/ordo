@@ -3,9 +3,13 @@
  * other sessions on success, signing out every other device.
  */
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Platform, View } from "react-native";
 import { useRouter } from "expo-router";
-import { SettingsPage } from "../../../src/components/settings/SettingsPage";
+import {
+  SettingsForm,
+  SettingsPage,
+  SettingsScrollView,
+} from "../../../src/components/settings/SettingsPage";
 import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
 import { useChangePassword } from "../../../src/hooks/use-auth-actions";
@@ -53,53 +57,55 @@ export default function ChangePasswordScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: spacing[20], paddingTop: spacing[20], paddingBottom: spacing[32] }}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
-          <Input
-            label="Current password"
-            value={currentPassword}
-            onChangeText={setCurrentPassword}
-            placeholder="Enter your current password"
-            secureTextEntry={!showPwd}
-            textContentType="password"
-            error={formError || undefined}
-            rightAccessory={
-              <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
-            }
-          />
-          <View style={{ height: spacing[16] }} />
-          <Input
-            label="New password"
-            value={newPassword}
-            onChangeText={setNewPassword}
-            placeholder="At least 8 characters"
-            secureTextEntry={!showPwd}
-            textContentType="newPassword"
-            helper="Use 8 characters or more."
-          />
-          <View style={{ height: spacing[16] }} />
-          <Input
-            label="Confirm new password"
-            value={confirm}
-            onChangeText={setConfirm}
-            placeholder="Re-enter your new password"
-            secureTextEntry={!showPwd}
-            textContentType="newPassword"
-          />
+        <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+          <SettingsForm style={styles.form}>
+            <Input
+              label="Current password"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              placeholder="Enter your current password"
+              secureTextEntry={!showPwd}
+              textContentType="password"
+              error={formError || undefined}
+              rightAccessory={
+                <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
+              }
+            />
+            <View style={{ height: spacing[16] }} />
+            <Input
+              label="New password"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              placeholder="At least 8 characters"
+              secureTextEntry={!showPwd}
+              textContentType="newPassword"
+              helper="Use 8 characters or more."
+            />
+            <View style={{ height: spacing[16] }} />
+            <Input
+              label="Confirm new password"
+              value={confirm}
+              onChangeText={setConfirm}
+              placeholder="Re-enter your new password"
+              secureTextEntry={!showPwd}
+              textContentType="newPassword"
+            />
 
-          <View style={{ height: spacing[24] }} />
-          <Button
-            label="Change password"
-            block
-            size="lg"
-            onPress={submit}
-            loading={changePassword.isPending}
-          />
-        </ScrollView>
+            <View style={{ height: spacing[24] }} />
+            <Button
+              label="Change password"
+              block
+              size="lg"
+              onPress={submit}
+              loading={changePassword.isPending}
+            />
+          </SettingsForm>
+        </SettingsScrollView>
       </KeyboardAvoidingView>
     </SettingsPage>
   );
 }
+
+const styles = {
+  form: { paddingHorizontal: spacing[20], paddingTop: spacing[20], paddingBottom: spacing[32] },
+};

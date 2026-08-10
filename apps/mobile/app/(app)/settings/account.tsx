@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { ChangeUsernameSchema } from "@ordo/shared";
 import {
+  SettingsForm,
   SettingsPage,
   SettingsScrollView,
   SettingsSectionLabel,
@@ -52,7 +53,7 @@ export default function AccountScreen() {
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           <SettingsSectionLabel compact>Profile</SettingsSectionLabel>
-          <View style={styles.form}>
+          <SettingsForm style={styles.form}>
             <Input
               label="Username"
               value={username}
@@ -71,7 +72,7 @@ export default function AccountScreen() {
               disabled={!username.trim() || username.trim() === (user?.username ?? "")}
               style={styles.saveButton}
             />
-          </View>
+          </SettingsForm>
 
           <SettingsSectionLabel>Sign-in</SettingsSectionLabel>
           <SettingRow
