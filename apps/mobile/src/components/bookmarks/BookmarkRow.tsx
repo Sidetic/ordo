@@ -15,15 +15,24 @@ import type { BookmarkDto } from "@ordo/shared";
 export interface BookmarkRowProps {
   bookmark: BookmarkDto;
   onPress: (b: BookmarkDto) => void;
-  onMore: (b: BookmarkDto) => void;
+  onMore?: (b: BookmarkDto) => void;
+  selected?: boolean;
 }
 
-export function BookmarkRow({ bookmark, onPress, onMore }: BookmarkRowProps) {
+export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRowProps) {
   const { palette } = useTheme();
   const titleColor = bookmark.isRead ? "secondary" : "primary";
 
   return (
-    <View style={[styles.wrap, { borderBottomColor: palette.border }]}>
+    <View
+      style={[
+        styles.wrap,
+        {
+          backgroundColor: selected ? palette.accentSoft : "transparent",
+          borderBottomColor: palette.border,
+        },
+      ]}
+    >
       <PressableScale style={styles.body} onPress={() => onPress(bookmark)}>
         <View style={styles.topRow}>
           <View style={[styles.dot, { backgroundColor: bookmark.isRead ? "transparent" : palette.accent }]} />
@@ -43,14 +52,16 @@ export function BookmarkRow({ bookmark, onPress, onMore }: BookmarkRowProps) {
         ) : null}
       </PressableScale>
 
-      <PressableScale
-        style={styles.moreBtn}
-        scaleTo={0.85}
-        onPress={() => onMore(bookmark)}
-        hitSlop={12}
-      >
-        <Ionicons name="ellipsis-horizontal" size={20} color={palette.textTertiary} />
-      </PressableScale>
+      {onMore ? (
+        <PressableScale
+          style={styles.moreBtn}
+          scaleTo={0.85}
+          onPress={() => onMore(bookmark)}
+          hitSlop={12}
+        >
+          <Ionicons name="ellipsis-horizontal" size={20} color={palette.textTertiary} />
+        </PressableScale>
+      ) : null}
     </View>
   );
 }

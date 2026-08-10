@@ -8,7 +8,7 @@ import { spacing } from "../../theme/tokens";
 
 export function BookmarkListSkeleton({ count = 6 }: { count?: number }) {
   return (
-    <View>
+    <View style={styles.wrap}>
       {Array.from({ length: count }).map((_, i) => (
         <View key={i} style={styles.row}>
           <Skeleton width="40%" height={12} />
@@ -21,6 +21,7 @@ export function BookmarkListSkeleton({ count = 6 }: { count?: number }) {
 }
 
 const styles = StyleSheet.create({
+  wrap: { width: "100%", alignSelf: "center" },
   row: {
     paddingHorizontal: spacing[16],
     paddingVertical: spacing[14],

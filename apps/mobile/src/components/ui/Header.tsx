@@ -23,9 +23,19 @@ export interface HeaderProps {
   right?: React.ReactNode;
   large?: boolean;
   safeTop?: boolean;
+  maxWidth?: number;
 }
 
-export function Header({ title, subtitle, showBack, onBack, right, large, safeTop = true }: HeaderProps) {
+export function Header({
+  title,
+  subtitle,
+  showBack,
+  onBack,
+  right,
+  large,
+  safeTop = true,
+  maxWidth = layout.maxLibraryWidth,
+}: HeaderProps) {
   const { palette } = useTheme();
   const insets = useSafeAreaInsets();
   const { isLandscape, isTablet } = useResponsiveLayout();
@@ -49,6 +59,7 @@ export function Header({ title, subtitle, showBack, onBack, right, large, safeTo
         style={[
           styles.largeWrap,
           {
+            maxWidth,
             paddingTop: topInset + spacing[4],
             paddingLeft: Math.max(insets.left, spacing[12]),
             paddingRight: Math.max(insets.right, spacing[12]),
@@ -79,7 +90,7 @@ export function Header({ title, subtitle, showBack, onBack, right, large, safeTo
       style={[
         styles.compactWrap,
         horizontalInsets,
-        { paddingTop: topInset + spacing[8], borderBottomColor: palette.border },
+        { maxWidth, paddingTop: topInset + spacing[8], borderBottomColor: palette.border },
       ]}
     >
       <View style={styles.compactRow}>
@@ -107,13 +118,11 @@ export function Header({ title, subtitle, showBack, onBack, right, large, safeTo
 const styles = StyleSheet.create({
   largeWrap: {
     width: "100%",
-    maxWidth: layout.maxLibraryWidth,
     alignSelf: "center",
     paddingBottom: spacing[6],
   },
   compactWrap: {
     width: "100%",
-    maxWidth: layout.maxLibraryWidth,
     alignSelf: "center",
     paddingBottom: spacing[4],
   },

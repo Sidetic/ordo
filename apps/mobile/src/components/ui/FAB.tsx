@@ -14,6 +14,7 @@ export interface FABProps {
   onPress: () => void;
   testID?: string;
   bottom?: number;
+  right?: number;
   maxContentWidth?: number;
 }
 
@@ -22,15 +23,18 @@ export function FAB({
   onPress,
   testID,
   bottom = spacing[20],
+  right: rightOverride,
   maxContentWidth = layout.maxLibraryWidth,
 }: FABProps) {
   const { palette, shadows } = useTheme();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const right = Math.max(
-    insets.right + spacing[20],
-    (width - Math.min(width, maxContentWidth)) / 2 + spacing[20],
-  );
+  const right =
+    rightOverride ??
+    Math.max(
+      insets.right + spacing[20],
+      (width - Math.min(width, maxContentWidth)) / 2 + spacing[20],
+    );
   return (
     <PressableScale
       testID={testID}
