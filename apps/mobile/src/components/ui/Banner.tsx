@@ -40,7 +40,18 @@ export function Banner({ message, visible, tone = "warning", icon }: BannerProps
   }));
 
   return (
-    <Animated.View pointerEvents="none" style={[styles.wrap, { paddingTop: insets.top }, style]}>
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.wrap,
+        {
+          paddingTop: insets.top,
+          paddingLeft: Math.max(insets.left, spacing[12]),
+          paddingRight: Math.max(insets.right, spacing[12]),
+        },
+        style,
+      ]}
+    >
       <View style={[styles.inner, { backgroundColor: bg, borderRadius: radius.lg }]}>
         {icon}
         <Text variant="footnote" style={{ color: "#1A1A16", flex: 1 }}>
@@ -52,8 +63,11 @@ export function Banner({ message, visible, tone = "warning", icon }: BannerProps
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 50, paddingHorizontal: spacing[12] },
+  wrap: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 50 },
   inner: {
+    width: "100%",
+    maxWidth: 720,
+    alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
     gap: spacing[8],

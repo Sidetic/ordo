@@ -169,6 +169,11 @@ export const layout = {
   touchTargetMin: 44,
   tabBarHeight: 60,
   maxContentWidth: 640,
+  maxFormWidth: 480,
+  maxSettingsWidth: 720,
+  maxLibraryWidth: 1200,
+  sheetWidth: 560,
+  navigationRailWidth: 72,
 } as const;
 
 /**

@@ -28,7 +28,7 @@ module.exports = {
   name: "Ordo",
   slug: "ordo",
   version: "0.1.0",
-  orientation: "portrait",
+  orientation: "default",
   userInterfaceStyle: "automatic",
   icon: "./assets/icon.png",
   backgroundColor: "#EFE7D2",

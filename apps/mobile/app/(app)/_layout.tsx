@@ -1,7 +1,7 @@
 /**
  * Authenticated app layout — tabbed (Folders · Search · Settings).
- * Detail routes (folder/reader/sessions) are hidden from the tab bar and
- * render full-screen (tab bar hidden) for a focused experience.
+ * Detail routes stay focused on phones and retain the navigation rail when
+ * there is enough horizontal room.
  */
 import React from "react";
 import { Tabs } from "expo-router";
@@ -17,7 +17,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const HIDDEN = {
   href: null,
-  tabBarStyle: { display: "none" as const },
 };
 
 export default function AppLayout() {
@@ -25,8 +24,67 @@ export default function AppLayout() {
   const insets = useSafeAreaInsets();
   const status = useAuthStore((s) => s.status);
   const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
-  const { floating, bottom: floatingBottom, height: floatingHeight } = useFloatingDockMetrics();
+  const {
+    floating,
+    sideNavigation,
+    bottom: floatingBottom,
+    height: floatingHeight,
+  } = useFloatingDockMetrics();
   const tabBarHeight = showNavigationLabels ? layout.tabBarHeight : layout.touchTargetMin;
+  const railWidth = showNavigationLabels ? layout.navigationRailWidth : spacing[56];
+  const railInset = Math.max(insets.left, spacing[12]);
+  const tabBarStyle = sideNavigation
+    ? floating
+      ? {
+          position: "absolute" as const,
+          start: railInset,
+          top: Math.max(insets.top, spacing[12]),
+          bottom: Math.max(insets.bottom, spacing[12]),
+          width: railWidth,
+          paddingVertical: spacing[4],
+          backgroundColor: palette.surfaceElevated,
+          borderWidth: 1,
+          borderColor: palette.borderStrong,
+          borderRadius: radius["3xl"],
+          ...shadows.level3,
+        }
+      : {
+          width: railWidth + insets.left,
+          paddingLeft: insets.left,
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+          backgroundColor: palette.amoled ? palette.background : palette.surface,
+          borderWidth: 0,
+          shadowOpacity: 0,
+          elevation: 0,
+        }
+    : floating
+      ? {
+          position: "absolute" as const,
+          start: spacing[16],
+          end: spacing[16],
+          bottom: floatingBottom,
+          height: floatingHeight,
+          paddingHorizontal: spacing[4],
+          paddingVertical: spacing[4],
+          backgroundColor: palette.surfaceElevated,
+          borderWidth: 1,
+          borderColor: palette.borderStrong,
+          borderRadius: radius["3xl"],
+          ...shadows.level3,
+        }
+      : {
+          backgroundColor: palette.amoled ? palette.background : palette.surface,
+          height: tabBarHeight + insets.bottom,
+          paddingBottom: insets.bottom,
+          borderWidth: 0,
+          borderTopWidth: 0,
+          shadowOpacity: 0,
+          elevation: 0,
+        };
+  const hiddenOptions = sideNavigation
+    ? { ...HIDDEN, tabBarStyle }
+    : { ...HIDDEN, tabBarStyle: { display: "none" as const } };
   // Reconcile local session with the server once authenticated.
   useValidateSession();
 
@@ -43,44 +101,32 @@ export default function AppLayout() {
       backBehavior="history"
       screenOptions={{
         headerShown: false,
+        tabBarPosition: sideNavigation ? "left" : "bottom",
+        tabBarVariant: sideNavigation ? "material" : "uikit",
+        tabBarLabelPosition: "below-icon",
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: palette.accent,
         tabBarInactiveTintColor: palette.textTertiary,
         tabBarShowLabel: showNavigationLabels,
         tabBarActiveBackgroundColor: floating ? palette.accentSoft : "transparent",
-        tabBarStyle: floating
-          ? {
-              position: "absolute",
-              start: spacing[16],
-              end: spacing[16],
-              bottom: floatingBottom,
-              height: floatingHeight,
-              paddingHorizontal: spacing[4],
-              paddingVertical: spacing[4],
-              backgroundColor: palette.surfaceElevated,
-              borderWidth: 1,
-              borderColor: palette.borderStrong,
-              borderRadius: radius["3xl"],
-              ...shadows.level3,
-            }
-          : {
-              backgroundColor: palette.amoled ? palette.background : palette.surface,
-              height: tabBarHeight + insets.bottom,
-              paddingBottom: insets.bottom,
-              borderWidth: 0,
-              borderTopWidth: 0,
-              shadowOpacity: 0,
-              elevation: 0,
-            },
+        tabBarStyle,
+        sceneStyle:
+          sideNavigation && floating
+            ? { marginStart: railInset + railWidth + spacing[12] }
+            : undefined,
         tabBarLabelStyle: {
           fontFamily: "InterTight_500Medium",
           fontSize: floating ? 11 : 10,
           lineHeight: floating ? 15 : 14,
         },
         // React Navigation leaves an icon-only item slightly above center.
-        tabBarIconStyle: showNavigationLabels ? undefined : { transform: [{ translateY: spacing[2] }] },
+        tabBarIconStyle:
+          !sideNavigation && !showNavigationLabels
+            ? { transform: [{ translateY: spacing[2] }] }
+            : undefined,
         tabBarItemStyle: floating
           ? {
-              marginHorizontal: spacing[4],
+              marginHorizontal: sideNavigation ? spacing[6] : spacing[4],
               marginVertical: spacing[4],
               borderRadius: radius.xl,
               overflow: "hidden",
@@ -110,16 +156,16 @@ export default function AppLayout() {
         }}
       />
       {/* Hidden detail routes */}
-      <Tabs.Screen name="folder/[id]" options={HIDDEN} />
-      <Tabs.Screen name="reader/[id]" options={HIDDEN} />
-      <Tabs.Screen name="settings/sessions" options={HIDDEN} />
-      <Tabs.Screen name="settings/about" options={HIDDEN} />
-      <Tabs.Screen name="settings/account" options={HIDDEN} />
-      <Tabs.Screen name="settings/appearance" options={HIDDEN} />
-      <Tabs.Screen name="settings/server" options={HIDDEN} />
-      <Tabs.Screen name="settings/email" options={HIDDEN} />
-      <Tabs.Screen name="settings/verify-email" options={HIDDEN} />
-      <Tabs.Screen name="settings/password" options={HIDDEN} />
+      <Tabs.Screen name="folder/[id]" options={hiddenOptions} />
+      <Tabs.Screen name="reader/[id]" options={hiddenOptions} />
+      <Tabs.Screen name="settings/sessions" options={hiddenOptions} />
+      <Tabs.Screen name="settings/about" options={hiddenOptions} />
+      <Tabs.Screen name="settings/account" options={hiddenOptions} />
+      <Tabs.Screen name="settings/appearance" options={hiddenOptions} />
+      <Tabs.Screen name="settings/server" options={hiddenOptions} />
+      <Tabs.Screen name="settings/email" options={hiddenOptions} />
+      <Tabs.Screen name="settings/verify-email" options={hiddenOptions} />
+      <Tabs.Screen name="settings/password" options={hiddenOptions} />
     </Tabs>
   );
 }

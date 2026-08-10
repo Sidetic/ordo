@@ -2,12 +2,14 @@ import { usePathname } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSettingsStore } from "../store/settings";
 import { layout, spacing } from "../theme/tokens";
+import { useResponsiveLayout } from "./use-responsive-layout";
 
 const FLOATING_DOCK_PATHS = new Set(["/", "/search", "/settings"]);
 
 export function useFloatingDockMetrics() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { useSideNavigation } = useResponsiveLayout();
   const floating = useSettingsStore((s) => s.navigationStyle === "floating");
   const showLabels = useSettingsStore((s) => s.showNavigationLabels);
   const bottom = Math.max(insets.bottom, spacing[12]);
@@ -19,11 +21,12 @@ export function useFloatingDockMetrics() {
 
   return {
     floating,
-    visible: floating && navigationVisible,
+    sideNavigation: useSideNavigation,
+    visible: floating && !useSideNavigation && navigationVisible,
     bottom,
     height,
     clearance,
-    overlayClearance: navigationVisible
+    overlayClearance: navigationVisible && !useSideNavigation
       ? floating
         ? clearance
         : dockedClearance

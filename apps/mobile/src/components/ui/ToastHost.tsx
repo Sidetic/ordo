@@ -7,6 +7,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
@@ -115,10 +116,18 @@ function ToastItem({ toast }: { toast: Toast }) {
 export function ToastHost() {
   const toasts = useToastStore((s) => s.toasts);
   const { overlayClearance } = useFloatingDockMetrics();
+  const insets = useSafeAreaInsets();
   return (
     <Animated.View
       pointerEvents="box-none"
-      style={[styles.host, { paddingBottom: overlayClearance }]}
+      style={[
+        styles.host,
+        {
+          paddingBottom: overlayClearance,
+          paddingLeft: Math.max(insets.left, spacing[16]),
+          paddingRight: Math.max(insets.right, spacing[16]),
+        },
+      ]}
     >
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} />
@@ -128,8 +137,11 @@ export function ToastHost() {
 }
 
 const styles = StyleSheet.create({
-  host: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 100, paddingHorizontal: spacing[16] },
+  host: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 100 },
   toast: {
+    width: "100%",
+    maxWidth: 560,
+    alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
     gap: spacing[8],

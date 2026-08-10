@@ -14,6 +14,7 @@ import { haptics } from "../../lib/haptics";
 import { toast } from "../ui/toast-store";
 import { useTheme } from "../../theme/ThemeProvider";
 import { spacing } from "../../theme/tokens";
+import { useResponsiveLayout } from "../../hooks/use-responsive-layout";
 import type { BookmarkDto, FolderDto } from "@ordo/shared";
 
 export interface MoveSheetProps {
@@ -27,6 +28,7 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
   const { palette } = useTheme();
   const { data: folders } = useFolders();
   const move = useMoveBookmark(fromFolderId);
+  const { height } = useResponsiveLayout();
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
               <Text variant="footnote" color="tertiary">{item.bookmarkCount}</Text>
             </PressableScale>
           )}
-          style={{ maxHeight: 320 }}
+          style={{ maxHeight: Math.min(320, height * 0.5) }}
         />
       )}
     </Sheet>

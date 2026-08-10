@@ -32,6 +32,14 @@ export function EmptyState({ icon, title, message, action }: EmptyStateProps) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", justifyContent: "center", paddingVertical: spacing[48], paddingHorizontal: spacing[32] },
+  wrap: {
+    width: "100%",
+    maxWidth: 420,
+    alignSelf: "center",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing[48],
+    paddingHorizontal: spacing[32],
+  },
   iconCircle: { width: 60, height: 60, borderRadius: radius.lg, borderWidth: 1, alignItems: "center", justifyContent: "center" },
 });

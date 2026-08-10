@@ -12,7 +12,8 @@ import { PressableScale } from "./PressableScale";
 import { Text } from "./Text";
 import { useTheme } from "../../theme/ThemeProvider";
 import { haptics } from "../../lib/haptics";
-import { spacing } from "../../theme/tokens";
+import { layout, spacing } from "../../theme/tokens";
+import { useResponsiveLayout } from "../../hooks/use-responsive-layout";
 
 export interface HeaderProps {
   title: string;
@@ -21,12 +22,20 @@ export interface HeaderProps {
   onBack?: () => void;
   right?: React.ReactNode;
   large?: boolean;
+  safeTop?: boolean;
 }
 
-export function Header({ title, subtitle, showBack, onBack, right, large }: HeaderProps) {
+export function Header({ title, subtitle, showBack, onBack, right, large, safeTop = true }: HeaderProps) {
   const { palette } = useTheme();
   const insets = useSafeAreaInsets();
+  const { isLandscape, isTablet } = useResponsiveLayout();
   const router = useRouter();
+  const topInset = safeTop ? insets.top : 0;
+  const horizontalInsets = {
+    paddingLeft: Math.max(insets.left, spacing[4]),
+    paddingRight: Math.max(insets.right, spacing[4]),
+  };
+  const showLarge = large && (!isLandscape || isTablet);
 
   const handleBack = () => {
     haptics.light();
@@ -34,12 +43,17 @@ export function Header({ title, subtitle, showBack, onBack, right, large }: Head
     else if (router.canGoBack()) router.back();
   };
 
-  if (large) {
+  if (showLarge) {
     return (
       <View
         style={[
           styles.largeWrap,
-          { paddingTop: insets.top + spacing[4], borderBottomColor: palette.border },
+          {
+            paddingTop: topInset + spacing[4],
+            paddingLeft: Math.max(insets.left, spacing[12]),
+            paddingRight: Math.max(insets.right, spacing[12]),
+            borderBottomColor: palette.border,
+          },
         ]}
       >
         {right ? (
@@ -61,7 +75,13 @@ export function Header({ title, subtitle, showBack, onBack, right, large }: Head
   }
 
   return (
-    <View style={[styles.compactWrap, { paddingTop: insets.top + spacing[8], borderBottomColor: palette.border }]}>
+    <View
+      style={[
+        styles.compactWrap,
+        horizontalInsets,
+        { paddingTop: topInset + spacing[8], borderBottomColor: palette.border },
+      ]}
+    >
       <View style={styles.compactRow}>
         {showBack ? (
           <PressableScale style={styles.backBtn} scaleTo={0.85} onPress={handleBack} hitSlop={8}>
@@ -85,8 +105,18 @@ export function Header({ title, subtitle, showBack, onBack, right, large }: Head
 }
 
 const styles = StyleSheet.create({
-  largeWrap: { paddingHorizontal: spacing[12], paddingBottom: spacing[6] },
-  compactWrap: { paddingHorizontal: spacing[4], paddingBottom: spacing[4] },
+  largeWrap: {
+    width: "100%",
+    maxWidth: layout.maxLibraryWidth,
+    alignSelf: "center",
+    paddingBottom: spacing[6],
+  },
+  compactWrap: {
+    width: "100%",
+    maxWidth: layout.maxLibraryWidth,
+    alignSelf: "center",
+    paddingBottom: spacing[4],
+  },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 36 },
   compactRow: { minHeight: 36, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backBtn: { width: 36, height: 32, alignItems: "center", justifyContent: "center" },

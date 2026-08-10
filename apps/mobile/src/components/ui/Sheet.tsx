@@ -5,7 +5,6 @@
  */
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Dimensions,
   Keyboard,
   Modal,
   Pressable,
@@ -15,6 +14,7 @@ import {
   type StyleProp,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
@@ -27,9 +27,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../theme/ThemeProvider";
-import { radius, springs, spacing } from "../../theme/tokens";
+import { layout, radius, springs, spacing } from "../../theme/tokens";
 
-const SCREEN_H = Dimensions.get("window").height;
 const ENTER_EASING = Easing.bezier(0.22, 1, 0.36, 1);
 const EXIT_EASING = Easing.bezier(0.4, 0, 1, 1);
 
@@ -45,8 +44,14 @@ export interface SheetProps {
 export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, contentStyle }: SheetProps) {
   const { palette } = useTheme();
   const insets = useSafeAreaInsets();
-  // Panel translateY. 0 = fully open; SCREEN_H = fully hidden (off-screen).
-  const ty = useSharedValue(SCREEN_H);
+  const { width, height: screenHeight } = useWindowDimensions();
+  const panelWidth = Math.min(
+    layout.sheetWidth,
+    Math.max(0, width - insets.left - insets.right),
+  );
+  const panelLeft = insets.left + (width - insets.left - insets.right - panelWidth) / 2;
+  // Panel translateY. 0 = fully open; screenHeight = fully hidden.
+  const ty = useSharedValue(screenHeight);
   const scrim = useSharedValue(0);
   const startTy = useSharedValue(0);
   const [mounted, setMounted] = useState(visible);
@@ -59,11 +64,11 @@ export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, content
     } else if (mounted) {
       Keyboard.dismiss();
       scrim.value = withTiming(0, { duration: 180 });
-      ty.value = withTiming(SCREEN_H, { duration: 240, easing: EXIT_EASING }, (finished) => {
+      ty.value = withTiming(screenHeight, { duration: 240, easing: EXIT_EASING }, (finished) => {
         if (finished) runOnJS(setMounted)(false);
       });
     }
-  }, [visible, scrim, ty]);
+  }, [mounted, screenHeight, scrim, ty, visible]);
 
   const dismiss = useCallback(() => onDismiss(), [onDismiss]);
   const finishGestureDismiss = useCallback(() => {
@@ -82,7 +87,7 @@ export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, content
     .onEnd((e) => {
       if (ty.value > 100 || e.velocityY > 600) {
         scrim.value = withTiming(0, { duration: 180 });
-        ty.value = withTiming(SCREEN_H, { duration: 220, easing: EXIT_EASING }, (finished) => {
+        ty.value = withTiming(screenHeight, { duration: 220, easing: EXIT_EASING }, (finished) => {
           if (finished) runOnJS(finishGestureDismiss)();
         });
       } else {
@@ -126,7 +131,7 @@ export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, content
         <Pressable style={StyleSheet.absoluteFill} onPress={dismiss} />
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, styles.frame]}
           pointerEvents="box-none"
         >
           <GestureDetector gesture={pan}>
@@ -138,7 +143,9 @@ export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, content
                   borderColor: palette.border,
                   borderRadius: radius["2xl"],
                   paddingBottom: insets.bottom + spacing[12],
-                  maxHeight: `${Math.round(maxFraction * 100)}%`,
+                  width: panelWidth,
+                  left: panelLeft,
+                  maxHeight: screenHeight * maxFraction,
                 },
                 panelStyle,
                 contentStyle,
@@ -156,11 +163,10 @@ export function Sheet({ visible, onDismiss, children, maxFraction = 0.8, content
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  frame: { alignItems: "center" },
   panel: {
     position: "absolute",
     bottom: 0,
-    left: 0,
-    right: 0,
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: spacing[8],
     paddingHorizontal: spacing[20],
