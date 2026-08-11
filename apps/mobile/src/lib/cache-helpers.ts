@@ -79,7 +79,8 @@ export function findBookmarkInCache(qc: QueryClient, id: string): BookmarkDto | 
     queryKey: ["bookmarks"],
   });
   for (const [, data] of caches) {
-    if (!data) continue;
+    // The prefix also matches bookmark detail queries, which are not paginated.
+    if (!data || !Array.isArray(data.pages)) continue;
     for (const page of data.pages) {
       const found = page.items.find((b) => b.id === id);
       if (found) return found;
