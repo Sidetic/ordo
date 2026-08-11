@@ -12,7 +12,7 @@ import { useValidateSession } from "../../src/hooks/queries";
 import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metrics";
 import { useAuthStore } from "../../src/store/auth";
 import { useSettingsStore } from "../../src/store/settings";
-import { ActivityIndicator, Text as NativeText, View } from "react-native";
+import { ActivityIndicator, Text as NativeText, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const HIDDEN = {
@@ -22,6 +22,7 @@ const HIDDEN = {
 export default function AppLayout() {
   const { palette, shadows } = useTheme();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const pathname = usePathname();
   const status = useAuthStore((s) => s.status);
   const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
@@ -44,36 +45,20 @@ export default function AppLayout() {
   const compactRailHeight = showNavigationLabels
     ? layout.compactNavigationRailHeight
     : layout.compactNavigationRailIconHeight;
+  const compactDockLeft = Math.max(0, (windowWidth - compactDockWidth) / 2);
+  const compactRailTop = Math.max(0, (windowHeight - compactRailHeight) / 2);
   const railInset = Math.max(insets.left, spacing[8]);
   const tabBarStyle = React.useMemo(
     () => {
       // React Navigation retains one native tab bar while its position changes.
-      // Reset every mode-specific property so rail and bottom-dock geometry
+      // Every branch supplies concrete geometry so rail and bottom-dock values
       // cannot leak across an orientation change.
       const reset = {
-        position: "relative" as const,
-        left: undefined,
-        right: undefined,
-        start: undefined,
-        end: undefined,
-        top: undefined,
-        bottom: undefined,
-        width: undefined,
-        height: undefined,
-        paddingLeft: undefined,
-        paddingRight: undefined,
-        paddingStart: undefined,
-        paddingEnd: undefined,
-        paddingTop: undefined,
-        paddingBottom: undefined,
-        paddingHorizontal: undefined,
-        paddingVertical: undefined,
         borderWidth: 0,
         borderTopWidth: 0,
         borderRadius: 0,
         shadowOpacity: 0,
         elevation: 0,
-        transform: undefined,
         zIndex: 0,
       };
 
@@ -81,7 +66,19 @@ export default function AppLayout() {
         if (!floating) {
           return {
             ...reset,
+            position: "relative" as const,
+            left: 0,
+            right: "auto" as const,
+            start: 0,
+            end: "auto" as const,
+            top: 0,
+            bottom: 0,
             width: railWidth + insets.left,
+            height: "auto" as const,
+            marginLeft: 0,
+            marginRight: 0,
+            marginTop: 0,
+            marginBottom: 0,
             paddingLeft: insets.left + spacing[4],
             paddingRight: spacing[4],
             paddingTop: insets.top + spacing[6],
@@ -92,13 +89,18 @@ export default function AppLayout() {
 
         const compactGeometry = compact
           ? {
-              top: "50%" as const,
+              top: compactRailTop,
+              bottom: "auto" as const,
               height: compactRailHeight,
-              transform: [{ translateY: -compactRailHeight / 2 }],
+              marginTop: 0,
+              marginBottom: 0,
             }
           : {
               top: Math.max(insets.top, spacing[12]),
               bottom: Math.max(insets.bottom, spacing[12]),
+              height: "auto" as const,
+              marginTop: 0,
+              marginBottom: 0,
             };
 
         return {
@@ -106,7 +108,12 @@ export default function AppLayout() {
           ...compactGeometry,
           position: "absolute" as const,
           left: railInset,
+          right: "auto" as const,
+          start: railInset,
+          end: "auto" as const,
           width: railWidth,
+          marginLeft: 0,
+          marginRight: 0,
           paddingLeft: spacing[4],
           paddingRight: spacing[4],
           paddingTop: spacing[4],
@@ -123,7 +130,19 @@ export default function AppLayout() {
       if (!floating) {
         return {
           ...reset,
+          position: "relative" as const,
+          left: 0,
+          right: 0,
+          start: 0,
+          end: 0,
+          top: 0,
+          bottom: 0,
+          width: "auto" as const,
           height: tabBarHeight + insets.bottom,
+          marginLeft: 0,
+          marginRight: 0,
+          marginTop: 0,
+          marginBottom: 0,
           paddingBottom: insets.bottom,
           backgroundColor: palette.amoled ? palette.background : palette.surface,
         };
@@ -132,11 +151,18 @@ export default function AppLayout() {
       return {
         ...reset,
         position: "absolute" as const,
-        left: compact ? "50%" as const : spacing[16],
-        right: compact ? undefined : spacing[16],
+        left: compact ? compactDockLeft : spacing[16],
+        right: compact ? "auto" as const : spacing[16],
+        start: compact ? compactDockLeft : spacing[16],
+        end: compact ? "auto" as const : spacing[16],
+        top: "auto" as const,
         bottom: floatingBottom,
-        width: compact ? compactDockWidth : undefined,
+        width: compact ? compactDockWidth : "auto" as const,
         height: floatingHeight,
+        marginLeft: 0,
+        marginRight: 0,
+        marginTop: 0,
+        marginBottom: 0,
         paddingLeft: spacing[4],
         paddingRight: spacing[4],
         paddingTop: spacing[4],
@@ -145,15 +171,16 @@ export default function AppLayout() {
         borderWidth: 1,
         borderColor: palette.borderStrong,
         borderRadius: radius["3xl"],
-        transform: compact ? [{ translateX: -compactDockWidth / 2 }] : undefined,
         ...shadows.level3,
       };
     },
     [
       floating,
       compact,
+      compactDockLeft,
       compactDockWidth,
       compactRailHeight,
+      compactRailTop,
       floatingBottom,
       floatingHeight,
       insets.bottom,
