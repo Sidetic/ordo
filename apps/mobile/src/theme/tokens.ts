@@ -175,6 +175,8 @@ export const layout = {
   sheetWidth: 560,
   navigationRailWidth: 96,
   compactNavigationRailWidth: 80,
+  compactNavigationRailHeight: 240,
+  compactNavigationRailIconHeight: 176,
   compactFloatingDockWidth: 276,
   compactFloatingDockIconWidth: 176,
 } as const;

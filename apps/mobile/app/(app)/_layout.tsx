@@ -41,83 +41,119 @@ export default function AppLayout() {
   const compactDockWidth = showNavigationLabels
     ? layout.compactFloatingDockWidth
     : layout.compactFloatingDockIconWidth;
+  const compactRailHeight = showNavigationLabels
+    ? layout.compactNavigationRailHeight
+    : layout.compactNavigationRailIconHeight;
   const railInset = Math.max(insets.left, spacing[8]);
   const tabBarStyle = React.useMemo(
-    () =>
-      sideNavigation
-        ? floating
+    () => {
+      // React Navigation retains one native tab bar while its position changes.
+      // Reset every mode-specific property so rail and bottom-dock geometry
+      // cannot leak across an orientation change.
+      const reset = {
+        position: "relative" as const,
+        left: undefined,
+        right: undefined,
+        start: undefined,
+        end: undefined,
+        top: undefined,
+        bottom: undefined,
+        width: undefined,
+        height: undefined,
+        paddingLeft: undefined,
+        paddingRight: undefined,
+        paddingStart: undefined,
+        paddingEnd: undefined,
+        paddingTop: undefined,
+        paddingBottom: undefined,
+        paddingHorizontal: undefined,
+        paddingVertical: undefined,
+        borderWidth: 0,
+        borderTopWidth: 0,
+        borderRadius: 0,
+        shadowOpacity: 0,
+        elevation: 0,
+        transform: undefined,
+        zIndex: 0,
+      };
+
+      if (sideNavigation) {
+        if (!floating) {
+          return {
+            ...reset,
+            width: railWidth + insets.left,
+            paddingLeft: insets.left + spacing[4],
+            paddingRight: spacing[4],
+            paddingTop: insets.top + spacing[6],
+            paddingBottom: insets.bottom + spacing[6],
+            backgroundColor: palette.amoled ? palette.background : palette.surface,
+          };
+        }
+
+        const compactGeometry = compact
           ? {
-              position: "absolute" as const,
-              start: railInset,
+              top: "50%" as const,
+              height: compactRailHeight,
+              transform: [{ translateY: -compactRailHeight / 2 }],
+            }
+          : {
               top: Math.max(insets.top, spacing[12]),
               bottom: Math.max(insets.bottom, spacing[12]),
-              width: railWidth,
-              paddingStart: spacing[4],
-              paddingEnd: spacing[4],
-              paddingTop: spacing[4],
-              paddingBottom: spacing[4],
-              backgroundColor: palette.surfaceElevated,
-              borderWidth: 1,
-              borderColor: palette.borderStrong,
-              borderRadius: radius["3xl"],
-              zIndex: 20,
-              ...shadows.level3,
-            }
-          : {
-              width: railWidth + insets.left,
-              paddingStart: insets.left + spacing[4],
-              paddingEnd: spacing[4],
-              paddingTop: insets.top + spacing[6],
-              paddingBottom: insets.bottom + spacing[6],
-              backgroundColor: palette.amoled ? palette.background : palette.surface,
-              borderWidth: 0,
-              shadowOpacity: 0,
-              elevation: 0,
-            }
-        : floating
-          ? compact
-            ? {
-                position: "absolute" as const,
-                left: "50%" as const,
-                bottom: floatingBottom,
-                width: compactDockWidth,
-                height: floatingHeight,
-                paddingHorizontal: spacing[4],
-                paddingVertical: spacing[4],
-                backgroundColor: palette.surfaceElevated,
-                borderWidth: 1,
-                borderColor: palette.borderStrong,
-                borderRadius: radius["3xl"],
-                transform: [{ translateX: -compactDockWidth / 2 }],
-                ...shadows.level3,
-              }
-            : {
-              position: "absolute" as const,
-              start: spacing[16],
-              end: spacing[16],
-              bottom: floatingBottom,
-              height: floatingHeight,
-              paddingHorizontal: spacing[4],
-              paddingVertical: spacing[4],
-              backgroundColor: palette.surfaceElevated,
-              borderWidth: 1,
-              borderColor: palette.borderStrong,
-              borderRadius: radius["3xl"],
-              ...shadows.level3,
-            }
-          : {
-              backgroundColor: palette.amoled ? palette.background : palette.surface,
-              height: tabBarHeight + insets.bottom,
-              paddingBottom: insets.bottom,
-              borderWidth: 0,
-              borderTopWidth: 0,
-              shadowOpacity: 0,
-              elevation: 0,
-            },
+            };
+
+        return {
+          ...reset,
+          ...compactGeometry,
+          position: "absolute" as const,
+          left: railInset,
+          width: railWidth,
+          paddingLeft: spacing[4],
+          paddingRight: spacing[4],
+          paddingTop: spacing[4],
+          paddingBottom: spacing[4],
+          backgroundColor: palette.surfaceElevated,
+          borderWidth: 1,
+          borderColor: palette.borderStrong,
+          borderRadius: radius["3xl"],
+          zIndex: 20,
+          ...shadows.level3,
+        };
+      }
+
+      if (!floating) {
+        return {
+          ...reset,
+          height: tabBarHeight + insets.bottom,
+          paddingBottom: insets.bottom,
+          backgroundColor: palette.amoled ? palette.background : palette.surface,
+        };
+      }
+
+      return {
+        ...reset,
+        position: "absolute" as const,
+        left: compact ? "50%" as const : spacing[16],
+        right: compact ? undefined : spacing[16],
+        bottom: floatingBottom,
+        width: compact ? compactDockWidth : undefined,
+        height: floatingHeight,
+        paddingLeft: spacing[4],
+        paddingRight: spacing[4],
+        paddingTop: spacing[4],
+        paddingBottom: spacing[4],
+        backgroundColor: palette.surfaceElevated,
+        borderWidth: 1,
+        borderColor: palette.borderStrong,
+        borderRadius: radius["3xl"],
+        transform: compact ? [{ translateX: -compactDockWidth / 2 }] : undefined,
+        ...shadows.level3,
+      };
+    },
     [
       floating,
       compact,
       compactDockWidth,
+      compactRailHeight,
       floatingBottom,
       floatingHeight,
       insets.bottom,
@@ -147,19 +183,16 @@ export default function AppLayout() {
     : pathname.startsWith("/search")
       ? "search"
       : "folders";
-  const tabItemStyle = (section: typeof activeSection) => {
-    if (!floating && !sideNavigation) return undefined;
-
-    return {
-      marginHorizontal: sideNavigation || compact ? spacing[2] : spacing[4],
-      marginTop: sideNavigation && section === "folders" ? ("auto" as const) : spacing[4],
-      marginBottom: sideNavigation && section === "settings" ? ("auto" as const) : spacing[4],
-      borderRadius: radius.xl,
-      overflow: "hidden" as const,
-      backgroundColor:
-        floating && activeSection === section ? palette.accentSoft : "transparent",
-    };
-  };
+  const tabItemStyle = (section: typeof activeSection) => ({
+    flex: sideNavigation ? 0 : 1,
+    marginHorizontal: floating ? (sideNavigation || compact ? spacing[2] : spacing[4]) : 0,
+    marginTop: sideNavigation && section === "folders" ? ("auto" as const) : floating ? spacing[4] : 0,
+    marginBottom: sideNavigation && section === "settings" ? ("auto" as const) : floating ? spacing[4] : 0,
+    borderRadius: floating ? radius.xl : 0,
+    overflow: "hidden" as const,
+    backgroundColor:
+      floating && activeSection === section ? palette.accentSoft : "transparent",
+  });
   const tabColor = (section: typeof activeSection, fallback: string) =>
     activeSection === section ? palette.accent : fallback;
   const tabLabel = (section: typeof activeSection, label: string, fallback: string) => (
@@ -169,8 +202,8 @@ export default function AppLayout() {
       style={{
         color: tabColor(section, fallback),
         fontFamily: "InterTight_500Medium",
-        fontSize: floating ? 11 : 10,
-        lineHeight: floating ? 15 : 14,
+        fontSize: compact ? 10 : floating ? 11 : 10,
+        lineHeight: compact ? 14 : floating ? 15 : 14,
       }}
     >
       {label}
@@ -218,7 +251,7 @@ export default function AppLayout() {
           title: "Folders",
           tabBarItemStyle: tabItemStyle("folders"),
           tabBarIcon: ({ color }) => (
-            <Ionicons name="folder-outline" size={22} color={tabColor("folders", color)} />
+            <Ionicons name="folder-outline" size={compact ? 20 : 22} color={tabColor("folders", color)} />
           ),
           tabBarLabel: ({ color }) => tabLabel("folders", "Folders", color),
         }}
@@ -229,7 +262,7 @@ export default function AppLayout() {
           title: "Search",
           tabBarItemStyle: tabItemStyle("search"),
           tabBarIcon: ({ color }) => (
-            <Ionicons name="search-outline" size={22} color={tabColor("search", color)} />
+            <Ionicons name="search-outline" size={compact ? 20 : 22} color={tabColor("search", color)} />
           ),
           tabBarLabel: ({ color }) => tabLabel("search", "Search", color),
         }}
@@ -240,7 +273,7 @@ export default function AppLayout() {
           title: "Settings",
           tabBarItemStyle: tabItemStyle("settings"),
           tabBarIcon: ({ color }) => (
-            <Ionicons name="settings-outline" size={22} color={tabColor("settings", color)} />
+            <Ionicons name="settings-outline" size={compact ? 20 : 22} color={tabColor("settings", color)} />
           ),
           tabBarLabel: ({ color }) => tabLabel("settings", "Settings", color),
         }}
