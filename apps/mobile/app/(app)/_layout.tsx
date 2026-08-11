@@ -27,12 +27,20 @@ export default function AppLayout() {
   const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
   const {
     floating,
+    compact,
     sideNavigation,
     bottom: floatingBottom,
     height: floatingHeight,
   } = useFloatingDockMetrics();
   const tabBarHeight = showNavigationLabels ? layout.tabBarHeight : layout.touchTargetMin;
-  const railWidth = showNavigationLabels ? layout.navigationRailWidth : spacing[56];
+  const railWidth = showNavigationLabels
+    ? compact
+      ? layout.compactNavigationRailWidth
+      : layout.navigationRailWidth
+    : spacing[56];
+  const compactDockWidth = showNavigationLabels
+    ? layout.compactFloatingDockWidth
+    : layout.compactFloatingDockIconWidth;
   const railInset = Math.max(insets.left, spacing[8]);
   const tabBarStyle = React.useMemo(
     () =>
@@ -67,7 +75,23 @@ export default function AppLayout() {
               elevation: 0,
             }
         : floating
-          ? {
+          ? compact
+            ? {
+                position: "absolute" as const,
+                left: "50%" as const,
+                bottom: floatingBottom,
+                width: compactDockWidth,
+                height: floatingHeight,
+                paddingHorizontal: spacing[4],
+                paddingVertical: spacing[4],
+                backgroundColor: palette.surfaceElevated,
+                borderWidth: 1,
+                borderColor: palette.borderStrong,
+                borderRadius: radius["3xl"],
+                transform: [{ translateX: -compactDockWidth / 2 }],
+                ...shadows.level3,
+              }
+            : {
               position: "absolute" as const,
               start: spacing[16],
               end: spacing[16],
@@ -92,6 +116,8 @@ export default function AppLayout() {
             },
     [
       floating,
+      compact,
+      compactDockWidth,
       floatingBottom,
       floatingHeight,
       insets.bottom,
@@ -124,7 +150,7 @@ export default function AppLayout() {
   const tabItemStyle = (section: typeof activeSection) =>
     floating
       ? {
-          marginHorizontal: sideNavigation ? spacing[2] : spacing[4],
+          marginHorizontal: sideNavigation || compact ? spacing[2] : spacing[4],
           marginVertical: spacing[4],
           borderRadius: radius.xl,
           overflow: "hidden" as const,

@@ -10,7 +10,9 @@ export function useFloatingDockMetrics() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { useSideNavigation } = useResponsiveLayout();
-  const floating = useSettingsStore((s) => s.navigationStyle === "floating");
+  const navigationStyle = useSettingsStore((s) => s.navigationStyle);
+  const floating = navigationStyle !== "docked";
+  const compact = navigationStyle === "compactFloating";
   const showLabels = useSettingsStore((s) => s.showNavigationLabels);
   const bottom = Math.max(insets.bottom, spacing[12]);
   const height = (showLabels ? layout.tabBarHeight : layout.touchTargetMin) + spacing[8];
@@ -21,6 +23,7 @@ export function useFloatingDockMetrics() {
 
   return {
     floating,
+    compact,
     sideNavigation: useSideNavigation,
     visible: floating && !useSideNavigation && navigationVisible,
     bottom,

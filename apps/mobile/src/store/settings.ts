@@ -7,7 +7,7 @@ import { prefsGet, prefsSet, StorageKeys } from "../lib/storage";
 import type { ThemeMode } from "../theme/theme";
 
 export const DEFAULT_SERVER_URL = "http://localhost:3000";
-export type NavigationStyle = "docked" | "floating";
+export type NavigationStyle = "docked" | "floating" | "compactFloating";
 
 export interface SettingsState {
   serverUrl: string;
@@ -39,7 +39,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       serverUrl: saved?.serverUrl?.trim() || DEFAULT_SERVER_URL,
       themeMode: saved?.themeMode ?? "system",
       amoled: saved?.amoled ?? false,
-      navigationStyle: saved?.navigationStyle === "floating" ? "floating" : "docked",
+      navigationStyle:
+        saved?.navigationStyle === "floating" || saved?.navigationStyle === "compactFloating"
+          ? saved.navigationStyle
+          : "docked",
       showNavigationLabels: saved?.showNavigationLabels !== false,
       hydrated: true,
     });

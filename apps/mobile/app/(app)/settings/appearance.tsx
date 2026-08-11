@@ -1,6 +1,7 @@
 /** Theme and navigation preferences. */
 import React from "react";
 import { StyleSheet, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import {
   SettingsForm,
   SettingsPage,
@@ -24,7 +25,8 @@ const themeOptions: { value: ThemeMode; label: string }[] = [
 
 const navigationOptions: { value: NavigationStyle; label: string }[] = [
   { value: "docked", label: "Docked" },
-  { value: "floating", label: "Floating" },
+  { value: "floating", label: "Floating dock" },
+  { value: "compactFloating", label: "Compact floating dock" },
 ];
 
 export default function AppearanceScreen() {
@@ -67,12 +69,25 @@ export default function AppearanceScreen() {
         ) : null}
 
         <SettingsSectionLabel>Navigation</SettingsSectionLabel>
-        <SettingsForm style={styles.segmentedWrap}>
-          <Segmented
-            options={navigationOptions}
-            value={navigationStyle}
-            onChange={setNavigationStyle}
-          />
+        <SettingsForm>
+          {navigationOptions.map((option, index) => {
+            const selected = navigationStyle === option.value;
+            return (
+              <SettingRow
+                key={option.value}
+                label={option.label}
+                onPress={() => setNavigationStyle(option.value)}
+                right={
+                  <Ionicons
+                    name={selected ? "radio-button-on" : "radio-button-off"}
+                    size={20}
+                    color={selected ? palette.accent : palette.textTertiary}
+                  />
+                }
+                divider={index < navigationOptions.length - 1}
+              />
+            );
+          })}
         </SettingsForm>
         <View style={styles.navigationPreference}>
           <SettingRow
