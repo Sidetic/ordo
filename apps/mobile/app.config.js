@@ -36,7 +36,7 @@ module.exports = {
   updates: {
     url: "https://u.expo.dev/c044b586-2816-42c7-b564-bef8556e21da",
   },
-  runtimeVersion: { policy: "appVersion" },
+  runtimeVersion: { policy: "fingerprint" },
   plugins: [
     "expo-asset",
     [
