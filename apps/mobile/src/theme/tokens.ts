@@ -173,7 +173,7 @@ export const layout = {
   maxSettingsWidth: 720,
   maxLibraryWidth: 1200,
   sheetWidth: 560,
-  navigationRailWidth: 72,
+  navigationRailWidth: 96,
 } as const;
 
 /**

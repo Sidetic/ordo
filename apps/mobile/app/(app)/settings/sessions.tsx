@@ -96,49 +96,48 @@ export default function SessionsScreen() {
         <FlatList
           data={sessions ?? []}
           keyExtractor={(s) => s.id}
+          style={styles.list}
           contentContainerStyle={[
             styles.listContent,
             {
-              paddingLeft: insets.left,
-              paddingRight: insets.right,
+              paddingLeft: insets.left + spacing[16],
+              paddingRight: insets.right + spacing[16],
             },
             !(sessions?.length ?? 0) && styles.listContentEmpty,
           ]}
           ItemSeparatorComponent={() => <View style={{ height: spacing[10] }} />}
           renderItem={({ item }) => (
-            <View style={styles.cardWrap}>
-              <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-                <View style={styles.cardHead}>
-                  <View style={[styles.iconWrap, { backgroundColor: palette.surfaceSecondary }]}>
-                    <Ionicons name={deviceIcon(item)} size={18} color={palette.accent} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={styles.titleRow}>
-                      <Text variant="bodyStrong" numberOfLines={1}>{deviceLabel(item)}</Text>
-                      {item.current ? <Badge tone="accent">This device</Badge> : null}
-                    </View>
-                    <Text variant="footnote" color="tertiary" numberOfLines={1}>
-                      {deviceDescription(item)}
-                    </Text>
-                    <Text variant="footnote" color="tertiary" numberOfLines={1}>
-                      {item.ip ?? "Unknown IP"} · active {timeAgo(item.lastSeenAt)}
-                    </Text>
-                    <Text variant="caption" color="tertiary">Signed in {formatDate(item.createdAt)}</Text>
-                  </View>
+            <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <View style={styles.cardHead}>
+                <View style={[styles.iconWrap, { backgroundColor: palette.surfaceSecondary }]}>
+                  <Ionicons name={deviceIcon(item)} size={18} color={palette.accent} />
                 </View>
-                {item.current ? null : (
-                  <PressableScale
-                    style={[styles.revokeBtn, { borderColor: palette.danger }]}
-                    onPress={() => onRevoke(item)}
-                  >
-                    {revoke.isPending && revoke.variables === item.id ? (
-                      <ActivityIndicator size="small" color={palette.danger} />
-                    ) : (
-                      <Text variant="subhead" style={{ color: palette.danger }}>Revoke</Text>
-                    )}
-                  </PressableScale>
-                )}
+                <View style={{ flex: 1 }}>
+                  <View style={styles.titleRow}>
+                    <Text variant="bodyStrong" numberOfLines={1}>{deviceLabel(item)}</Text>
+                    {item.current ? <Badge tone="accent">This device</Badge> : null}
+                  </View>
+                  <Text variant="footnote" color="tertiary" numberOfLines={1}>
+                    {deviceDescription(item)}
+                  </Text>
+                  <Text variant="footnote" color="tertiary" numberOfLines={1}>
+                    {item.ip ?? "Unknown IP"} · active {timeAgo(item.lastSeenAt)}
+                  </Text>
+                  <Text variant="caption" color="tertiary">Signed in {formatDate(item.createdAt)}</Text>
+                </View>
               </View>
+              {item.current ? null : (
+                <PressableScale
+                  style={[styles.revokeBtn, { borderColor: palette.danger }]}
+                  onPress={() => onRevoke(item)}
+                >
+                  {revoke.isPending && revoke.variables === item.id ? (
+                    <ActivityIndicator size="small" color={palette.danger} />
+                  ) : (
+                    <Text variant="subhead" style={{ color: palette.danger }}>Revoke</Text>
+                  )}
+                </PressableScale>
+              )}
             </View>
           )}
           ListEmptyComponent={
@@ -160,9 +159,9 @@ const styles = StyleSheet.create({
   stateContent: { paddingTop: spacing[24], paddingHorizontal: spacing[16] },
   loadingContent: { paddingTop: spacing[12], paddingHorizontal: spacing[16] },
   skeleton: { width: "100%", marginBottom: spacing[10] },
-  listContent: { paddingTop: spacing[12], paddingBottom: spacing[32], alignItems: "center" },
+  list: { width: "100%", maxWidth: layout.maxSettingsWidth, alignSelf: "center" },
+  listContent: { paddingTop: spacing[12], paddingBottom: spacing[32] },
   listContentEmpty: { flexGrow: 1, justifyContent: "center" },
-  cardWrap: { width: "100%", maxWidth: layout.maxSettingsWidth, paddingHorizontal: spacing[16] },
   card: { width: "100%", borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: spacing[14] },
   cardHead: { flexDirection: "row", gap: spacing[12], alignItems: "flex-start" },
   iconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },

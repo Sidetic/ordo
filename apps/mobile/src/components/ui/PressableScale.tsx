@@ -13,6 +13,7 @@ import {
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  cancelAnimation,
   withSpring,
   interpolate,
 } from "react-native-reanimated";
@@ -41,6 +42,13 @@ export function PressableScale({
   ...rest
 }: PressableScaleProps) {
   const pressed = useSharedValue(0);
+
+  React.useEffect(
+    () => () => {
+      cancelAnimation(pressed);
+    },
+    [pressed],
+  );
 
   const handleIn = useCallback(
     (e: GestureResponderEvent) => {

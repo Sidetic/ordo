@@ -4,7 +4,7 @@
  * there is enough horizontal room.
  */
 import React from "react";
-import { Tabs } from "expo-router";
+import { Tabs, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { layout, radius, spacing } from "../../src/theme/tokens";
@@ -12,7 +12,7 @@ import { useValidateSession } from "../../src/hooks/queries";
 import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metrics";
 import { useAuthStore } from "../../src/store/auth";
 import { useSettingsStore } from "../../src/store/settings";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Text as NativeText, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const HIDDEN = {
@@ -22,6 +22,7 @@ const HIDDEN = {
 export default function AppLayout() {
   const { palette, shadows } = useTheme();
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
   const status = useAuthStore((s) => s.status);
   const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
   const {
@@ -32,63 +33,120 @@ export default function AppLayout() {
   } = useFloatingDockMetrics();
   const tabBarHeight = showNavigationLabels ? layout.tabBarHeight : layout.touchTargetMin;
   const railWidth = showNavigationLabels ? layout.navigationRailWidth : spacing[56];
-  const railInset = Math.max(insets.left, spacing[12]);
-  const tabBarStyle = sideNavigation
-    ? floating
+  const railInset = Math.max(insets.left, spacing[8]);
+  const tabBarStyle = React.useMemo(
+    () =>
+      sideNavigation
+        ? floating
+          ? {
+              position: "absolute" as const,
+              start: railInset,
+              top: Math.max(insets.top, spacing[12]),
+              bottom: Math.max(insets.bottom, spacing[12]),
+              width: railWidth,
+              paddingStart: spacing[4],
+              paddingEnd: spacing[4],
+              paddingTop: spacing[4],
+              paddingBottom: spacing[4],
+              backgroundColor: palette.surfaceElevated,
+              borderWidth: 1,
+              borderColor: palette.borderStrong,
+              borderRadius: radius["3xl"],
+              zIndex: 20,
+              ...shadows.level3,
+            }
+          : {
+              width: railWidth + insets.left,
+              paddingStart: insets.left + spacing[4],
+              paddingEnd: spacing[4],
+              paddingTop: insets.top + spacing[6],
+              paddingBottom: insets.bottom + spacing[6],
+              backgroundColor: palette.amoled ? palette.background : palette.surface,
+              borderWidth: 0,
+              shadowOpacity: 0,
+              elevation: 0,
+            }
+        : floating
+          ? {
+              position: "absolute" as const,
+              start: spacing[16],
+              end: spacing[16],
+              bottom: floatingBottom,
+              height: floatingHeight,
+              paddingHorizontal: spacing[4],
+              paddingVertical: spacing[4],
+              backgroundColor: palette.surfaceElevated,
+              borderWidth: 1,
+              borderColor: palette.borderStrong,
+              borderRadius: radius["3xl"],
+              ...shadows.level3,
+            }
+          : {
+              backgroundColor: palette.amoled ? palette.background : palette.surface,
+              height: tabBarHeight + insets.bottom,
+              paddingBottom: insets.bottom,
+              borderWidth: 0,
+              borderTopWidth: 0,
+              shadowOpacity: 0,
+              elevation: 0,
+            },
+    [
+      floating,
+      floatingBottom,
+      floatingHeight,
+      insets.bottom,
+      insets.left,
+      insets.top,
+      palette.amoled,
+      palette.background,
+      palette.borderStrong,
+      palette.surface,
+      palette.surfaceElevated,
+      railInset,
+      railWidth,
+      shadows.level3,
+      sideNavigation,
+      tabBarHeight,
+    ],
+  );
+  const hiddenOptions = React.useMemo(
+    () =>
+      sideNavigation
+        ? { ...HIDDEN, tabBarStyle }
+        : { ...HIDDEN, tabBarStyle: { display: "none" as const } },
+    [sideNavigation, tabBarStyle],
+  );
+  const activeSection = pathname.startsWith("/settings")
+    ? "settings"
+    : pathname.startsWith("/search")
+      ? "search"
+      : "folders";
+  const tabItemStyle = (section: typeof activeSection) =>
+    floating
       ? {
-          position: "absolute" as const,
-          start: railInset,
-          top: Math.max(insets.top, spacing[12]),
-          bottom: Math.max(insets.bottom, spacing[12]),
-          width: railWidth,
-          paddingStart: spacing[4],
-          paddingEnd: spacing[4],
-          paddingTop: spacing[4],
-          paddingBottom: spacing[4],
-          backgroundColor: palette.surfaceElevated,
-          borderWidth: 1,
-          borderColor: palette.borderStrong,
-          borderRadius: radius["3xl"],
-          ...shadows.level3,
+          marginHorizontal: sideNavigation ? spacing[2] : spacing[4],
+          marginVertical: spacing[4],
+          borderRadius: radius.xl,
+          overflow: "hidden" as const,
+          backgroundColor: activeSection === section ? palette.accentSoft : "transparent",
         }
-      : {
-          width: railWidth + insets.left,
-          paddingStart: insets.left + spacing[12],
-          paddingEnd: spacing[12],
-          paddingTop: insets.top + spacing[6],
-          paddingBottom: insets.bottom + spacing[6],
-          backgroundColor: palette.amoled ? palette.background : palette.surface,
-          borderWidth: 0,
-          shadowOpacity: 0,
-          elevation: 0,
-        }
-    : floating
-      ? {
-          position: "absolute" as const,
-          start: spacing[16],
-          end: spacing[16],
-          bottom: floatingBottom,
-          height: floatingHeight,
-          paddingHorizontal: spacing[4],
-          paddingVertical: spacing[4],
-          backgroundColor: palette.surfaceElevated,
-          borderWidth: 1,
-          borderColor: palette.borderStrong,
-          borderRadius: radius["3xl"],
-          ...shadows.level3,
-        }
-      : {
-          backgroundColor: palette.amoled ? palette.background : palette.surface,
-          height: tabBarHeight + insets.bottom,
-          paddingBottom: insets.bottom,
-          borderWidth: 0,
-          borderTopWidth: 0,
-          shadowOpacity: 0,
-          elevation: 0,
-        };
-  const hiddenOptions = sideNavigation
-    ? { ...HIDDEN, tabBarStyle }
-    : { ...HIDDEN, tabBarStyle: { display: "none" as const } };
+      : undefined;
+  const tabColor = (section: typeof activeSection, fallback: string) =>
+    activeSection === section ? palette.accent : fallback;
+  const tabLabel = (section: typeof activeSection, label: string, fallback: string) => (
+    <NativeText
+      numberOfLines={1}
+      ellipsizeMode="tail"
+      style={{
+        color: tabColor(section, fallback),
+        fontFamily: "InterTight_500Medium",
+        fontSize: floating ? 11 : 10,
+        lineHeight: floating ? 15 : 14,
+      }}
+    >
+      {label}
+    </NativeText>
+  );
   // Reconcile local session with the server once authenticated.
   useValidateSession();
 
@@ -112,51 +170,50 @@ export default function AppLayout() {
         tabBarActiveTintColor: palette.accent,
         tabBarInactiveTintColor: palette.textTertiary,
         tabBarShowLabel: showNavigationLabels,
-        tabBarActiveBackgroundColor: floating ? palette.accentSoft : "transparent",
+        tabBarActiveBackgroundColor: "transparent",
         tabBarStyle,
         sceneStyle:
           sideNavigation && floating
             ? { marginStart: railInset + railWidth + spacing[12] }
             : undefined,
-        tabBarLabelStyle: {
-          fontFamily: "InterTight_500Medium",
-          fontSize: floating ? 11 : 10,
-          lineHeight: floating ? 15 : 14,
-        },
         // React Navigation leaves an icon-only item slightly above center.
         tabBarIconStyle:
           !sideNavigation && !showNavigationLabels
             ? { transform: [{ translateY: spacing[2] }] }
             : undefined,
-        tabBarItemStyle: floating
-          ? {
-              marginHorizontal: sideNavigation ? spacing[6] : spacing[4],
-              marginVertical: spacing[4],
-              borderRadius: radius.xl,
-              overflow: "hidden",
-            }
-          : undefined,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Folders",
-          tabBarIcon: ({ color }) => <Ionicons name="folder-outline" size={22} color={color} />,
+          tabBarItemStyle: tabItemStyle("folders"),
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="folder-outline" size={22} color={tabColor("folders", color)} />
+          ),
+          tabBarLabel: ({ color }) => tabLabel("folders", "Folders", color),
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
           title: "Search",
-          tabBarIcon: ({ color }) => <Ionicons name="search-outline" size={22} color={color} />,
+          tabBarItemStyle: tabItemStyle("search"),
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="search-outline" size={22} color={tabColor("search", color)} />
+          ),
+          tabBarLabel: ({ color }) => tabLabel("search", "Search", color),
         }}
       />
       <Tabs.Screen
         name="settings/index"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color }) => <Ionicons name="settings-outline" size={22} color={color} />,
+          tabBarItemStyle: tabItemStyle("settings"),
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="settings-outline" size={22} color={tabColor("settings", color)} />
+          ),
+          tabBarLabel: ({ color }) => tabLabel("settings", "Settings", color),
         }}
       />
       {/* Hidden detail routes */}

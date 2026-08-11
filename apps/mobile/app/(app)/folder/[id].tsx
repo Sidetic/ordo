@@ -3,7 +3,7 @@
  * Handles protected folders (unlock prompt → token cached → retry),
  * optimistic toggle/delete/move, mark-all-read, and export/actions.
  */
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
@@ -63,12 +63,6 @@ export default function FolderDetailScreen() {
   const items = useMemo(() => flattenPages(bookmarks.data?.pages ?? []), [bookmarks.data]);
   const isEmpty = !bookmarks.isLoading && !protectedError && items.length === 0;
   const hasUnread = (folder?.unreadCount ?? 0) > 0;
-
-  React.useEffect(() => {
-    if (!hasDetailPane && selectedBookmarkId) {
-      router.replace(`/reader/${selectedBookmarkId}`);
-    }
-  }, [hasDetailPane, router, selectedBookmarkId]);
 
   const openReader = (b: BookmarkDto) => {
     if (hasDetailPane) {
@@ -275,7 +269,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, width: "100%", justifyContent: "center" },
   singlePane: { flex: 1, width: "100%" },
   splitPane: { flex: 1, width: "100%", flexDirection: "row", gap: spacing[16], paddingBottom: spacing[8] },
-  listPane: { flexBasis: 380, flexGrow: 0, flexShrink: 1, minWidth: 320, maxWidth: 420 },
+  listPane: { width: 380, flexShrink: 0 },
   readerPane: {
     flex: 1,
     minWidth: 0,

@@ -78,7 +78,7 @@ export function ReaderPane({
         showBack={!embedded}
         onBack={!embedded ? onBack : undefined}
         safeTop={!embedded}
-        maxWidth={embedded ? layout.maxLibraryWidth : layout.maxContentWidth}
+        maxWidth={layout.maxLibraryWidth}
         right={
           bookmark ? (
             <PressableScale

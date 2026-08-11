@@ -61,12 +61,6 @@ export default function SearchScreen() {
     }
   }, [q, routeQuery]);
 
-  useEffect(() => {
-    if (!hasDetailPane && selectedBookmarkId) {
-      router.replace(`/reader/${selectedBookmarkId}`);
-    }
-  }, [hasDetailPane, router, selectedBookmarkId]);
-
   const openReader = (b: BookmarkDto) => {
     if (hasDetailPane) {
       router.push({
@@ -185,7 +179,7 @@ const styles = StyleSheet.create({
   stateFill: { flex: 1, alignItems: "center", justifyContent: "center" },
   singlePane: { flex: 1, width: "100%" },
   splitPane: { flex: 1, width: "100%", flexDirection: "row", gap: spacing[16], paddingBottom: spacing[8] },
-  listPane: { flexBasis: 380, flexGrow: 0, flexShrink: 1, minWidth: 320, maxWidth: 420 },
+  listPane: { width: 380, flexShrink: 0 },
   readerPane: {
     flex: 1,
     minWidth: 0,
