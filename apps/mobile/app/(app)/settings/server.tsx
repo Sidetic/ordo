@@ -5,9 +5,9 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import {
   SettingsForm,
+  SettingsGroup,
   SettingsPage,
   SettingsScrollView,
-  SettingsSectionLabel,
 } from "../../../src/components/settings/SettingsPage";
 import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
@@ -135,44 +135,47 @@ export default function ServerScreen() {
   return (
     <SettingsPage title="Server">
       <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-        <SettingsSectionLabel compact>Current server</SettingsSectionLabel>
-        <SettingRow
-          icon={
-            serverInfo.isLoading
-              ? "sync-outline"
-              : serverInfo.data && !serverInfo.error
-                ? "checkmark-circle-outline"
-                : "cloud-offline-outline"
-          }
-          label={hostOf(currentUrl)}
-          value={connectionValue}
-          divider={false}
-        />
+        <SettingsGroup label="Current server" compact>
+          <SettingRow
+            icon={
+              serverInfo.isLoading
+                ? "sync-outline"
+                : serverInfo.data && !serverInfo.error
+                  ? "checkmark-circle-outline"
+                  : "cloud-offline-outline"
+            }
+            label={hostOf(currentUrl)}
+            description={currentUrl}
+            value={connectionValue}
+            divider={false}
+          />
+        </SettingsGroup>
 
-        <SettingsSectionLabel>Change server</SettingsSectionLabel>
-        <SettingsForm style={styles.editor}>
-          <Input
-            label="Server URL"
-            value={url}
-            onChangeText={setUrl}
-            placeholder="https://ordo.example.com"
-            mono
-            keyboardType="url"
-            autoCapitalize="none"
-            autoCorrect={false}
-            icon={<Ionicons name="link" size={15} color={palette.textTertiary} />}
-          />
-          {!unchanged ? <ServerProbeLog steps={steps} probing={probing} /> : null}
-          <Button
-            label="Change server"
-            block
-            size="lg"
-            disabled={!canChange}
-            loading={rechecking}
-            onPress={() => void requestSwitch()}
-            style={styles.changeButton}
-          />
-        </SettingsForm>
+        <SettingsGroup label="Change server" footer="Switching servers signs you out and restarts Ordo.">
+          <SettingsForm style={styles.editor}>
+            <Input
+              label="Server URL"
+              value={url}
+              onChangeText={setUrl}
+              placeholder="https://ordo.example.com"
+              mono
+              keyboardType="url"
+              autoCapitalize="none"
+              autoCorrect={false}
+              icon={<Ionicons name="link" size={15} color={palette.textTertiary} />}
+            />
+            {!unchanged ? <ServerProbeLog steps={steps} probing={probing} /> : null}
+            <Button
+              label="Change server"
+              block
+              size="lg"
+              disabled={!canChange}
+              loading={rechecking}
+              onPress={() => void requestSwitch()}
+              style={styles.changeButton}
+            />
+          </SettingsForm>
+        </SettingsGroup>
       </SettingsScrollView>
 
       <Sheet
@@ -221,7 +224,7 @@ export default function ServerScreen() {
 }
 
 const styles = StyleSheet.create({
-  editor: { paddingHorizontal: spacing[16], paddingTop: spacing[4] },
+  editor: { padding: spacing[16] },
   changeButton: { marginTop: spacing[16] },
   confirmHeader: { flexDirection: "row", alignItems: "flex-start", gap: spacing[12] },
   confirmIcon: {

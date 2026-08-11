@@ -11,6 +11,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Header } from "../ui/Header";
 import { Text } from "../ui/Text";
+import { Card } from "../ui/Card";
 import { useTheme } from "../../theme/ThemeProvider";
 import { layout, spacing } from "../../theme/tokens";
 
@@ -50,7 +51,10 @@ export function SettingsScrollView({
     <ScrollView
       contentContainerStyle={[
         styles.scrollContent,
-        { paddingLeft: insets.left, paddingRight: insets.right },
+        {
+          paddingLeft: insets.left + spacing[16],
+          paddingRight: insets.right + spacing[16],
+        },
         contentContainerStyle,
       ]}
       showsVerticalScrollIndicator={false}
@@ -107,16 +111,45 @@ export function SettingsSectionLabel({
   );
 }
 
+export function SettingsGroup({
+  label,
+  compact,
+  footer,
+  children,
+  style,
+}: {
+  label?: string;
+  compact?: boolean;
+  footer?: string;
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={style}>
+      {label ? <SettingsSectionLabel compact={compact}>{label}</SettingsSectionLabel> : null}
+      <Card pad={0} radiusKey="2xl" style={styles.group}>
+        {children}
+      </Card>
+      {footer ? (
+        <Text variant="caption" color="tertiary" style={styles.groupFooter}>
+          {footer}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   page: { flex: 1 },
   scrollContent: { paddingBottom: spacing[40] },
   contentFrame: { width: "100%" },
   contentColumn: { width: "100%", alignSelf: "center" },
-  formColumn: { width: "100%", maxWidth: layout.maxFormWidth, alignSelf: "center" },
+  formColumn: { width: "100%", alignSelf: "center" },
   sectionLabel: {
-    paddingHorizontal: spacing[20],
-    paddingTop: spacing[20],
+    paddingTop: spacing[24],
     paddingBottom: spacing[8],
   },
-  compactSectionLabel: { paddingTop: spacing[8] },
+  compactSectionLabel: { paddingTop: spacing[12] },
+  group: { overflow: "hidden" },
+  groupFooter: { paddingHorizontal: spacing[4], paddingTop: spacing[8] },
 });

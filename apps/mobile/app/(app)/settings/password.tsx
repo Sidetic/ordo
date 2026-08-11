@@ -3,10 +3,11 @@
  * other sessions on success, signing out every other device.
  */
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Platform, View } from "react-native";
+import { KeyboardAvoidingView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import {
   SettingsForm,
+  SettingsGroup,
   SettingsPage,
   SettingsScrollView,
 } from "../../../src/components/settings/SettingsPage";
@@ -58,48 +59,47 @@ export default function ChangePasswordScreen() {
         style={{ flex: 1 }}
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-          <SettingsForm style={styles.form}>
-            <Input
-              label="Current password"
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              placeholder="Enter your current password"
-              secureTextEntry={!showPwd}
-              textContentType="password"
-              error={formError || undefined}
-              rightAccessory={
-                <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
-              }
-            />
-            <View style={{ height: spacing[16] }} />
-            <Input
-              label="New password"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="At least 8 characters"
-              secureTextEntry={!showPwd}
-              textContentType="newPassword"
-              helper="Use 8 characters or more."
-            />
-            <View style={{ height: spacing[16] }} />
-            <Input
-              label="Confirm new password"
-              value={confirm}
-              onChangeText={setConfirm}
-              placeholder="Re-enter your new password"
-              secureTextEntry={!showPwd}
-              textContentType="newPassword"
-            />
+          <SettingsGroup label="Change password" compact footer="Changing your password signs out every other device.">
+            <SettingsForm style={styles.form}>
+              <Input
+                label="Current password"
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                placeholder="Enter your current password"
+                secureTextEntry={!showPwd}
+                textContentType="password"
+                error={formError || undefined}
+                rightAccessory={
+                  <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
+                }
+              />
+              <Input
+                label="New password"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder="At least 8 characters"
+                secureTextEntry={!showPwd}
+                textContentType="newPassword"
+                helper="Use 8 characters or more."
+              />
+              <Input
+                label="Confirm new password"
+                value={confirm}
+                onChangeText={setConfirm}
+                placeholder="Re-enter your new password"
+                secureTextEntry={!showPwd}
+                textContentType="newPassword"
+              />
 
-            <View style={{ height: spacing[24] }} />
-            <Button
-              label="Change password"
-              block
-              size="lg"
-              onPress={submit}
-              loading={changePassword.isPending}
-            />
-          </SettingsForm>
+              <Button
+                label="Change password"
+                block
+                size="lg"
+                onPress={submit}
+                loading={changePassword.isPending}
+              />
+            </SettingsForm>
+          </SettingsGroup>
         </SettingsScrollView>
       </KeyboardAvoidingView>
     </SettingsPage>
@@ -107,5 +107,5 @@ export default function ChangePasswordScreen() {
 }
 
 const styles = {
-  form: { paddingHorizontal: spacing[20], paddingTop: spacing[20], paddingBottom: spacing[32] },
+  form: { padding: spacing[16], gap: spacing[16] },
 };

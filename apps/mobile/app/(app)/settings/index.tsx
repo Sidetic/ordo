@@ -1,13 +1,13 @@
 /** Settings hub: focused destinations for account and app preferences. */
 import React, { useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../../src/components/ui/Header";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { Button } from "../../../src/components/ui/Button";
 import { Text } from "../../../src/components/ui/Text";
-import { SettingsContent } from "../../../src/components/settings/SettingsPage";
+import { SettingsGroup, SettingsScrollView } from "../../../src/components/settings/SettingsPage";
 import { useAuthStore } from "../../../src/store/auth";
 import { useSettingsStore } from "../../../src/store/settings";
 import { useLogout } from "../../../src/hooks/use-auth-actions";
@@ -29,50 +29,52 @@ export default function SettingsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
       <Header title="Settings" large maxWidth={layout.maxSettingsWidth} />
-      <ScrollView
+      <SettingsScrollView
         contentContainerStyle={[
           styles.content,
           { paddingBottom: floatingNavigation ? floatingBottomClearance : spacing[40] },
         ]}
-        showsVerticalScrollIndicator={false}
       >
-        <SettingsContent>
-          <View style={styles.destinations}>
-            <SettingRow
-              icon="person-circle-outline"
-              label="Account"
-              value={user?.username ?? "—"}
-              onPress={() => router.push("/settings/account")}
-              showChevron
-            />
-            <SettingRow
-              icon="color-palette-outline"
-              label="Appearance"
-              onPress={() => router.push("/settings/appearance")}
-              showChevron
-            />
-            <SettingRow
-              icon="phone-portrait-outline"
-              label="Active sessions"
-              onPress={() => router.push("/settings/sessions")}
-              showChevron
-            />
-            <SettingRow
-              icon="server-outline"
-              label="Server"
-              value={hostOf(serverUrl)}
-              onPress={() => router.push("/settings/server")}
-              showChevron
-            />
-            <SettingRow
-              icon="information-circle-outline"
-              label="About"
-              onPress={() => router.push("/settings/about")}
-              showChevron
-              divider={false}
-            />
-          </View>
+        <SettingsGroup label="Preferences" compact>
+          <SettingRow
+            icon="person-circle-outline"
+            label="Account"
+            value={user?.username ?? "—"}
+            onPress={() => router.push("/settings/account")}
+            showChevron
+          />
+          <SettingRow
+            icon="color-palette-outline"
+            label="Appearance"
+            description="Theme, display, and navigation"
+            onPress={() => router.push("/settings/appearance")}
+            showChevron
+          />
+          <SettingRow
+            icon="phone-portrait-outline"
+            label="Active sessions"
+            description="Review devices signed in to your account"
+            onPress={() => router.push("/settings/sessions")}
+            showChevron
+          />
+          <SettingRow
+            icon="server-outline"
+            label="Server"
+            description="Connection and self-hosting"
+            value={hostOf(serverUrl)}
+            onPress={() => router.push("/settings/server")}
+            showChevron
+          />
+          <SettingRow
+            icon="information-circle-outline"
+            label="About"
+            onPress={() => router.push("/settings/about")}
+            showChevron
+            divider={false}
+          />
+        </SettingsGroup>
 
+        <SettingsGroup label="Account">
           <View style={styles.signout}>
             <Button
               label="Sign out"
@@ -83,8 +85,8 @@ export default function SettingsScreen() {
               onPress={() => setConfirmingLogout(true)}
             />
           </View>
-        </SettingsContent>
-      </ScrollView>
+        </SettingsGroup>
+      </SettingsScrollView>
 
       <Modal
         visible={confirmingLogout}
@@ -147,8 +149,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingTop: spacing[4] },
-  destinations: { paddingTop: spacing[2] },
-  signout: { paddingHorizontal: spacing[16], paddingTop: spacing[32] },
+  signout: { padding: spacing[16] },
   modalRoot: {
     flex: 1,
     alignItems: "center",

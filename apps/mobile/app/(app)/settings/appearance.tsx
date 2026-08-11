@@ -1,32 +1,30 @@
 /** Theme and navigation preferences. */
 import React from "react";
-import { StyleSheet, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import {
-  SettingsForm,
+  SettingsGroup,
   SettingsPage,
   SettingsScrollView,
-  SettingsSectionLabel,
 } from "../../../src/components/settings/SettingsPage";
+import {
+  SettingsSelect,
+  type SettingsSelectOption,
+} from "../../../src/components/settings/SettingsSelect";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
-import { Text } from "../../../src/components/ui/Text";
-import { Segmented } from "../../../src/components/ui/Segmented";
 import { Toggle } from "../../../src/components/ui/Toggle";
 import { useSettingsStore, type NavigationStyle } from "../../../src/store/settings";
 import { useTheme } from "../../../src/theme/ThemeProvider";
-import { spacing } from "../../../src/theme/tokens";
 import type { ThemeMode } from "../../../src/theme/theme";
 
-const themeOptions: { value: ThemeMode; label: string }[] = [
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-  { value: "system", label: "System" },
+const themeOptions: readonly SettingsSelectOption<ThemeMode>[] = [
+  { value: "light", label: "Light", icon: "sunny-outline" },
+  { value: "dark", label: "Dark", icon: "moon-outline" },
+  { value: "system", label: "System", icon: "desktop-outline" },
 ];
 
-const navigationOptions: { value: NavigationStyle; label: string }[] = [
-  { value: "docked", label: "Docked" },
-  { value: "floating", label: "Floating dock" },
-  { value: "compactFloating", label: "Compact floating dock" },
+const navigationOptions: readonly SettingsSelectOption<NavigationStyle>[] = [
+  { value: "docked", label: "Docked", icon: "remove-outline" },
+  { value: "floating", label: "Floating dock", shortLabel: "Floating", icon: "tablet-landscape-outline" },
+  { value: "compactFloating", label: "Compact floating dock", shortLabel: "Compact", icon: "ellipsis-horizontal-outline" },
 ];
 
 export default function AppearanceScreen() {
@@ -44,65 +42,62 @@ export default function AppearanceScreen() {
   return (
     <SettingsPage title="Appearance">
       <SettingsScrollView>
-        <SettingsSectionLabel compact>Theme</SettingsSectionLabel>
-        <SettingsForm style={styles.segmentedWrap}>
-          <Segmented options={themeOptions} value={themeMode} onChange={setThemeMode} />
-        </SettingsForm>
-
-        <SettingsSectionLabel>Display</SettingsSectionLabel>
-        <SettingRow
-          icon="contrast-outline"
-          label="AMOLED black"
-          right={
-            <Toggle
-              value={amoled && isDarkActive}
-              onValueChange={setAmoled}
-              disabled={!isDarkActive}
-            />
-          }
-          divider={false}
-        />
-        {!isDarkActive ? (
-          <Text variant="caption" color="tertiary" style={styles.helper}>
-            Only applies when dark mode is active.
-          </Text>
-        ) : null}
-
-        <SettingsSectionLabel>Navigation</SettingsSectionLabel>
-        <SettingsForm>
-          {navigationOptions.map((option, index) => {
-            const selected = navigationStyle === option.value;
-            return (
-              <SettingRow
-                key={option.value}
-                label={option.label}
-                onPress={() => setNavigationStyle(option.value)}
-                right={
-                  <Ionicons
-                    name={selected ? "radio-button-on" : "radio-button-off"}
-                    size={20}
-                    color={selected ? palette.accent : palette.textTertiary}
-                  />
-                }
-                divider={index < navigationOptions.length - 1}
-              />
-            );
-          })}
-        </SettingsForm>
-        <View style={styles.navigationPreference}>
+        <SettingsGroup label="Theme" compact>
           <SettingRow
+            icon="color-palette-outline"
+            label="Theme"
+            description="Choose how Ordo looks on this device."
+            right={
+              <SettingsSelect
+                title="Theme"
+                options={themeOptions}
+                value={themeMode}
+                onChange={setThemeMode}
+              />
+            }
+            divider={false}
+          />
+        </SettingsGroup>
+
+        <SettingsGroup label="Display">
+          <SettingRow
+            icon="contrast-outline"
+            label="AMOLED black"
+            description={isDarkActive ? "Use pure black surfaces in dark mode." : "Available when dark mode is active."}
+            right={
+              <Toggle
+                value={amoled && isDarkActive}
+                onValueChange={setAmoled}
+                disabled={!isDarkActive}
+              />
+            }
+            divider={false}
+          />
+        </SettingsGroup>
+
+        <SettingsGroup label="Navigation">
+          <SettingRow
+            icon="navigate-outline"
+            label="Navigation style"
+            description="Choose how primary destinations are presented."
+            right={
+              <SettingsSelect
+                title="Navigation style"
+                options={navigationOptions}
+                value={navigationStyle}
+                onChange={setNavigationStyle}
+              />
+            }
+          />
+          <SettingRow
+            icon="text-outline"
             label="Show labels"
+            description="Display destination names below navigation icons."
             right={<Toggle value={showNavigationLabels} onValueChange={setShowNavigationLabels} />}
             divider={false}
           />
-        </View>
+        </SettingsGroup>
       </SettingsScrollView>
     </SettingsPage>
   );
 }
-
-const styles = StyleSheet.create({
-  segmentedWrap: { paddingHorizontal: spacing[16], paddingTop: spacing[4] },
-  navigationPreference: { paddingHorizontal: spacing[4] },
-  helper: { paddingHorizontal: spacing[20], paddingTop: spacing[8] },
-});

@@ -5,9 +5,9 @@ import { useRouter } from "expo-router";
 import { ChangeUsernameSchema } from "@ordo/shared";
 import {
   SettingsForm,
+  SettingsGroup,
   SettingsPage,
   SettingsScrollView,
-  SettingsSectionLabel,
 } from "../../../src/components/settings/SettingsPage";
 import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
@@ -52,48 +52,51 @@ export default function AccountScreen() {
         style={{ flex: 1 }}
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-          <SettingsSectionLabel compact>Profile</SettingsSectionLabel>
-          <SettingsForm style={styles.form}>
-            <Input
-              label="Username"
-              value={username}
-              onChangeText={setUsername}
-              placeholder="2-32 chars, letters, numbers, _ or -"
-              autoCapitalize="none"
-              helper="Letters, numbers, underscores and hyphens. 2-32 characters."
-              error={formError || undefined}
-            />
-            <Button
-              label="Save username"
-              block
-              size="lg"
-              onPress={submitUsername}
-              loading={changeUsername.isPending}
-              disabled={!username.trim() || username.trim() === (user?.username ?? "")}
-              style={styles.saveButton}
-            />
-          </SettingsForm>
+          <SettingsGroup label="Profile" compact>
+            <SettingsForm style={styles.form}>
+              <Input
+                label="Username"
+                value={username}
+                onChangeText={setUsername}
+                placeholder="2-32 chars, letters, numbers, _ or -"
+                autoCapitalize="none"
+                helper="Letters, numbers, underscores and hyphens. 2-32 characters."
+                error={formError || undefined}
+              />
+              <Button
+                label="Save username"
+                block
+                size="lg"
+                onPress={submitUsername}
+                loading={changeUsername.isPending}
+                disabled={!username.trim() || username.trim() === (user?.username ?? "")}
+                style={styles.saveButton}
+              />
+            </SettingsForm>
+          </SettingsGroup>
 
-          <SettingsSectionLabel>Sign-in</SettingsSectionLabel>
-          <SettingRow
-            icon="mail-outline"
-            label="Email"
-            value={user?.email ?? "—"}
-            onPress={() => router.push("/settings/email")}
-            showChevron
-          />
-          <SettingRow
-            icon="lock-closed-outline"
-            label="Password"
-            onPress={() => router.push("/settings/password")}
-            showChevron
-          />
-          <SettingRow
-            icon="calendar-outline"
-            label="Member since"
-            value={user ? formatDate(user.createdAt) : "—"}
-            divider={false}
-          />
+          <SettingsGroup label="Sign-in">
+            <SettingRow
+              icon="mail-outline"
+              label="Email"
+              value={user?.email ?? "—"}
+              onPress={() => router.push("/settings/email")}
+              showChevron
+            />
+            <SettingRow
+              icon="lock-closed-outline"
+              label="Password"
+              description="Change your password and secure your sessions"
+              onPress={() => router.push("/settings/password")}
+              showChevron
+            />
+            <SettingRow
+              icon="calendar-outline"
+              label="Member since"
+              value={user ? formatDate(user.createdAt) : "—"}
+              divider={false}
+            />
+          </SettingsGroup>
         </SettingsScrollView>
       </KeyboardAvoidingView>
     </SettingsPage>
@@ -101,6 +104,6 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  form: { paddingHorizontal: spacing[16], paddingTop: spacing[4] },
+  form: { padding: spacing[16] },
   saveButton: { marginTop: spacing[16] },
 });

@@ -10,6 +10,7 @@ import { radius, spacing } from "../../theme/tokens";
 export interface SettingRowProps {
   icon?: keyof typeof Ionicons.glyphMap;
   label: string;
+  description?: string;
   value?: string;
   onPress?: () => void;
   right?: React.ReactNode;
@@ -21,6 +22,7 @@ export interface SettingRowProps {
 export function SettingRow({
   icon,
   label,
+  description,
   value,
   onPress,
   right,
@@ -41,6 +43,11 @@ export function SettingRow({
       ) : null}
       <View style={styles.body}>
         <Text variant="body" style={{ color: destructive ? palette.danger : palette.text }}>{label}</Text>
+        {description ? (
+          <Text variant="footnote" color="tertiary" style={styles.description}>
+            {description}
+          </Text>
+        ) : null}
       </View>
       {value ? (
         <Text variant="footnote" color="tertiary" numberOfLines={1} style={[styles.value, { color: valueColor }]}>
@@ -63,17 +70,20 @@ export function SettingRow({
 }
 
 const styles = StyleSheet.create({
-  pad: { paddingHorizontal: spacing[12] },
+  pad: { width: "100%" },
   press: { borderRadius: radius.sm },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing[12],
+    minHeight: 64,
+    paddingHorizontal: spacing[16],
     paddingVertical: spacing[12],
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   noDivider: { borderBottomWidth: 0 },
   iconWrap: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
   body: { flex: 1 },
+  description: { marginTop: spacing[2] },
   value: { maxWidth: 150 },
 });

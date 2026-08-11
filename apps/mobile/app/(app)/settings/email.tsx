@@ -4,10 +4,11 @@
  * navigate to the verify screen.
  */
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Platform, View } from "react-native";
+import { KeyboardAvoidingView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import {
   SettingsForm,
+  SettingsGroup,
   SettingsPage,
   SettingsScrollView,
 } from "../../../src/components/settings/SettingsPage";
@@ -59,46 +60,45 @@ export default function ChangeEmailScreen() {
         style={{ flex: 1 }}
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-          <SettingsForm style={styles.form}>
-            <Input
-              label="Current email"
-              value={user?.email ?? ""}
-              onChangeText={() => {}}
-              editable={false}
-            />
-            <View style={{ height: spacing[16] }} />
-            <Input
-              label="New email"
-              value={newEmail}
-              onChangeText={setNewEmail}
-              placeholder="you@example.com"
-              keyboardType="email-address"
-              textContentType="emailAddress"
-              autoCapitalize="none"
-            />
-            <View style={{ height: spacing[16] }} />
-            <Input
-              label="Current password"
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              placeholder="Enter your current password"
-              secureTextEntry={!showPwd}
-              textContentType="password"
-              error={formError || undefined}
-              rightAccessory={
-                <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
-              }
-            />
+          <SettingsGroup label="Change email" compact footer="A verification code will be sent to your new address.">
+            <SettingsForm style={styles.form}>
+              <Input
+                label="Current email"
+                value={user?.email ?? ""}
+                onChangeText={() => {}}
+                editable={false}
+              />
+              <Input
+                label="New email"
+                value={newEmail}
+                onChangeText={setNewEmail}
+                placeholder="you@example.com"
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                autoCapitalize="none"
+              />
+              <Input
+                label="Current password"
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                placeholder="Enter your current password"
+                secureTextEntry={!showPwd}
+                textContentType="password"
+                error={formError || undefined}
+                rightAccessory={
+                  <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
+                }
+              />
 
-            <View style={{ height: spacing[24] }} />
-            <Button
-              label="Send verification code"
-              block
-              size="lg"
-              onPress={submit}
-              loading={requestEmailChange.isPending}
-            />
-          </SettingsForm>
+              <Button
+                label="Send verification code"
+                block
+                size="lg"
+                onPress={submit}
+                loading={requestEmailChange.isPending}
+              />
+            </SettingsForm>
+          </SettingsGroup>
         </SettingsScrollView>
       </KeyboardAvoidingView>
     </SettingsPage>
@@ -106,5 +106,5 @@ export default function ChangeEmailScreen() {
 }
 
 const styles = {
-  form: { paddingHorizontal: spacing[20], paddingTop: spacing[20], paddingBottom: spacing[32] },
+  form: { padding: spacing[16], gap: spacing[16] },
 };

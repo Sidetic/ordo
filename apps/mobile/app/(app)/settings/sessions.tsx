@@ -5,7 +5,11 @@ import React from "react";
 import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SettingsContent, SettingsPage } from "../../../src/components/settings/SettingsPage";
+import {
+  SettingsContent,
+  SettingsPage,
+  SettingsSectionLabel,
+} from "../../../src/components/settings/SettingsPage";
 import { Text } from "../../../src/components/ui/Text";
 import { Badge } from "../../../src/components/ui/Badge";
 import { Button } from "../../../src/components/ui/Button";
@@ -19,7 +23,7 @@ import { timeAgo, formatDate } from "../../../src/lib/format";
 import { errorMessage } from "../../../src/lib/error-message";
 import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
-import { layout, spacing } from "../../../src/theme/tokens";
+import { layout, radius, spacing } from "../../../src/theme/tokens";
 import type { SessionDto } from "@ordo/shared";
 
 function deviceLabel(s: SessionDto): string {
@@ -106,6 +110,7 @@ export default function SessionsScreen() {
             !(sessions?.length ?? 0) && styles.listContentEmpty,
           ]}
           ItemSeparatorComponent={() => <View style={{ height: spacing[10] }} />}
+          ListHeaderComponent={<SettingsSectionLabel compact>Signed-in devices</SettingsSectionLabel>}
           renderItem={({ item }) => (
             <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <View style={styles.cardHead}>
@@ -162,7 +167,7 @@ const styles = StyleSheet.create({
   list: { width: "100%", maxWidth: layout.maxSettingsWidth, alignSelf: "center" },
   listContent: { paddingTop: spacing[12], paddingBottom: spacing[32] },
   listContentEmpty: { flexGrow: 1, justifyContent: "center" },
-  card: { width: "100%", borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: spacing[14] },
+  card: { width: "100%", borderWidth: StyleSheet.hairlineWidth, borderRadius: radius["2xl"], padding: spacing[16] },
   cardHead: { flexDirection: "row", gap: spacing[12], alignItems: "flex-start" },
   iconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   titleRow: { flexDirection: "row", alignItems: "center", gap: spacing[8], marginBottom: 2 },

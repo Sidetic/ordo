@@ -37,6 +37,8 @@ export interface UseOtaUpdate {
   runningUpdateCreatedAt: Date | null;
   /** Update id of the most recently downloaded (pending) update, if any. */
   pendingUpdateId: string | null;
+  /** Update id advertised by the latest check, before it is downloaded. */
+  availableUpdateId: string | null;
   /** When we last checked for an update this session. */
   lastChecked: Date | null;
   check: () => Promise<void>;
@@ -55,6 +57,7 @@ export function useOtaUpdate(): UseOtaUpdate {
     isDownloading,
     isUpdateAvailable,
     isUpdatePending,
+    availableUpdate,
     downloadedUpdate,
     checkError,
     downloadError,
@@ -126,6 +129,7 @@ export function useOtaUpdate(): UseOtaUpdate {
     runningUpdateId: currentlyRunning.updateId ?? null,
     runningUpdateCreatedAt: currentlyRunning.createdAt ?? null,
     pendingUpdateId: downloadedUpdate?.updateId ?? null,
+    availableUpdateId: availableUpdate?.updateId ?? null,
     lastChecked: lastCheckForUpdateTimeSinceRestart ?? null,
     check,
     download,

@@ -1,192 +1,92 @@
-/**
- * OTA update UI built on `expo-updates`.
- *  - <OtaUpdateCard />  status card for the About screen (check / download / restart)
- *
- * expo-updates only runs in release builds, so the card gracefully reports a
- * disabled state during development. Status swaps cross-fade via Reanimated
- * entering/exiting transitions, and the card animates its height with a layout
- * transition so changes never jump.
- */
+/** Stable About-page update row; outcomes are surfaced by actionable toasts. */
 import React from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
-import { Text } from "./Text";
 import { Button } from "./Button";
+import { SettingRow } from "./SettingRow";
 import { toast } from "./toast-store";
 import { useOtaUpdate } from "../../hooks/use-ota-update";
-import { useTheme } from "../../theme/ThemeProvider";
-import { radius, spacing } from "../../theme/tokens";
 import { haptics } from "../../lib/haptics";
 
-function StatusLine({ icon, text, color }: { icon: React.ReactNode; text: string; color?: string }) {
-  return (
-    <View style={styles.statusLine}>
-      {icon}
-      <Text variant="footnote" style={{ flex: 1, color }} numberOfLines={3}>
-        {text}
-      </Text>
-    </View>
-  );
+function showDownloadPrompt(ota: ReturnType<typeof useOtaUpdate>) {
+  toast.show("A new update is available", {
+    duration: 6000,
+    swipeable: true,
+    action: {
+      label: "Download",
+      onPress: () => ota.download().catch(() => toast.error("Update download failed")),
+    },
+  });
 }
 
-function Spinner({ color }: { color: string }) {
-  return <ActivityIndicator size="small" color={color} style={{ width: 16, height: 16 }} />;
-}
-
-function Status({ ota }: { ota: ReturnType<typeof useOtaUpdate> }) {
-  const { palette } = useTheme();
-
-  // Checking is already communicated by the button spinner. A successful
-  // no-update result is surfaced as a toast instead of adding another row.
-  if (ota.status === "idle" || ota.status === "checking" || ota.status === "up-to-date") return null;
-
-  // Remount on status change so entering/exiting produce a clean cross-fade.
-  return (
-    <Animated.View
-      key={ota.status}
-      entering={FadeIn.duration(180)}
-      exiting={FadeOut.duration(140)}
-    >
-      {ota.status === "disabled" ? (
-        <Text variant="footnote" color="tertiary" style={styles.statusNote}>
-          Automatic updates run in production builds.
-        </Text>
-      ) : ota.status === "downloading" ? (
-        <StatusLine icon={<Spinner color={palette.textTertiary} />} text="Downloading update…" />
-      ) : ota.status === "available" ? (
-        <View style={styles.actionBlock}>
-          <StatusLine
-            icon={<Ionicons name="arrow-down-circle" size={16} color={palette.accent} />}
-            text="A new update is available."
-            color={palette.text}
-          />
-          <Button
-            label="Download update"
-            block
-            size="md"
-            onPress={() => {
-              haptics.light();
-              void ota.download();
-            }}
-            style={styles.actionBtn}
-          />
-        </View>
-      ) : ota.status === "ready" ? (
-        <View style={styles.actionBlock}>
-          <StatusLine
-            icon={<Ionicons name="sync-circle" size={16} color={palette.green} />}
-            text="Update downloaded — restart to apply."
-            color={palette.text}
-          />
-          <Button
-            label="Restart now"
-            block
-            size="md"
-            onPress={() => {
-              haptics.medium();
-              void ota.restart().catch(() => toast.error("Update restart failed"));
-            }}
-            style={styles.actionBtn}
-          />
-        </View>
-      ) : ota.status === "error" ? (
-        <View style={styles.actionBlock}>
-          <StatusLine
-            icon={<Ionicons name="alert-circle" size={16} color={palette.danger} />}
-            text={ota.message ?? "Update check failed"}
-            color={palette.danger}
-          />
-          <Button
-            label="Retry"
-            variant="secondary"
-            block
-            size="md"
-            onPress={() => {
-              haptics.light();
-              void ota.check();
-            }}
-            style={styles.actionBtn}
-          />
-        </View>
-      ) : null}
-    </Animated.View>
-  );
+function showRestartPrompt(ota: ReturnType<typeof useOtaUpdate>) {
+  toast.show("Update ready — restart to apply", {
+    duration: 6000,
+    swipeable: true,
+    action: {
+      label: "Restart",
+      onPress: () => ota.restart().catch(() => toast.error("Update restart failed")),
+    },
+  });
 }
 
 export function OtaUpdateCard() {
   const ota = useOtaUpdate();
-  const { palette } = useTheme();
   const manualCheck = React.useRef(false);
 
   React.useEffect(() => {
     if (!manualCheck.current) return;
+
     if (ota.status === "up-to-date") {
       manualCheck.current = false;
       toast.show("You’re up to date.", { tone: "success", duration: 3000 });
+    } else if (ota.status === "error") {
+      manualCheck.current = false;
+      toast.show(ota.message ?? "Update check failed", {
+        tone: "danger",
+        duration: 5000,
+        action: {
+          label: "Retry",
+          onPress: () => {
+            manualCheck.current = true;
+            void ota.check().catch(() => {});
+          },
+        },
+      });
     } else if (ota.status !== "checking" && ota.status !== "idle") {
       manualCheck.current = false;
     }
-  }, [ota.status]);
+  }, [ota]);
+
+  const description = !ota.enabled
+    ? "Automatic updates are available in production builds."
+    : `Channel ${ota.channel ?? "default"} · Last checked ${ota.lastChecked ? ota.lastChecked.toLocaleString() : "never"}`;
 
   return (
-    <Animated.View
-      layout={LinearTransition.duration(200)}
-      style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.borderStrong }]}
-    >
-      <Meta label="Channel" value={ota.channel ?? "—"} />
-      <Meta label="Last checked" value={ota.lastChecked ? ota.lastChecked.toLocaleString() : "—"} />
-
-      <View style={styles.cardButtonWrap}>
+    <SettingRow
+      icon="cloud-download-outline"
+      label="Software updates"
+      description={description}
+      right={
         <Button
-          label="Check for updates"
-          block
+          label={ota.status === "checking" ? "Checking" : "Check"}
           size="md"
           loading={ota.status === "checking"}
-          disabled={!ota.enabled}
+          disabled={!ota.enabled || ota.status === "downloading"}
           onPress={() => {
-            manualCheck.current = true;
             haptics.light();
+            if (ota.status === "available") {
+              showDownloadPrompt(ota);
+              return;
+            }
+            if (ota.status === "ready") {
+              showRestartPrompt(ota);
+              return;
+            }
+            manualCheck.current = true;
             void ota.check().catch(() => {});
           }}
         />
-      </View>
-
-      <Status ota={ota} />
-    </Animated.View>
+      }
+      divider={false}
+    />
   );
 }
-
-function Meta({ label, value }: { label: string; value: string }) {
-  const { palette } = useTheme();
-  return (
-    <View style={styles.metaRow}>
-      <Text variant="footnote" color="tertiary">
-        {label}
-      </Text>
-      <Text variant="footnote" numberOfLines={1} style={{ color: palette.textSecondary, flexShrink: 1 }}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius.sm,
-    padding: spacing[16],
-    gap: spacing[6],
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing[12],
-  },
-  cardButtonWrap: { marginTop: spacing[8] },
-  actionBlock: { marginTop: spacing[10], gap: spacing[10] },
-  actionBtn: { width: "100%" },
-  statusNote: { marginTop: spacing[4] },
-  statusLine: { flexDirection: "row", alignItems: "center", gap: spacing[8] },
-});

@@ -1,8 +1,5 @@
 /**
- * Fires a transient "update ready — restart" toast the moment a downloaded
- * update is detected — once per update (deduped by the pending update id). The
- * persistent restart action also lives on the About screen's Updates card; this
- * is just the proactive, anywhere-in-the-app nudge. Renderless.
+ * Announces available and downloaded updates once per update id. Renderless.
  */
 import { useEffect, useRef } from "react";
 import { useOtaUpdate } from "../hooks/use-ota-update";
@@ -14,13 +11,31 @@ const UPDATE_TOAST_DURATION = 3000;
 
 export function UpdateReadyWatcher() {
   const ota = useOtaUpdate();
-  const lastShown = useRef<string | null>(null);
+  const lastAvailableShown = useRef<string | null>(null);
+  const lastReadyShown = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!ota.enabled || ota.status !== "available") return;
+    const key = ota.availableUpdateId ?? "__available";
+    if (key === lastAvailableShown.current) return;
+    lastAvailableShown.current = key;
+
+    haptics.light();
+    toast.show("A new update is available", {
+      duration: 6000,
+      swipeable: true,
+      action: {
+        label: "Download",
+        onPress: () => ota.download().catch(() => toast.error("Update download failed")),
+      },
+    });
+  }, [ota.availableUpdateId, ota.download, ota.enabled, ota.status]);
 
   useEffect(() => {
     if (!ota.enabled || ota.status !== "ready") return;
     const key = ota.pendingUpdateId ?? "__pending";
-    if (key === lastShown.current) return;
-    lastShown.current = key;
+    if (key === lastReadyShown.current) return;
+    lastReadyShown.current = key;
 
     haptics.light();
     toast.show("Update ready — restart to apply", {

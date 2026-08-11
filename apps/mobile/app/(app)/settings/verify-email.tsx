@@ -3,10 +3,11 @@
  * Reached after submitting a change-email request.
  */
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Platform, View } from "react-native";
+import { KeyboardAvoidingView, Platform } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   SettingsForm,
+  SettingsGroup,
   SettingsPage,
   SettingsScrollView,
 } from "../../../src/components/settings/SettingsPage";
@@ -62,28 +63,28 @@ export default function VerifyEmailChangeScreen() {
         style={{ flex: 1 }}
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-          <SettingsForm style={styles.form}>
-            <Input
-              label="Verification code"
-              value={token}
-              onChangeText={setToken}
-              placeholder="Enter code"
-              autoCapitalize="none"
-              autoCorrect={false}
-              helper={`Code sent to ${target}.`}
-              error={formError || undefined}
-            />
-            <View style={{ height: spacing[24] }} />
-            <Button label="Verify" block size="lg" onPress={submit} loading={verify.isPending} />
-            <View style={{ height: spacing[12] }} />
-            <Button
-              label={resend.isPending ? "Sending…" : "Resend code"}
-              variant="ghost"
-              block
-              onPress={onResend}
-              loading={resend.isPending}
-            />
-          </SettingsForm>
+          <SettingsGroup label="Verification" compact footer={`Enter the code sent to ${target}.`}>
+            <SettingsForm style={styles.form}>
+              <Input
+                label="Verification code"
+                value={token}
+                onChangeText={setToken}
+                placeholder="Enter code"
+                autoCapitalize="none"
+                autoCorrect={false}
+                helper={`Code sent to ${target}.`}
+                error={formError || undefined}
+              />
+              <Button label="Verify" block size="lg" onPress={submit} loading={verify.isPending} />
+              <Button
+                label={resend.isPending ? "Sending…" : "Resend code"}
+                variant="ghost"
+                block
+                onPress={onResend}
+                loading={resend.isPending}
+              />
+            </SettingsForm>
+          </SettingsGroup>
         </SettingsScrollView>
       </KeyboardAvoidingView>
     </SettingsPage>
@@ -91,5 +92,5 @@ export default function VerifyEmailChangeScreen() {
 }
 
 const styles = {
-  form: { paddingHorizontal: spacing[20], paddingTop: spacing[20], paddingBottom: spacing[32] },
+  form: { padding: spacing[16], gap: spacing[12] },
 };
