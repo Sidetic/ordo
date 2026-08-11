@@ -147,16 +147,19 @@ export default function AppLayout() {
     : pathname.startsWith("/search")
       ? "search"
       : "folders";
-  const tabItemStyle = (section: typeof activeSection) =>
-    floating
-      ? {
-          marginHorizontal: sideNavigation || compact ? spacing[2] : spacing[4],
-          marginVertical: spacing[4],
-          borderRadius: radius.xl,
-          overflow: "hidden" as const,
-          backgroundColor: activeSection === section ? palette.accentSoft : "transparent",
-        }
-      : undefined;
+  const tabItemStyle = (section: typeof activeSection) => {
+    if (!floating && !sideNavigation) return undefined;
+
+    return {
+      marginHorizontal: sideNavigation || compact ? spacing[2] : spacing[4],
+      marginTop: sideNavigation && section === "folders" ? ("auto" as const) : spacing[4],
+      marginBottom: sideNavigation && section === "settings" ? ("auto" as const) : spacing[4],
+      borderRadius: radius.xl,
+      overflow: "hidden" as const,
+      backgroundColor:
+        floating && activeSection === section ? palette.accentSoft : "transparent",
+    };
+  };
   const tabColor = (section: typeof activeSection, fallback: string) =>
     activeSection === section ? palette.accent : fallback;
   const tabLabel = (section: typeof activeSection, label: string, fallback: string) => (
