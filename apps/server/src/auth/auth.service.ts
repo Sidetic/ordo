@@ -260,8 +260,8 @@ export class AuthService {
     userId: string,
     currentPassword: string,
     newPassword: string,
-    currentSessionId: string,
-  ): Promise<UserDto> {
+    meta: ClientMeta,
+  ): Promise<AuthResponse> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
     const ok = await bcrypt.compare(currentPassword, user.passwordHash);
@@ -273,9 +273,10 @@ export class AuthService {
       where: { id: userId },
       data: { passwordHash },
     });
-    // Sign out everywhere else; the current session stays alive.
-    await this.sessions.revokeAllExcept(userId, currentSessionId);
-    return toUserDto(updated);
+    // Sign out everywhere (including this session) and start fresh.
+    await this.sessions.revokeAll(userId);
+    const { session, tokens } = await this.sessions.create(updated.id, meta);
+    return this.buildAuthResponse(updated, session, tokens);
   }
 
   private async createAndSendVerification(userId: string, email: string): Promise<void> {

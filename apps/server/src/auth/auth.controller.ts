@@ -182,7 +182,17 @@ export class AuthController {
   async changePassword(
     @CurrentUser() user: AuthContext,
     @Body(new ZodValidationPipe(ChangePasswordSchema)) body: { currentPassword: string; newPassword: string },
-  ): Promise<UserDto> {
-    return this.auth.changePassword(user.userId, body.currentPassword, body.newPassword, user.sessionId);
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponse> {
+    const mobile = isMobileClient(req);
+    const result = await this.auth.changePassword(
+      user.userId,
+      body.currentPassword,
+      body.newPassword,
+      { ...getDeviceMetadata(req), ip: getClientIp(req) },
+    );
+    if (!mobile) setAuthCookies(res, result.tokens);
+    return this.maybeStripTokens(result, mobile);
   }
 }

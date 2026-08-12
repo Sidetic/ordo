@@ -142,7 +142,7 @@ export const AuthRoutes = {
     body: {} as { currentPassword: string; newPassword: string },
     query: {} as Empty,
     params: {} as Empty,
-    response: {} as UserDto,
+    response: {} as AuthResponse,
   },
 } satisfies Record<string, RouteDef>;
 

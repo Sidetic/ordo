@@ -70,10 +70,15 @@ export function useVerifyEmailChange() {
 }
 
 export function useChangePassword() {
-  const updateUser = useUpdateUser();
+  const setSession = useAuthStore((s) => s.setSession);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: authApi.changePassword,
-    onSuccess: updateUser,
+    onSuccess: (data) => {
+      setSession(data);
+      scheduleProactiveRefresh(data.tokens.expiresIn);
+      void qc.invalidateQueries({ queryKey: qk.sessions });
+    },
   });
 }
 

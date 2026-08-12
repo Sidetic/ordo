@@ -41,7 +41,7 @@ export default function ChangePasswordScreen() {
     try {
       await changePassword.mutateAsync(parsed.data);
       haptics.success();
-      toast.success("Password changed. Other devices were signed out.");
+      toast.success("Password changed. All devices were signed out.");
       router.back();
     } catch (e) {
       haptics.error();
@@ -56,7 +56,7 @@ export default function ChangePasswordScreen() {
         style={{ flex: 1 }}
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-          <SettingsGroup label="Change password" compact footer="Changing your password signs out every other device.">
+          <SettingsGroup label="Change password" compact footer="Changing your password signs out every device, including this one.">
             <SettingsForm style={styles.form}>
               <Input
                 label="Current password"

@@ -126,6 +126,14 @@ export class SessionService {
     return result.count;
   }
 
+  /** Revoke every session for a user. */
+  async revokeAll(userId: string): Promise<number> {
+    const result = await this.prisma.session.deleteMany({
+      where: { userId },
+    });
+    return result.count;
+  }
+
   async listForUser(userId: string, currentSessionId: string) {
     const sessions = await this.prisma.session.findMany({
       where: { userId },
