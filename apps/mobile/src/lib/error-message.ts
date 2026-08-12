@@ -5,7 +5,7 @@ import { ApiClientError } from "./api/client";
 import { ErrorCode } from "@ordo/shared";
 
 const FRIENDLY: Record<string, string> = {
-  [ErrorCode.INVALID_CREDENTIALS]: "Incorrect email or password.",
+  [ErrorCode.INVALID_CREDENTIALS]: "Incorrect email, username or password",
   [ErrorCode.EMAIL_ALREADY_EXISTS]: "An account with this email already exists.",
   [ErrorCode.EMAIL_NOT_VERIFIED]: "Please verify your email before signing in.",
   [ErrorCode.INVALID_VERIFICATION_TOKEN]: "This verification link is invalid or has expired.",

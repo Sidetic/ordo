@@ -1,7 +1,3 @@
-/**
- * Change password — requires the current password. The server revokes all
- * other sessions on success, signing out every other device.
- */
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform } from "react-native";
 import { useRouter } from "expo-router";
@@ -13,6 +9,7 @@ import {
 } from "../../../src/components/settings/SettingsPage";
 import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
+import { Text } from "../../../src/components/ui/Text";
 import { useChangePassword } from "../../../src/hooks/use-auth-actions";
 import { errorMessage } from "../../../src/lib/error-message";
 import { haptics } from "../../../src/lib/haptics";
@@ -68,7 +65,6 @@ export default function ChangePasswordScreen() {
                 placeholder="Enter your current password"
                 secureTextEntry={!showPwd}
                 textContentType="password"
-                error={formError || undefined}
                 rightAccessory={
                   <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
                 }
@@ -98,6 +94,11 @@ export default function ChangePasswordScreen() {
                 onPress={submit}
                 loading={changePassword.isPending}
               />
+              {formError ? (
+                <Text variant="footnote" color="danger" style={styles.formError}>
+                  {formError}
+                </Text>
+              ) : null}
             </SettingsForm>
           </SettingsGroup>
         </SettingsScrollView>
@@ -108,4 +109,5 @@ export default function ChangePasswordScreen() {
 
 const styles = {
   form: { padding: spacing[16], gap: spacing[16] },
+  formError: { textAlign: "center" as const },
 };
