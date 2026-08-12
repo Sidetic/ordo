@@ -265,11 +265,6 @@ export default function AppLayout() {
           sideNavigation && floating
             ? { marginStart: railInset + railWidth + spacing[12] }
             : undefined,
-        // React Navigation leaves an icon-only item slightly above center.
-        tabBarIconStyle:
-          !sideNavigation && !showNavigationLabels
-            ? { transform: [{ translateY: spacing[2] }] }
-            : undefined,
       }}
     >
       <Tabs.Screen
