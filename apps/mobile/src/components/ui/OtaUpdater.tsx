@@ -1,5 +1,6 @@
 /** Stable About-page update row; outcomes are surfaced by actionable toasts. */
 import React from "react";
+import { StyleSheet } from "react-native";
 import { Button } from "./Button";
 import { SettingRow } from "./SettingRow";
 import { toast } from "./toast-store";
@@ -71,6 +72,7 @@ export function OtaUpdateCard() {
           size="md"
           loading={ota.status === "checking"}
           disabled={!ota.enabled || ota.status === "downloading"}
+          style={styles.checkButton}
           onPress={() => {
             haptics.light();
             if (ota.status === "available") {
@@ -90,3 +92,7 @@ export function OtaUpdateCard() {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  checkButton: { minWidth: 104 },
+});

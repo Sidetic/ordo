@@ -92,11 +92,8 @@ const styles = StyleSheet.create({
   fingerprint: {
     minHeight: 76,
     padding: spacing[16],
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[16],
   },
-  fingerprintCopy: { flex: 1 },
-  fingerprintValue: { maxWidth: "45%", textAlign: "right" },
+  fingerprintCopy: { marginBottom: spacing[8] },
+  fingerprintValue: { width: "100%", textAlign: "right" },
   footer: { marginTop: spacing[32] },
 });
