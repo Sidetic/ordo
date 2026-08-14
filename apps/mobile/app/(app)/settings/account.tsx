@@ -86,7 +86,7 @@ export default function AccountScreen() {
             <SettingRow
               icon="lock-closed-outline"
               label="Password"
-              description="Change your password and secure your sessions"
+              value="*****"
               onPress={() => router.push("/settings/password")}
               showChevron
             />

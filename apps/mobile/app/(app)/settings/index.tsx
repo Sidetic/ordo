@@ -8,19 +8,14 @@ import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { Button } from "../../../src/components/ui/Button";
 import { Text } from "../../../src/components/ui/Text";
 import { SettingsGroup, SettingsScrollView } from "../../../src/components/settings/SettingsPage";
-import { useAuthStore } from "../../../src/store/auth";
-import { useSettingsStore } from "../../../src/store/settings";
 import { useLogout } from "../../../src/hooks/use-auth-actions";
 import { useFloatingDockMetrics } from "../../../src/hooks/use-floating-dock-metrics";
 import { useTheme } from "../../../src/theme/ThemeProvider";
-import { hostOf } from "../../../src/lib/server-probe";
 import { layout, radius, spacing } from "../../../src/theme/tokens";
 
 export default function SettingsScreen() {
   const { palette, shadows } = useTheme();
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
-  const serverUrl = useSettingsStore((s) => s.serverUrl);
   const { visible: floatingNavigation, clearance: floatingBottomClearance } =
     useFloatingDockMetrics();
   const logout = useLogout();
@@ -39,7 +34,7 @@ export default function SettingsScreen() {
           <SettingRow
             icon="person-circle-outline"
             label="Account"
-            value={user?.username ?? "—"}
+            description="Profile, email, and password"
             onPress={() => router.push("/settings/account")}
             showChevron
           />
@@ -61,13 +56,13 @@ export default function SettingsScreen() {
             icon="server-outline"
             label="Server"
             description="Connection and self-hosting"
-            value={hostOf(serverUrl)}
             onPress={() => router.push("/settings/server")}
             showChevron
           />
           <SettingRow
             icon="information-circle-outline"
             label="About"
+            description="Version, updates, and project links"
             onPress={() => router.push("/settings/about")}
             showChevron
             divider={false}
