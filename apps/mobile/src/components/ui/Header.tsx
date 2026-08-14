@@ -74,9 +74,9 @@ export function Header({
           </View>
         ) : null}
         <View style={[styles.largeTitles, !right && styles.largeTitlesWithoutControls]}>
-          <Text variant="title1" numberOfLines={1}>{title}</Text>
+          <Text variant="header" align="center" numberOfLines={1}>{title}</Text>
           {subtitle ? (
-            <Text variant="footnote" color="secondary" numberOfLines={1} style={{ marginTop: spacing[2] }}>
+            <Text variant="footnote" color="secondary" align="center" numberOfLines={1} style={{ marginTop: spacing[2] }}>
               {subtitle}
             </Text>
           ) : null}
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   compactRow: { minHeight: 36, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backBtn: { width: 36, height: 32, alignItems: "center", justifyContent: "center" },
   right: { minWidth: 36, alignItems: "flex-end", justifyContent: "center" },
-  largeTitles: { marginTop: spacing[4], paddingHorizontal: spacing[4] },
+  largeTitles: { marginTop: spacing[4], paddingHorizontal: spacing[4], alignItems: "center" },
   largeTitlesWithoutControls: { marginTop: 0 },
   compactTitle: { position: "absolute", top: 0, bottom: 0, left: 48, right: 48, alignItems: "center", justifyContent: "center" },
   compactSubtitle: { marginTop: -spacing[4], paddingHorizontal: 48 },

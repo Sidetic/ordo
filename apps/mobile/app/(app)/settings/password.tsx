@@ -76,7 +76,6 @@ export default function ChangePasswordScreen() {
                 placeholder="At least 8 characters"
                 secureTextEntry={!showPwd}
                 textContentType="newPassword"
-                helper="Use 8 characters or more."
               />
               <Input
                 label="Confirm new password"
