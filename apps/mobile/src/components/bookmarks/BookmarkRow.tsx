@@ -3,7 +3,7 @@
  * row actions. Unread items are marked with an accent dot.
  */
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { PressableScale } from "../ui/PressableScale";
 import { Text } from "../ui/Text";
@@ -22,6 +22,9 @@ export interface BookmarkRowProps {
 export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRowProps) {
   const { palette } = useTheme();
   const titleColor = bookmark.isRead ? "secondary" : "primary";
+  const domain = bookmark.domain || domainFromUrl(bookmark.url);
+  const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+  const [failedFavicon, setFailedFavicon] = React.useState<string | null>(null);
 
   return (
     <View
@@ -41,8 +44,19 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRow
       >
         <View style={styles.topRow}>
           <View style={[styles.dot, { backgroundColor: bookmark.isRead ? "transparent" : palette.accent }]} />
+          {failedFavicon === faviconUrl ? (
+            <Ionicons name="globe-outline" size={16} color={palette.textTertiary} />
+          ) : (
+            <Image
+              source={{ uri: faviconUrl }}
+              style={styles.favicon}
+              resizeMode="contain"
+              accessible={false}
+              onError={() => setFailedFavicon(faviconUrl)}
+            />
+          )}
           <Text variant="monoSmall" color="tertiary" numberOfLines={1} style={styles.domain}>
-            {domainFromUrl(bookmark.url)}
+            {domain}
           </Text>
           <Text variant="monoSmall" color="tertiary">·</Text>
           <Text variant="monoSmall" color="tertiary" numberOfLines={1}>{relativeTime(bookmark.createdAt)}</Text>
@@ -78,6 +92,7 @@ const styles = StyleSheet.create({
   body: { flex: 1, paddingVertical: spacing[14], paddingHorizontal: spacing[16] },
   topRow: { flexDirection: "row", alignItems: "center", gap: spacing[6] },
   dot: { width: 6, height: 6, borderRadius: 3 },
+  favicon: { width: 16, height: 16, borderRadius: 3 },
   domain: { flexShrink: 1 },
   moreBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
 });
