@@ -4,7 +4,7 @@
  */
 import React, { useState } from "react";
 import { View } from "react-native";
-import { Sheet } from "../ui/Sheet";
+import { FloatingPanel } from "../ui/FloatingPanel";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
@@ -53,7 +53,7 @@ export function LockPrompt({ visible, folderId, folderName, onDismiss, onUnlocke
   };
 
   return (
-    <Sheet visible={visible} onDismiss={close}>
+    <FloatingPanel visible={visible} onDismiss={close}>
       <Text variant="title3" style={{ marginBottom: spacing[4] }}>Folder locked</Text>
       <Text variant="footnote" color="secondary" style={{ marginBottom: spacing[16] }}>
         Enter the password to unlock{folderName ? ` ${folderName}` : ""}.
@@ -72,6 +72,6 @@ export function LockPrompt({ visible, folderId, folderName, onDismiss, onUnlocke
       <Button label="Unlock" block size="lg" onPress={submit} loading={unlock.isPending} />
       <View style={{ height: spacing[10] }} />
       <Button label="Cancel" variant="ghost" block onPress={close} />
-    </Sheet>
+    </FloatingPanel>
   );
 }

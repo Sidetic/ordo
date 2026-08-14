@@ -1,6 +1,6 @@
 /** Verify and switch the self-hosted Ordo server. */
 import React, { useEffect, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -13,7 +13,7 @@ import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { ServerProbeLog } from "../../../src/components/ui/ServerProbeLog";
-import { Sheet } from "../../../src/components/ui/Sheet";
+import { FloatingPanel } from "../../../src/components/ui/FloatingPanel";
 import { Text } from "../../../src/components/ui/Text";
 import { toast } from "../../../src/components/ui/toast-store";
 import { useServerInfo } from "../../../src/hooks/queries";
@@ -178,10 +178,11 @@ export default function ServerScreen() {
         </SettingsGroup>
       </SettingsScrollView>
 
-      <Sheet
+      <FloatingPanel
         visible={!!confirmedUrl}
         onDismiss={switching ? () => {} : () => setConfirmedUrl(null)}
       >
+        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.confirmHeader}>
           <View style={[styles.confirmIcon, { backgroundColor: palette.dangerSoft }]}>
             <Ionicons name="log-out-outline" size={20} color={palette.danger} />
@@ -218,7 +219,8 @@ export default function ServerScreen() {
             style={{ flex: 2 }}
           />
         </View>
-      </Sheet>
+        </ScrollView>
+      </FloatingPanel>
     </SettingsPage>
   );
 }

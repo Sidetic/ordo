@@ -1,5 +1,5 @@
 /**
- * Folder list row with bookmark/unread counts and a lock indicator.
+ * Folder list row with custom icon, counts, pin, and lock indicators.
  */
 import React from "react";
 import { StyleSheet, View } from "react-native";
@@ -24,6 +24,8 @@ export function FolderRow({ folder, onPress, onLongPress }: FolderRowProps) {
 
   return (
     <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={`${folder.name}, ${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}${folder.pinned ? ", pinned" : ""}${folder.protected ? ", locked" : ""}`}
       style={[styles.wrap, { backgroundColor: palette.surface, borderColor: palette.border }]}
       onPress={() => {
         haptics.light();
@@ -32,7 +34,7 @@ export function FolderRow({ folder, onPress, onLongPress }: FolderRowProps) {
       onLongPress={() => onLongPress?.(folder)}
     >
       <View style={[styles.iconWrap, { backgroundColor: palette.surfaceSecondary }]}>
-        <Ionicons name={folder.protected ? "lock-closed" : "folder-outline"} size={18} color={palette.accent} />
+        <Ionicons name={folder.icon} size={18} color={palette.accent} />
       </View>
       <View style={styles.body}>
         <Text variant="title3" numberOfLines={1}>{folder.name}</Text>
@@ -40,6 +42,8 @@ export function FolderRow({ folder, onPress, onLongPress }: FolderRowProps) {
           {folder.bookmarkCount} {folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}
         </Text>
       </View>
+      {folder.protected ? <Ionicons name="lock-closed" size={14} color={palette.textTertiary} /> : null}
+      {folder.pinned ? <Ionicons name="pin" size={15} color={palette.accent} /> : null}
       {unread ? <Badge tone="accent">{folder.unreadCount}</Badge> : null}
       <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
     </PressableScale>

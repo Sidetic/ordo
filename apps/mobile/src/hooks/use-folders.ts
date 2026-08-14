@@ -7,16 +7,27 @@ import { queryClient } from "../lib/query-client";
 import { qk } from "../lib/api/query-keys";
 import { errorMessage, isFolderProtected } from "../lib/error-message";
 import { toast } from "../components/ui/toast-store";
-import type { FolderDto } from "@ordo/shared";
+import type { CreateFolderInput, FolderDto, UpdateFolderInput } from "@ordo/shared";
+
+function sortFolders(folders: FolderDto[]) {
+  const [defaultFolder, ...rest] = folders;
+  if (!defaultFolder) return [];
+  return [
+    defaultFolder,
+    ...rest.sort(
+      (a, b) => Number(b.pinned) - Number(a.pinned) || a.createdAt.localeCompare(b.createdAt),
+    ),
+  ];
+}
 
 export { useFolders } from "./queries";
 
 export function useCreateFolder() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => foldersApi.create(name),
+    mutationFn: (input: CreateFolderInput) => foldersApi.create(input),
     onSuccess: (folder) => {
-      qc.setQueryData<FolderDto[]>(qk.folders, (old) => [...(old ?? []), folder]);
+      qc.setQueryData<FolderDto[]>(qk.folders, (old) => sortFolders([...(old ?? []), folder]));
     },
   });
 }
@@ -24,7 +35,7 @@ export function useCreateFolder() {
 export function useRenameFolder() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) => foldersApi.update(id, name),
+    mutationFn: ({ id, name }: { id: string; name: string }) => foldersApi.update(id, { name }),
     onMutate: ({ id, name }) => {
       const prev = qc.getQueryData<FolderDto[]>(qk.folders);
       qc.setQueryData<FolderDto[]>(qk.folders, (old) =>
@@ -38,6 +49,29 @@ export function useRenameFolder() {
     onSuccess: (folder, { id }) => {
       qc.setQueryData<FolderDto[]>(qk.folders, (old) =>
         (old ?? []).map((f) => (f.id === id ? folder : f)),
+      );
+    },
+  });
+}
+
+export function useUpdateFolder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateFolderInput }) =>
+      foldersApi.update(id, input),
+    onMutate: ({ id, input }) => {
+      const prev = qc.getQueryData<FolderDto[]>(qk.folders);
+      qc.setQueryData<FolderDto[]>(qk.folders, (old) =>
+        sortFolders((old ?? []).map((folder) => (folder.id === id ? { ...folder, ...input } : folder))),
+      );
+      return { prev };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.prev) qc.setQueryData(qk.folders, context.prev);
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData<FolderDto[]>(qk.folders, (old) =>
+        sortFolders((old ?? []).map((folder) => (folder.id === updated.id ? updated : folder))),
       );
     },
   });

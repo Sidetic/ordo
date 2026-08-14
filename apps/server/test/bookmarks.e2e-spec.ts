@@ -1,5 +1,5 @@
 import request from "supertest";
-import { DEFAULT_FOLDER_NAME, ErrorCode } from "@ordo/shared";
+import { DEFAULT_FOLDER_ICON, DEFAULT_FOLDER_NAME, ErrorCode } from "@ordo/shared";
 import { ReaderService } from "../src/bookmarks/reader.service.js";
 import {
   authedAgent,
@@ -93,6 +93,17 @@ describe("Bookmarks & Folders (e2e)", () => {
         .send({ name: "Bad", icon: "not-an-ionicon" })
         .expect(400);
       expect(invalid.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+    });
+
+    it("falls back safely when persisted icon data is unsupported", async () => {
+      const { agent, defaultFolderId } = await setup();
+      await ctx.prisma.folder.update({
+        where: { id: defaultFolderId },
+        data: { icon: "removed-icon-outline" },
+      });
+
+      const folders = await agent.get("/api/folders").expect(200);
+      expect(folders.body[0].icon).toBe(DEFAULT_FOLDER_ICON);
     });
 
     it("updates folder metadata (name/icon/pinned) and keeps counts accurate", async () => {

@@ -70,8 +70,6 @@ export interface RequestOptions<B = unknown> {
   /** If set, attach the cached folder unlock token for this folder (if any). */
   folderId?: string;
   signal?: AbortSignal;
-  /** Treat a non-JSON response as raw text instead of parsing. */
-  raw?: boolean;
 }
 
 function baseUrl(): string {
@@ -237,7 +235,6 @@ async function request<T>(
 
   try {
     const res = await rawFetch(url, init);
-    if (options.raw) return res as unknown as T;
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
   } catch (e) {
@@ -262,7 +259,4 @@ export const api = {
   patch: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
     request<T>(path, { ...opts, method: "PATCH", body }),
   delete: <T>(path: string, opts?: RequestOptions) => request<T>(path, { ...opts, method: "DELETE" }),
-  /** Raw response (for file downloads like export). */
-  raw: (path: string, opts?: RequestOptions) =>
-    request<Response>(path, { ...opts, method: "GET", raw: true }),
 };

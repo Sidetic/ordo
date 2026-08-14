@@ -1,10 +1,10 @@
 /**
- * Sheet to move a bookmark into another folder.
+ * Floating dialog to move a bookmark into another folder.
  */
 import React, { useEffect, useState } from "react";
 import { FlatList, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Sheet } from "../ui/Sheet";
+import { FloatingPanel } from "../ui/FloatingPanel";
 import { Text } from "../ui/Text";
 import { PressableScale } from "../ui/PressableScale";
 import { useFolders } from "../../hooks/queries";
@@ -51,7 +51,7 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
   };
 
   return (
-    <Sheet visible={visible} onDismiss={onDismiss}>
+    <FloatingPanel visible={visible} onDismiss={onDismiss}>
       <Text variant="title3" style={{ marginBottom: spacing[16] }}>Move to folder</Text>
       {error ? (
         <Text variant="footnote" color="danger" style={{ marginBottom: spacing[12] }}>
@@ -66,15 +66,17 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
           keyExtractor={(f) => f.id}
           renderItem={({ item }) => (
             <PressableScale style={[styles.row, { borderBottomColor: palette.border }]} onPress={() => pick(item)}>
-              <Ionicons name={item.protected ? "lock-closed" : "folder-outline"} size={20} color={palette.accent} />
+              <Ionicons name={item.icon} size={20} color={palette.accent} />
               <Text variant="body" style={{ flex: 1 }} numberOfLines={1}>{item.name}</Text>
+              {item.pinned ? <Ionicons name="pin" size={14} color={palette.accent} /> : null}
+              {item.protected ? <Ionicons name="lock-closed" size={14} color={palette.textTertiary} /> : null}
               <Text variant="footnote" color="tertiary">{item.bookmarkCount}</Text>
             </PressableScale>
           )}
           style={{ maxHeight: Math.min(320, height * 0.5) }}
         />
       )}
-    </Sheet>
+    </FloatingPanel>
   );
 }
 

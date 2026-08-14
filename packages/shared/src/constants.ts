@@ -80,11 +80,11 @@ export const FOLDER_ICONS = [
   "videocam-outline",
   "film-outline",
   "musical-notes-outline",
-  "headphones-outline",
+  "headset-outline",
   "mic-outline",
   // fun & lifestyle
   "game-controller-outline",
-  "puzzle-outline",
+  "extension-puzzle-outline",
   "fitness-outline",
   "barbell-outline",
   "medical-outline",

@@ -1,9 +1,9 @@
 /**
- * Sheet to save a new URL. Validates + creates optimistically.
+ * Floating dialog to save a new URL. Validates + creates optimistically.
  */
 import React, { useState } from "react";
 import { View } from "react-native";
-import { Sheet } from "../ui/Sheet";
+import { FloatingPanel } from "../ui/FloatingPanel";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
@@ -62,7 +62,7 @@ export function AddBookmarkSheet({ visible, onDismiss, folderId, folderName }: A
   };
 
   return (
-    <Sheet visible={visible} onDismiss={close}>
+    <FloatingPanel visible={visible} onDismiss={close}>
       <Text variant="title3" style={{ marginBottom: spacing[4] }}>Save bookmark</Text>
       {folderName ? (
         <Text variant="footnote" color="secondary" style={{ marginBottom: spacing[16] }}>
@@ -87,6 +87,6 @@ export function AddBookmarkSheet({ visible, onDismiss, folderId, folderName }: A
       <Button label="Save" block size="lg" onPress={submit} loading={create.isPending} />
       <View style={{ height: spacing[10] }} />
       <Button label="Cancel" variant="ghost" block onPress={close} />
-    </Sheet>
+    </FloatingPanel>
   );
 }

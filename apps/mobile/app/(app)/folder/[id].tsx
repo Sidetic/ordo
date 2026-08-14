@@ -1,7 +1,7 @@
 /**
  * Folder detail: cursor-paginated bookmark list with infinite scroll.
  * Handles protected folders (unlock prompt → token cached → retry),
- * optimistic toggle/delete/move, mark-all-read, and export/actions.
+ * optimistic toggle/delete/move, mark-all-read, and folder actions.
  */
 import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
@@ -89,7 +89,12 @@ export default function FolderDetailScreen() {
   const onDelete = (b: BookmarkDto) => {
     haptics.medium();
     deleteBm.mutate(b.id, {
-      onSuccess: () => toast.success("Bookmark deleted"),
+      onSuccess: () => {
+        toast.success("Bookmark deleted");
+        if (selectedBookmarkId === b.id) {
+          router.replace({ pathname: "/folder/[id]", params: { id: folderId } });
+        }
+      },
       onError: (e) => toast.error(errorMessage(e)),
     });
   };
@@ -240,7 +245,6 @@ export default function FolderDetailScreen() {
       <BookmarkActionsSheet
         visible={!!actionBm}
         bookmark={actionBm}
-        folderId={folderId}
         onDismiss={() => setActionBm(null)}
         onToggleRead={onToggleRead}
         onMove={(b) => setMoveTarget(b)}
@@ -258,6 +262,11 @@ export default function FolderDetailScreen() {
         visible={folderActions}
         folder={folder ?? null}
         onDismiss={() => setFolderActions(false)}
+        onDeleted={() => {
+          toast.success("Folder deleted");
+          setFolderActions(false);
+          router.replace("/");
+        }}
       />
     </View>
   );

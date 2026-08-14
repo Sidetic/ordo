@@ -3,12 +3,12 @@
  * long-press for folder actions.
  */
 import React, { useState } from "react";
-import { View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Header } from "../../src/components/ui/Header";
 import { FAB, FABLayer } from "../../src/components/ui/FAB";
-import { Sheet } from "../../src/components/ui/Sheet";
+import { FloatingPanel } from "../../src/components/ui/FloatingPanel";
 import { Input } from "../../src/components/ui/Input";
 import { Button } from "../../src/components/ui/Button";
 import { Text } from "../../src/components/ui/Text";
@@ -17,6 +17,7 @@ import { Skeleton } from "../../src/components/ui/Skeleton";
 import { EmptyState } from "../../src/components/ui/EmptyState";
 import { FolderRow } from "../../src/components/bookmarks/FolderRow";
 import { FolderActionsSheet } from "../../src/components/bookmarks/FolderActionsSheet";
+import { FolderIconPicker } from "../../src/components/bookmarks/FolderIconPicker";
 import { useFolders, useCreateFolder } from "../../src/hooks/use-folders";
 import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metrics";
 import { useResponsiveLayout } from "../../src/hooks/use-responsive-layout";
@@ -25,7 +26,7 @@ import { haptics } from "../../src/lib/haptics";
 import { toast } from "../../src/components/ui/toast-store";
 import { errorMessage } from "../../src/lib/error-message";
 import { layout, spacing } from "../../src/theme/tokens";
-import type { FolderDto } from "@ordo/shared";
+import { DEFAULT_FOLDER_ICON, type FolderDto, type FolderIcon } from "@ordo/shared";
 
 export default function FoldersScreen() {
   const { palette } = useTheme();
@@ -41,9 +42,17 @@ export default function FoldersScreen() {
   const [createOpen, setCreateOpen] = useState(false);
   const [actionsFolder, setActionsFolder] = useState<FolderDto | null>(null);
   const [newName, setNewName] = useState("");
+  const [newIcon, setNewIcon] = useState<FolderIcon>(DEFAULT_FOLDER_ICON);
   const [createError, setCreateError] = useState("");
 
   const openFolder = (f: FolderDto) => router.push(`/folder/${f.id}`);
+
+  const closeCreate = () => {
+    setCreateOpen(false);
+    setNewName("");
+    setNewIcon(DEFAULT_FOLDER_ICON);
+    setCreateError("");
+  };
 
   const submitCreate = async () => {
     setCreateError("");
@@ -53,10 +62,9 @@ export default function FoldersScreen() {
       return;
     }
     try {
-      await create.mutateAsync(name);
+      await create.mutateAsync({ name, icon: newIcon });
       haptics.success();
-      setNewName("");
-      setCreateOpen(false);
+      closeCreate();
     } catch (e) {
       setCreateError(errorMessage(e));
     }
@@ -142,31 +150,36 @@ export default function FoldersScreen() {
         />
       </FABLayer>
 
-      <Sheet visible={createOpen} onDismiss={() => setCreateOpen(false)}>
-        <Text variant="title3" style={{ marginBottom: spacing[16] }}>New folder</Text>
-        <Input
-          label="Name"
-          value={newName}
-          onChangeText={setNewName}
-          placeholder="e.g. Recipes"
-          autoFocus
-          error={createError || undefined}
-          onSubmitEditing={submitCreate}
-        />
-        <View style={{ height: spacing[20] }} />
-        <Button label="Create" block size="lg" onPress={submitCreate} loading={create.isPending} />
-        <View style={{ height: spacing[10] }} />
-        <Button label="Cancel" variant="ghost" block onPress={() => setCreateOpen(false)} />
-      </Sheet>
+      <FloatingPanel visible={createOpen} onDismiss={closeCreate}>
+        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <Text variant="title3" style={{ marginBottom: spacing[16] }}>New folder</Text>
+          <Input
+            label="Name"
+            value={newName}
+            onChangeText={setNewName}
+            placeholder="e.g. Recipes"
+            autoFocus
+            error={createError || undefined}
+            onSubmitEditing={submitCreate}
+          />
+          <Text variant="label" color="tertiary" style={{ marginTop: spacing[16], marginBottom: spacing[8] }}>
+            ICON
+          </Text>
+          <FolderIconPicker value={newIcon} onChange={setNewIcon} />
+          <View style={{ height: spacing[20] }} />
+          <Button label="Create" block size="lg" onPress={submitCreate} loading={create.isPending} />
+          <View style={{ height: spacing[8] }} />
+          <Button label="Cancel" variant="ghost" block onPress={closeCreate} />
+        </ScrollView>
+      </FloatingPanel>
 
       <FolderActionsSheet
         visible={!!actionsFolder}
         folder={actionsFolder}
         onDismiss={() => setActionsFolder(null)}
-        onDeleted={(id) => {
+        onDeleted={() => {
           toast.success("Folder deleted");
           setActionsFolder(null);
-          void id;
         }}
       />
     </View>

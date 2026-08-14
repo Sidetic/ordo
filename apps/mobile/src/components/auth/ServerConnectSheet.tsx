@@ -1,5 +1,5 @@
 /**
- * Terminal-style "Connect to server" sheet, faithful to ordo-archive.
+ * Terminal-style floating "Connect to server" dialog.
  *
  * A monospace health-check log runs a live 2-step probe (connect → /api/server/info)
  * as the user types (debounced). The Change button stays disabled until the probe
@@ -10,7 +10,7 @@
  * probe, which is what broke Save / reset the URL.)
  */
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -18,7 +18,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
-import { Sheet } from "../ui/Sheet";
+import { FloatingPanel } from "../ui/FloatingPanel";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
@@ -195,7 +195,8 @@ export function ServerConnectSheet({
   };
 
   return (
-    <Sheet visible={visible} onDismiss={confirming ? () => {} : onDismiss}>
+    <FloatingPanel visible={visible} onDismiss={confirming ? () => {} : onDismiss}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <View style={[styles.headerIcon, { backgroundColor: "rgba(79,125,166,0.14)", borderRadius: radius.lg }]}>
           <Ionicons name="cloud-outline" size={20} color={palette.blue} />
@@ -260,7 +261,8 @@ export function ServerConnectSheet({
           )}
         </View>
       </View>
-    </Sheet>
+      </ScrollView>
+    </FloatingPanel>
   );
 }
 
