@@ -46,10 +46,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    *  2. Legacy "All Bookmarks" default folders are folded away: their
    *     bookmarks become unfiled (folderId = NULL — never deleted), their
    *     unlock tokens are removed, the folders are deleted, and the retired
-   *     `Folder.isDefault` column is dropped.
+   *     `Folder.isDefault` remains only as an idempotent migration marker.
    *
-   * This MUST run before `prisma db push` drops `isDefault` on databases with
-   * existing default folders; on fresh databases it is a no-op.
+   * Keeping the retired marker makes migration safe whether schema sync or
+   * server startup happens first. Fresh databases never create a default row.
    */
   private async migrateLegacySchema(): Promise<void> {
     if (!this.cfg.databaseUrl.startsWith("file:")) return; // SQLite only
@@ -79,6 +79,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         Prisma.sql`PRAGMA table_info("Folder")`,
       );
       if (!folderColumns.some((c) => c.name === "isDefault")) return; // already migrated
+      const [legacyDefaults] = await this.$queryRaw<Array<{ count: number | bigint }>>(
+        Prisma.sql`SELECT COUNT(*) AS count FROM "Folder" WHERE "isDefault" = 1`,
+      );
+      if (!legacyDefaults || Number(legacyDefaults.count) === 0) return;
 
       const hasFolderTokens = tables.has("FolderToken");
       await this.$transaction(
@@ -99,14 +103,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         // copying rows + folding folders may take a while on large databases
         { timeout: 120_000, maxWait: 10_000 },
       );
-      try {
-        await this.$executeRawUnsafe(`ALTER TABLE "Folder" DROP COLUMN "isDefault"`);
-      } catch (err) {
-        // SQLite < 3.35 has no DROP COLUMN; leaving the retired column in
-        // place is harmless (nothing reads it) and `prisma db push` will
-        // remove it on the next run.
-        this.logger.warn(`Could not drop Folder.isDefault: ${(err as Error).message}`);
-      }
       this.logger.log("Migrated legacy default folders to unfiled bookmarks");
     } catch (err) {
       this.logger.error(`Legacy schema migration failed: ${(err as Error).message}`);

@@ -67,6 +67,8 @@ model Folder {
   pinned       Boolean      @default(false)
   passwordHash String?
   position     Int          @default(0)
+  // Retained only so legacy default folders can be migrated safely on startup.
+  isDefault    Boolean      @default(false)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 

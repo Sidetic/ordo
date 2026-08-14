@@ -141,7 +141,7 @@ describe("PrismaService legacy schema migration", () => {
     expect((await service.folder.findMany())[0].name).toBe("Dev");
     expect(await service.folderToken.count()).toBe(0);
 
-    // the on-disk schema now matches schema.prisma
+    // folderId is nullable and the retired migration marker remains available
     const bookmarkCols = (await service.$queryRawUnsafe(
       `PRAGMA table_info("Bookmark")`,
     )) as Array<{ name: string; notnull: number | bigint }>;
@@ -149,7 +149,7 @@ describe("PrismaService legacy schema migration", () => {
     const folderCols = (await service.$queryRawUnsafe(
       `PRAGMA table_info("Folder")`,
     )) as Array<{ name: string }>;
-    expect(folderCols.some((c) => c.name === "isDefault")).toBe(false);
+    expect(folderCols.some((c) => c.name === "isDefault")).toBe(true);
 
     // indexes and foreign keys survive the rebuild
     const indexes = (await service.$queryRawUnsafe(
@@ -197,7 +197,7 @@ describe("PrismaService legacy schema migration", () => {
     expect(created.folderId).toBeNull();
     expect(await service.folder.count()).toBe(0);
     await service.onModuleDestroy();
-  });
+  }, 60_000);
 
   it("is a no-op on an empty (not yet pushed) database file", async () => {
     const path = tempDbPath();

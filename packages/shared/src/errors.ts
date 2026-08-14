@@ -19,7 +19,6 @@ export const ErrorCode = {
   FOLDER_PROTECTED: "folder_protected",
   INVALID_FOLDER_PASSWORD: "invalid_folder_password",
   FOLDER_TOKEN_EXPIRED: "folder_token_expired",
-  DEFAULT_FOLDER_IMMUTABLE: "default_folder_immutable",
 
   // bookmarks
   BOOKMARK_NOT_FOUND: "bookmark_not_found",

@@ -17,7 +17,6 @@ const STATUS_BY_CODE: Record<string, HttpStatus> = {
   [ErrorCode.FOLDER_PROTECTED]: HttpStatus.FORBIDDEN,
   [ErrorCode.INVALID_FOLDER_PASSWORD]: HttpStatus.FORBIDDEN,
   [ErrorCode.FOLDER_TOKEN_EXPIRED]: HttpStatus.UNAUTHORIZED,
-  [ErrorCode.DEFAULT_FOLDER_IMMUTABLE]: HttpStatus.FORBIDDEN,
 
   [ErrorCode.BOOKMARK_NOT_FOUND]: HttpStatus.NOT_FOUND,
   [ErrorCode.FETCH_FAILED]: HttpStatus.BAD_REQUEST,
