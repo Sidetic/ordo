@@ -133,5 +133,5 @@ const styles = StyleSheet.create({
   largeTitles: { marginTop: spacing[4], paddingHorizontal: spacing[4] },
   largeTitlesWithoutControls: { marginTop: 0 },
   compactTitle: { position: "absolute", top: 0, bottom: 0, left: 48, right: 48, alignItems: "center", justifyContent: "center" },
-  compactSubtitle: { marginTop: spacing[2], paddingHorizontal: 48 },
+  compactSubtitle: { marginTop: -spacing[4], paddingHorizontal: 48 },
 });
