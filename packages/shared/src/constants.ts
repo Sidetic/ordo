@@ -32,13 +32,83 @@ export const MAX_PAGE_SIZE = 100;
 
 export const DEFAULT_FOLDER_NAME = "All Bookmarks";
 
+/** Icon used when a folder is created without an explicit icon. */
+export const DEFAULT_FOLDER_ICON = "folder-outline";
+
+/**
+ * Curated Ionicons (outline variants) offered as folder icons.
+ * Keep names in sync with the Ionicons set used by the mobile app.
+ */
+export const FOLDER_ICONS = [
+  // general & reading
+  "folder-outline",
+  "bookmark-outline",
+  "book-outline",
+  "reader-outline",
+  "newspaper-outline",
+  "library-outline",
+  "star-outline",
+  "heart-outline",
+  "sparkles-outline",
+  // travel & places
+  "globe-outline",
+  "compass-outline",
+  "map-outline",
+  "location-outline",
+  "airplane-outline",
+  "car-outline",
+  "bicycle-outline",
+  "boat-outline",
+  "home-outline",
+  "business-outline",
+  // work & tech
+  "briefcase-outline",
+  "laptop-outline",
+  "server-outline",
+  "cloud-outline",
+  "code-slash-outline",
+  "terminal-outline",
+  "bug-outline",
+  "rocket-outline",
+  "construct-outline",
+  "hardware-chip-outline",
+  "cube-outline",
+  // media
+  "albums-outline",
+  "images-outline",
+  "camera-outline",
+  "videocam-outline",
+  "film-outline",
+  "musical-notes-outline",
+  "headphones-outline",
+  "mic-outline",
+  // fun & lifestyle
+  "game-controller-outline",
+  "puzzle-outline",
+  "fitness-outline",
+  "barbell-outline",
+  "medical-outline",
+  "restaurant-outline",
+  "cafe-outline",
+  "wine-outline",
+  "cart-outline",
+  "pricetags-outline",
+  "wallet-outline",
+  "cash-outline",
+  // people & communication
+  "people-outline",
+  "person-outline",
+  "chatbubbles-outline",
+  "mail-outline",
+  "share-social-outline",
+] as const;
+
+export type FolderIcon = (typeof FOLDER_ICONS)[number];
+
 /** Query param keys. */
 export const QUERY = {
   CURSOR: "cursor",
   LIMIT: "limit",
   SEARCH: "q",
   FOLDER_ID: "folderId",
-  FORMAT: "format",
 } as const;
-
-export type ExportFormat = "json" | "html";

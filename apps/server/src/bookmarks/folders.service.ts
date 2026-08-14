@@ -1,6 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import type { Folder } from "@prisma/client";
-import { DEFAULT_FOLDER_NAME, ErrorCode, type FolderDto } from "@ordo/shared";
+import type {
+  CreateFolderInput,
+  FolderDto,
+  UpdateFolderInput,
+} from "@ordo/shared";
+import { ErrorCode } from "@ordo/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { AppError } from "../common/errors/app-error.js";
 import { FolderTokenService } from "./folder-token.service.js";
@@ -18,7 +22,13 @@ export class FoldersService {
   async list(userId: string): Promise<FolderDto[]> {
     const folders = await this.prisma.folder.findMany({
       where: { userId },
-      orderBy: [{ isDefault: "desc" }, { position: "asc" }, { createdAt: "asc" }],
+      // default folder first, then pinned folders, then manual/creation order
+      orderBy: [
+        { isDefault: "desc" },
+        { pinned: "desc" },
+        { position: "asc" },
+        { createdAt: "asc" },
+      ],
       include: { _count: { select: { bookmarks: true } } },
     });
 
@@ -39,25 +49,35 @@ export class FoldersService {
     );
   }
 
-  async create(userId: string, name: string): Promise<FolderDto> {
+  async create(userId: string, input: CreateFolderInput): Promise<FolderDto> {
     const maxPosition = await this.prisma.folder.aggregate({
       where: { userId },
       _max: { position: true },
     });
     const folder = await this.prisma.folder.create({
-      data: { userId, name, position: (maxPosition._max.position ?? -1) + 1 },
+      data: {
+        userId,
+        name: input.name,
+        // undefined falls back to the schema default (folder-outline)
+        ...(input.icon !== undefined ? { icon: input.icon } : {}),
+        position: (maxPosition._max.position ?? -1) + 1,
+      },
     });
     return toFolderDto(folder, { bookmarkCount: 0, unreadCount: 0 });
   }
 
-  async rename(folderId: string, userId: string, name: string): Promise<FolderDto> {
+  /** Partial metadata update: name, icon, and/or pinned. */
+  async update(folderId: string, userId: string, input: UpdateFolderInput): Promise<FolderDto> {
     const folder = await this.prisma.folder.findFirst({ where: { id: folderId, userId } });
     if (!folder) throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "Folder not found");
-    const updated = await this.prisma.folder.update({
-      where: { id: folderId },
-      data: { name },
-    });
-    return toFolderDto(updated, { bookmarkCount: 0, unreadCount: 0 });
+
+    const data: { name?: string; icon?: string; pinned?: boolean } = {};
+    if (input.name !== undefined) data.name = input.name;
+    if (input.icon !== undefined) data.icon = input.icon;
+    if (input.pinned !== undefined) data.pinned = input.pinned;
+
+    const updated = await this.prisma.folder.update({ where: { id: folderId }, data });
+    return toFolderDto(updated, await this.folderCounts(folderId));
   }
 
   async remove(folderId: string, userId: string): Promise<void> {
@@ -66,13 +86,7 @@ export class FoldersService {
     if (folder.isDefault) {
       throw new AppError(ErrorCode.DEFAULT_FOLDER_IMMUTABLE, "The default folder cannot be deleted");
     }
-    const count = await this.prisma.bookmark.count({ where: { folderId } });
-    if (count > 0) {
-      throw new AppError(
-        ErrorCode.FOLDER_NOT_EMPTY,
-        "Move or delete the bookmarks in this folder first",
-      );
-    }
+    // Bookmarks are removed by the schema's cascading delete.
     await this.prisma.folder.delete({ where: { id: folderId } });
   }
 
@@ -95,67 +109,14 @@ export class FoldersService {
     return this.folderTokens.unlock(folder, password);
   }
 
-  async export(
-    folder: Folder,
-    format: "json" | "html",
-  ): Promise<{ body: string; contentType: string }> {
-    const bookmarks = await this.prisma.bookmark.findMany({
-      where: { folderId: folder.id },
-      orderBy: { createdAt: "asc" },
-      select: {
-        id: true,
-        url: true,
-        title: true,
-        description: true,
-        domain: true,
-        contentMarkdown: true,
-        createdAt: true,
-      },
-    });
-
-    if (format === "json") {
-      return {
-        contentType: "application/json; charset=utf-8",
-        body: JSON.stringify(
-          {
-            folder: folder.name,
-            exportedAt: new Date().toISOString(),
-            bookmarks: bookmarks.map((b) => ({
-              ...b,
-              createdAt: b.createdAt.toISOString(),
-            })),
-          },
-          null,
-          2,
-        ),
-      };
-    }
-
-    const items = bookmarks
-      .map(
-        (b) =>
-          `        <DT><A HREF="${this.escapeHtml(b.url)}" ADD_DATE="${Math.floor(
-            b.createdAt.getTime() / 1000,
-          )}">${this.escapeHtml(b.title)}</A>`,
-      )
-      .join("\n");
-    const html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
-<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
-<TITLE>Bookmarks</TITLE>
-<H1>${this.escapeHtml(folder.name)}</H1>
-<DL><p>
-${items}
-    </DL><p>`;
-    return { contentType: "text/html; charset=utf-8", body: html };
-  }
-
-  private escapeHtml(s: string): string {
-    return s
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+  /** Live bookmark counts for a single folder. */
+  private async folderCounts(
+    folderId: string,
+  ): Promise<{ bookmarkCount: number; unreadCount: number }> {
+    const [bookmarkCount, unreadCount] = await this.prisma.$transaction([
+      this.prisma.bookmark.count({ where: { folderId } }),
+      this.prisma.bookmark.count({ where: { folderId, isRead: false } }),
+    ]);
+    return { bookmarkCount, unreadCount };
   }
 }
-
-export { DEFAULT_FOLDER_NAME };

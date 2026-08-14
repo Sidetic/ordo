@@ -63,6 +63,8 @@ model Folder {
   id           String       @id @default(cuid())
   userId       String
   name         String
+  icon         String       @default("folder-outline")
+  pinned       Boolean      @default(false)
   passwordHash String?
   position     Int          @default(0)
   isDefault    Boolean      @default(false)

@@ -2,6 +2,7 @@ import type { Bookmark, Folder, Session, User } from "@prisma/client";
 import type {
   BookmarkDto,
   FolderDto,
+  FolderIcon,
   SessionDto,
   UserDto,
 } from "@ordo/shared";
@@ -51,6 +52,8 @@ export function toFolderDto(
   return {
     id: f.id,
     name: f.name,
+    icon: f.icon as FolderIcon,
+    pinned: f.pinned,
     protected: f.passwordHash !== null,
     bookmarkCount: counts.bookmarkCount,
     unreadCount: counts.unreadCount,

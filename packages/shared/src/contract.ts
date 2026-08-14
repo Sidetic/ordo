@@ -14,7 +14,7 @@ import type {
   SessionDto,
   UserDto,
 } from "./types.js";
-import type { ExportFormat } from "./constants.js";
+import type { CreateFolderInput, UpdateFolderInput } from "./schemas/index.js";
 
 export const API_PREFIX = "/api";
 
@@ -167,7 +167,7 @@ export const FolderRoutes = {
   create: {
     path: `${API_PREFIX}/folders`,
     method: "POST",
-    body: {} as { name: string },
+    body: {} as CreateFolderInput,
     query: {} as Empty,
     params: {} as Empty,
     response: {} as FolderDto,
@@ -175,7 +175,7 @@ export const FolderRoutes = {
   update: {
     path: `${API_PREFIX}/folders/:id`,
     method: "PATCH",
-    body: {} as { name: string },
+    body: {} as UpdateFolderInput,
     query: {} as Empty,
     params: {} as { id: string },
     response: {} as FolderDto,
@@ -211,14 +211,6 @@ export const FolderRoutes = {
     query: {} as Empty,
     params: {} as { id: string },
     response: {} as { token: string; expiresIn: number },
-  },
-  export: {
-    path: `${API_PREFIX}/folders/:id/export`,
-    method: "GET",
-    body: {} as Empty,
-    query: {} as { format: ExportFormat },
-    params: {} as { id: string },
-    response: {} as unknown,
   },
 } satisfies Record<string, RouteDef>;
 

@@ -1,5 +1,5 @@
 import request from "supertest";
-import { ErrorCode } from "@ordo/shared";
+import { DEFAULT_FOLDER_NAME, ErrorCode } from "@ordo/shared";
 import { ReaderService } from "../src/bookmarks/reader.service.js";
 import {
   authedAgent,
@@ -60,6 +60,8 @@ describe("Bookmarks & Folders (e2e)", () => {
         .send({ name: "Reading" })
         .expect(201);
       expect(created.body.name).toBe("Reading");
+      expect(created.body.icon).toBe("folder-outline");
+      expect(created.body.pinned).toBe(false);
       expect(created.body.protected).toBe(false);
 
       const list = await agent.get("/api/folders").expect(200);
@@ -72,21 +74,114 @@ describe("Bookmarks & Folders (e2e)", () => {
       expect(after.body).toHaveLength(1);
     });
 
+    it("creates a folder with an explicit icon and defaults otherwise", async () => {
+      const { agent } = await setup();
+
+      const withIcon = await agent
+        .post("/api/folders")
+        .send({ name: "Dev", icon: "code-slash-outline" })
+        .expect(201);
+      expect(withIcon.body.icon).toBe("code-slash-outline");
+      expect(withIcon.body.pinned).toBe(false);
+
+      const plain = await agent.post("/api/folders").send({ name: "Misc" }).expect(201);
+      expect(plain.body.icon).toBe("folder-outline");
+      expect(plain.body.pinned).toBe(false);
+
+      const invalid = await agent
+        .post("/api/folders")
+        .send({ name: "Bad", icon: "not-an-ionicon" })
+        .expect(400);
+      expect(invalid.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+    });
+
+    it("updates folder metadata (name/icon/pinned) and keeps counts accurate", async () => {
+      const { agent } = await setup();
+      const folder = await agent.post("/api/folders").send({ name: "Reading" }).expect(201);
+      await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/1", folderId: folder.body.id })
+        .expect(201);
+      await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/2", folderId: folder.body.id })
+        .expect(201);
+      const read = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/3", folderId: folder.body.id })
+        .expect(201);
+      await agent.patch(`/api/bookmarks/${read.body.id}`).send({ isRead: true }).expect(200);
+
+      const updated = await agent
+        .patch(`/api/folders/${folder.body.id}`)
+        .send({ name: "Read Later", icon: "reader-outline", pinned: true })
+        .expect(200);
+      expect(updated.body.name).toBe("Read Later");
+      expect(updated.body.icon).toBe("reader-outline");
+      expect(updated.body.pinned).toBe(true);
+      // counts must reflect the folder's real contents after the update
+      expect(updated.body.bookmarkCount).toBe(3);
+      expect(updated.body.unreadCount).toBe(2);
+
+      const empty = await agent.patch(`/api/folders/${folder.body.id}`).send({}).expect(400);
+      expect(empty.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+
+      // partial update touching only pinned leaves other metadata intact
+      const pinnedOnly = await agent
+        .patch(`/api/folders/${folder.body.id}`)
+        .send({ pinned: false })
+        .expect(200);
+      expect(pinnedOnly.body.name).toBe("Read Later");
+      expect(pinnedOnly.body.icon).toBe("reader-outline");
+      expect(pinnedOnly.body.pinned).toBe(false);
+    });
+
+    it("lists the default folder first, then pinned, then creation order", async () => {
+      const { agent } = await setup();
+      const alpha = await agent.post("/api/folders").send({ name: "Alpha" }).expect(201);
+      const beta = await agent.post("/api/folders").send({ name: "Beta" }).expect(201);
+      const gamma = await agent.post("/api/folders").send({ name: "Gamma" }).expect(201);
+
+      const names = async () => {
+        const res = await agent.get("/api/folders").expect(200);
+        return res.body.map((f: { name: string }) => f.name);
+      };
+
+      await agent.patch(`/api/folders/${gamma.body.id}`).send({ pinned: true }).expect(200);
+      expect(await names()).toEqual([DEFAULT_FOLDER_NAME, "Gamma", "Alpha", "Beta"]);
+
+      await agent.patch(`/api/folders/${alpha.body.id}`).send({ pinned: true }).expect(200);
+      expect(await names()).toEqual([DEFAULT_FOLDER_NAME, "Alpha", "Gamma", "Beta"]);
+
+      await agent.patch(`/api/folders/${gamma.body.id}`).send({ pinned: false }).expect(200);
+      expect(await names()).toEqual([DEFAULT_FOLDER_NAME, "Alpha", "Beta", "Gamma"]);
+    });
+
     it("refuses to delete the default folder", async () => {
       const { agent, defaultFolderId } = await setup();
       const res = await agent.delete(`/api/folders/${defaultFolderId}`).expect(403);
       expect(res.body.error.code).toBe(ErrorCode.DEFAULT_FOLDER_IMMUTABLE);
     });
 
-    it("refuses to delete a non-empty folder", async () => {
+    it("deletes a non-empty folder and cascades its bookmarks", async () => {
       const { agent } = await setup();
       const folder = await agent.post("/api/folders").send({ name: "Temp" }).expect(201);
-      await agent
+      const b1 = await agent
         .post("/api/bookmarks")
         .send({ url: "https://example.com/a", folderId: folder.body.id })
         .expect(201);
-      const res = await agent.delete(`/api/folders/${folder.body.id}`).expect(409);
-      expect(res.body.error.code).toBe(ErrorCode.FOLDER_NOT_EMPTY);
+      await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/b", folderId: folder.body.id })
+        .expect(201);
+
+      await agent.delete(`/api/folders/${folder.body.id}`).expect(200);
+
+      const after = await agent.get("/api/folders").expect(200);
+      expect(after.body).toHaveLength(1);
+
+      const gone = await agent.get(`/api/bookmarks/${b1.body.id}`).expect(404);
+      expect(gone.body.error.code).toBe(ErrorCode.BOOKMARK_NOT_FOUND);
     });
 
     it("reports folder counts (total + unread)", async () => {
@@ -216,23 +311,6 @@ describe("Bookmarks & Folders (e2e)", () => {
       expect(res.body.updated).toBe(3);
       const list = await agent.get(`/api/bookmarks?folderId=${defaultFolderId}`).expect(200);
       expect(list.body.items.every((b: { isRead: boolean }) => b.isRead)).toBe(true);
-    });
-
-    it("exports a folder as JSON and HTML", async () => {
-      const { agent, defaultFolderId } = await setup();
-      await agent
-        .post("/api/bookmarks")
-        .send({ url: "https://example.com/export", folderId: defaultFolderId })
-        .expect(201);
-
-      const json = await agent.get(`/api/folders/${defaultFolderId}/export?format=json`).expect(200);
-      const parsed = JSON.parse(json.text);
-      expect(parsed.bookmarks).toHaveLength(1);
-      expect(parsed.bookmarks[0].url).toBe("https://example.com/export");
-
-      const html = await agent.get(`/api/folders/${defaultFolderId}/export?format=html`).expect(200);
-      expect(html.text).toMatch(/DOCTYPE NETSCAPE-Bookmark/);
-      expect(html.text).toMatch(/example\.com\/export/);
     });
   });
 

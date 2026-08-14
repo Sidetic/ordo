@@ -1,4 +1,5 @@
 /** Entity & response shapes shared between server and mobile client. */
+import type { FolderIcon } from "./constants.js";
 
 export interface UserDto {
   id: string;
@@ -37,6 +38,8 @@ export interface AuthResponse {
 export interface FolderDto {
   id: string;
   name: string;
+  icon: FolderIcon;
+  pinned: boolean;
   protected: boolean;
   bookmarkCount: number;
   unreadCount: number;
