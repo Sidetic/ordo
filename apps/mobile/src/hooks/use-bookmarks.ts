@@ -36,7 +36,6 @@ export function useInfiniteBookmarks(folderId: string, enabled = true) {
     initialPageParam: null as string | null,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor : undefined),
     enabled,
-    placeholderData: (prev) => prev,
   });
 }
 
