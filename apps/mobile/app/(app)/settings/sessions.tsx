@@ -82,7 +82,7 @@ export default function SessionsScreen() {
   return (
     <SettingsPage title="Active sessions">
       {error && !sessions ? (
-        <SettingsContent style={styles.stateContent}>
+        <SettingsContent>
           <EmptyState
             icon="cloud-offline-outline"
             title="Couldn't load sessions"
@@ -91,7 +91,7 @@ export default function SessionsScreen() {
           />
         </SettingsContent>
       ) : isLoading ? (
-        <SettingsContent style={styles.loadingContent}>
+        <SettingsContent>
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} height={72} radiusKey="lg" style={styles.skeleton} />
           ))}
@@ -161,16 +161,16 @@ export default function SessionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  stateContent: { paddingTop: spacing[24], paddingHorizontal: spacing[16] },
-  loadingContent: { paddingTop: spacing[12], paddingHorizontal: spacing[16] },
   skeleton: { width: "100%", marginBottom: spacing[10] },
   list: { width: "100%", maxWidth: layout.maxSettingsWidth, alignSelf: "center" },
-  listContent: { paddingTop: spacing[12], paddingBottom: spacing[32] },
+  // Matches the central SettingsScrollView header→content gap so the loaded
+  // list, loading skeletons, and error state all start at the same offset.
+  listContent: { paddingTop: spacing[16], paddingBottom: spacing[32] },
   listContentEmpty: { flexGrow: 1, justifyContent: "center" },
   card: { width: "100%", borderWidth: StyleSheet.hairlineWidth, borderRadius: radius["2xl"], padding: spacing[16] },
   cardHead: { flexDirection: "row", gap: spacing[12], alignItems: "flex-start" },
   iconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   titleRow: { flexDirection: "row", alignItems: "center", gap: spacing[8], marginBottom: 2 },
   revokeBtn: { alignSelf: "flex-start", marginTop: spacing[12], paddingHorizontal: spacing[14], paddingVertical: spacing[8], borderRadius: 10, borderWidth: 1 },
-  emptyState: { width: "100%", maxWidth: layout.maxSettingsWidth, paddingHorizontal: spacing[16] },
+  emptyState: { width: "100%", maxWidth: layout.maxSettingsWidth },
 });

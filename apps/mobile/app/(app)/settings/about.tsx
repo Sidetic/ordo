@@ -29,11 +29,9 @@ export default function AboutScreen() {
   return (
     <SettingsPage title="About">
       <SettingsScrollView>
-        <View style={styles.hero}>
-          <Text variant="callout" align="center" style={styles.tagline}>
-            The app that keeps your life in order
-          </Text>
-        </View>
+        <Text variant="callout" align="center" style={styles.tagline}>
+          The app that keeps your life in order
+        </Text>
 
         <SettingsGroup
           label="Version"
@@ -105,8 +103,7 @@ export default function AboutScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { paddingHorizontal: spacing[28], paddingTop: spacing[12] },
-  tagline: { maxWidth: 300, alignSelf: "center", lineHeight: 21 },
+  tagline: { maxWidth: 300, alignSelf: "center" },
   fingerprint: {
     minHeight: 64,
     paddingHorizontal: spacing[16],

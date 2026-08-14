@@ -77,7 +77,15 @@ export function SettingsContent({
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.contentFrame, { paddingLeft: insets.left, paddingRight: insets.right }]}>
+    <View
+      style={[
+        styles.contentFrame,
+        {
+          paddingLeft: insets.left + spacing[16],
+          paddingRight: insets.right + spacing[16],
+        },
+      ]}
+    >
       <View style={[styles.contentColumn, { maxWidth }, style]}>{children}</View>
     </View>
   );
@@ -141,15 +149,17 @@ export function SettingsGroup({
 
 const styles = StyleSheet.create({
   page: { flex: 1 },
-  scrollContent: { paddingBottom: spacing[40] },
-  contentFrame: { width: "100%" },
+  // The header→content gap is defined once here; screens must not add their
+  // own top padding for the first group (compact labels sit flush under it).
+  scrollContent: { paddingTop: spacing[16], paddingBottom: spacing[40] },
+  contentFrame: { width: "100%", paddingTop: spacing[16] },
   contentColumn: { width: "100%", alignSelf: "center" },
   formColumn: { width: "100%", alignSelf: "center" },
   sectionLabel: {
     paddingTop: spacing[24],
     paddingBottom: spacing[8],
   },
-  compactSectionLabel: { paddingTop: spacing[12] },
+  compactSectionLabel: { paddingTop: spacing[0] },
   group: { overflow: "hidden" },
   groupFooter: { paddingHorizontal: spacing[4], paddingTop: spacing[8] },
 });

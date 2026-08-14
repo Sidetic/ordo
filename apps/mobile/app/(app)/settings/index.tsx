@@ -25,10 +25,9 @@ export default function SettingsScreen() {
     <View style={{ flex: 1, backgroundColor: palette.background }}>
       <Header title="Settings" large maxWidth={layout.maxSettingsWidth} />
       <SettingsScrollView
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: floatingNavigation ? floatingBottomClearance : spacing[40] },
-        ]}
+        contentContainerStyle={{
+          paddingBottom: floatingNavigation ? floatingBottomClearance : spacing[40],
+        }}
       >
         <SettingsGroup label="Preferences" compact>
           <SettingRow
@@ -143,7 +142,6 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: spacing[4] },
   signout: { padding: spacing[16] },
   modalRoot: {
     flex: 1,

@@ -65,7 +65,7 @@ export function OtaUpdateCard() {
   return (
     <SettingRow
       icon="cloud-download-outline"
-      label="Software updates"
+      label="App updates"
       description={description}
       right={
         <Button

@@ -41,9 +41,11 @@ export function Header({
   const { isLandscape, isTablet } = useResponsiveLayout();
   const router = useRouter();
   const topInset = safeTop ? insets.top : 0;
+  // Both header sizes share the screen's 16px horizontal padding so titles,
+  // controls, and page content align on the same edge.
   const horizontalInsets = {
-    paddingLeft: Math.max(insets.left, spacing[4]),
-    paddingRight: Math.max(insets.right, spacing[4]),
+    paddingLeft: Math.max(insets.left, spacing[16]),
+    paddingRight: Math.max(insets.right, spacing[16]),
   };
   const showLarge = large && (!isLandscape || isTablet);
 
@@ -61,8 +63,8 @@ export function Header({
           {
             maxWidth,
             paddingTop: topInset + spacing[4],
-            paddingLeft: Math.max(insets.left, spacing[12]),
-            paddingRight: Math.max(insets.right, spacing[12]),
+            paddingLeft: Math.max(insets.left, spacing[16]),
+            paddingRight: Math.max(insets.right, spacing[16]),
             borderBottomColor: palette.border,
           },
         ]}
@@ -130,7 +132,7 @@ const styles = StyleSheet.create({
   compactRow: { minHeight: 36, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backBtn: { width: 36, height: 32, alignItems: "center", justifyContent: "center" },
   right: { minWidth: 36, alignItems: "flex-end", justifyContent: "center" },
-  largeTitles: { marginTop: spacing[4], paddingHorizontal: spacing[4], alignItems: "center" },
+  largeTitles: { marginTop: spacing[4], alignItems: "center" },
   largeTitlesWithoutControls: { marginTop: 0 },
   compactTitle: { position: "absolute", top: 0, bottom: 0, left: 48, right: 48, alignItems: "center", justifyContent: "center" },
   compactSubtitle: { marginTop: -spacing[4], paddingHorizontal: 48 },
