@@ -43,13 +43,16 @@ export default function FolderDetailScreen() {
   const router = useRouter();
   const { hasDetailPane } = useResponsiveLayout();
   const { id, bookmark } = useLocalSearchParams<{ id: string; bookmark?: string }>();
-  const folderId = Array.isArray(id) ? id[0] : id;
+  const routeId = Array.isArray(id) ? id[0] : id;
   const selectedBookmarkId = Array.isArray(bookmark) ? bookmark[0] : bookmark;
+  /** "root" (or a missing param) maps to the unfiled list; otherwise a real folder id. */
+  const isRoot = routeId === "root";
+  const folderId = isRoot || !routeId ? null : routeId;
 
   const { data: folders } = useFolders();
   const folder = useMemo(() => folders?.find((f) => f.id === folderId), [folders, folderId]);
 
-  const bookmarks = useInfiniteBookmarks(folderId, !!folderId);
+  const bookmarks = useInfiniteBookmarks(folderId, !!routeId);
   const toggleRead = useToggleRead(folderId);
   const deleteBm = useDeleteBookmark(folderId);
   const markAll = useMarkAllRead(folderId);
@@ -62,13 +65,14 @@ export default function FolderDetailScreen() {
   const protectedError = !!bookmarks.error && isFolderProtected(bookmarks.error);
   const items = useMemo(() => flattenPages(bookmarks.data?.pages ?? []), [bookmarks.data]);
   const isEmpty = !bookmarks.isLoading && !protectedError && items.length === 0;
-  const hasUnread = (folder?.unreadCount ?? 0) > 0;
+  // Root isn't a folder row, so derive unread state from the loaded items.
+  const hasUnread = folder ? folder.unreadCount > 0 : items.some((b) => !b.isRead);
 
   const openReader = (b: BookmarkDto) => {
     if (hasDetailPane) {
       router.push({
         pathname: "/folder/[id]",
-        params: { id: folderId, bookmark: b.id },
+        params: { id: folderId ?? "root", bookmark: b.id },
       });
       return;
     }
@@ -92,7 +96,7 @@ export default function FolderDetailScreen() {
       onSuccess: () => {
         toast.success("Bookmark deleted");
         if (selectedBookmarkId === b.id) {
-          router.replace({ pathname: "/folder/[id]", params: { id: folderId } });
+          router.replace({ pathname: "/folder/[id]", params: { id: folderId ?? "root" } });
         }
       },
       onError: (e) => toast.error(errorMessage(e)),
@@ -139,7 +143,7 @@ export default function FolderDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
       <Header
-        title={folder?.name ?? "Folder"}
+        title={folder?.name ?? (isRoot ? "Bookmarks" : "Folder")}
         subtitle={folder ? `${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}` : undefined}
         showBack
         right={
@@ -147,11 +151,11 @@ export default function FolderDetailScreen() {
             <PressableScale style={styles.iconBtn} scaleTo={0.85} onPress={onMarkAllRead} hitSlop={8}>
               <Ionicons name="checkmark-done" size={22} color={palette.accent} />
             </PressableScale>
-          ) : (
+          ) : folder ? (
             <PressableScale style={styles.iconBtn} scaleTo={0.85} onPress={() => setFolderActions(true)} hitSlop={8}>
               <Ionicons name="ellipsis-horizontal" size={22} color={palette.text} />
             </PressableScale>
-          )
+          ) : undefined
         }
       />
 
@@ -163,8 +167,8 @@ export default function FolderDetailScreen() {
             message="Enter the password to view these bookmarks."
           />
           <LockPrompt
-            visible={protectedError}
-            folderId={folderId}
+            visible={protectedError && !!folderId}
+            folderId={folderId ?? ""}
             folderName={folder?.name}
             onDismiss={() => router.back()}
             onUnlocked={() => bookmarks.refetch()}
@@ -239,7 +243,7 @@ export default function FolderDetailScreen() {
         visible={addOpen}
         onDismiss={() => setAddOpen(false)}
         folderId={folderId}
-        folderName={folder?.name}
+        folderName={folder?.name ?? null}
       />
 
       <BookmarkActionsSheet

@@ -40,17 +40,22 @@ export function ReaderPane({
     () => (bookmarkId ? findBookmarkInCache(queryClient, bookmarkId) : undefined),
     [bookmarkId],
   );
-  const detail = useBookmarkDetail(bookmarkId ?? "", !!bookmarkId && !cached?.contentMarkdown);
+  const detail = useBookmarkDetail(
+    bookmarkId ?? "",
+    !!bookmarkId && !cached?.contentMarkdown,
+    cached?.folderId,
+  );
 
   const bookmark = detail.data ?? cached;
   const loading = !!bookmarkId && !bookmark && detail.isLoading;
   const hasContent = !!bookmark?.contentMarkdown;
 
-  const toggleRead = useToggleRead(bookmark?.folderId ?? "");
+  const toggleRead = useToggleRead(bookmark?.folderId ?? null);
   const markedRef = useRef<string | null>(null);
 
   React.useEffect(() => {
-    if (bookmark && !bookmark.isRead && bookmark.folderId && markedRef.current !== bookmark.id) {
+    // Auto-mark read on open — filed and unfiled (folderId null) alike.
+    if (bookmark && !bookmark.isRead && markedRef.current !== bookmark.id) {
       markedRef.current = bookmark.id;
       toggleRead.mutate({ id: bookmark.id, isRead: true });
     }

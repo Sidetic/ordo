@@ -5,6 +5,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { bookmarksApi } from "../lib/api/bookmarks";
 import { queryClient } from "../lib/query-client";
+import { useFolderTokenStore } from "../store/folder-tokens";
 import { qk } from "../lib/api/query-keys";
 import {
   prependBookmarkToPages,
@@ -13,8 +14,9 @@ import {
 } from "../lib/cache-helpers";
 import { DEFAULT_PAGE_SIZE, type BookmarkDetailDto, type BookmarkDto, type FolderDto } from "@ordo/shared";
 
-/** Decrement a folder's bookmarkCount + unreadCount in the folders cache. */
-function bumpFolderCount(id: string, bookmarkDelta: number, unreadDelta: number) {
+/** Decrement a folder's bookmarkCount + unreadCount in the folders cache. No-op for unfiled (null). */
+function bumpFolderCount(id: string | null, bookmarkDelta: number, unreadDelta: number) {
+  if (!id) return;
   queryClient.setQueryData<FolderDto[]>(qk.folders, (old) =>
     (old ?? []).map((f) =>
       f.id === id
@@ -28,7 +30,7 @@ function bumpFolderCount(id: string, bookmarkDelta: number, unreadDelta: number)
   );
 }
 
-export function useInfiniteBookmarks(folderId: string, enabled = true) {
+export function useInfiniteBookmarks(folderId: string | null, enabled = true) {
   return useInfiniteQuery({
     queryKey: qk.bookmarks(folderId),
     queryFn: ({ pageParam }) =>
@@ -51,10 +53,10 @@ export function useInfiniteSearch(q: string) {
   });
 }
 
-export function useBookmarkDetail(id: string, enabled = true) {
+export function useBookmarkDetail(id: string, enabled = true, folderId?: string | null) {
   return useQuery({
     queryKey: qk.bookmark(id),
-    queryFn: () => bookmarksApi.detail(id),
+    queryFn: () => bookmarksApi.detail(id, folderId),
     enabled: !!id && enabled,
     staleTime: 5 * 60_000,
   });
@@ -63,7 +65,7 @@ export function useBookmarkDetail(id: string, enabled = true) {
 export function useCreateBookmark() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ url, folderId }: { url: string; folderId: string }) =>
+    mutationFn: ({ url, folderId }: { url: string; folderId: string | null }) =>
       bookmarksApi.create(url, folderId),
     onSuccess: (bookmark) => {
       prependBookmarkToPages(qc, qk.bookmarks(bookmark.folderId), bookmark);
@@ -72,7 +74,7 @@ export function useCreateBookmark() {
   });
 }
 
-export function useToggleRead(folderId: string) {
+export function useToggleRead(folderId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, isRead }: { id: string; isRead: boolean }) =>
@@ -91,7 +93,7 @@ export function useToggleRead(folderId: string) {
   });
 }
 
-export function useDeleteBookmark(folderId: string) {
+export function useDeleteBookmark(folderId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => bookmarksApi.remove(id, { folderId }),
@@ -113,11 +115,16 @@ export function useDeleteBookmark(folderId: string) {
   });
 }
 
-export function useMoveBookmark(fromFolderId: string) {
+export function useMoveBookmark(fromFolderId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, toFolderId }: { id: string; toFolderId: string }) =>
-      bookmarksApi.update(id, { folderId: toFolderId }, { folderId: fromFolderId }),
+    mutationFn: ({ id, toFolderId }: { id: string; toFolderId: string | null }) =>
+      bookmarksApi.update(id, { folderId: toFolderId }, {
+        folderId:
+          toFolderId && useFolderTokenStore.getState().get(toFolderId)
+            ? toFolderId
+            : fromFolderId,
+      }),
     onMutate: ({ id, toFolderId }) => {
       const prev = qc.getQueryData(qk.bookmarks(fromFolderId));
       const prevDestination = qc.getQueryData(qk.bookmarks(toFolderId));
@@ -146,7 +153,7 @@ export function useMoveBookmark(fromFolderId: string) {
   });
 }
 
-export function useMarkAllRead(folderId: string) {
+export function useMarkAllRead(folderId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => bookmarksApi.markAllRead(folderId),
@@ -166,10 +173,12 @@ export function useMarkAllRead(folderId: string) {
               }
             : data,
       );
-      // Zero out the folder's unread count.
-      queryClient.setQueryData<FolderDto[]>(qk.folders, (old) =>
-        (old ?? []).map((f) => (f.id === folderId ? { ...f, unreadCount: 0 } : f)),
-      );
+      // Zero out the folder's unread count (unfiled root has no folder cache entry).
+      if (folderId) {
+        queryClient.setQueryData<FolderDto[]>(qk.folders, (old) =>
+          (old ?? []).map((f) => (f.id === folderId ? { ...f, unreadCount: 0 } : f)),
+        );
+      }
       return { prev, prevFolders };
     },
     onError: (_e, _v, ctx) => {

@@ -11,7 +11,8 @@ export const qk = {
   folders: ["folders"] as const,
   folder: (id: string) => ["folders", id] as const,
 
-  bookmarks: (folderId: string) => ["bookmarks", folderId] as const,
+  /** `folderId` is null for the unfiled root list ("Bookmarks"). */
+  bookmarks: (folderId: string | null) => ["bookmarks", folderId ?? null] as const,
   bookmark: (id: string) => ["bookmarks", "detail", id] as const,
   search: (q: string) => ["bookmarks", "search", q] as const,
 } as const;

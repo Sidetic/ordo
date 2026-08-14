@@ -31,14 +31,9 @@ function mergeMetadata(
 }
 
 function sortFolders(folders: FolderDto[]) {
-  const [defaultFolder, ...rest] = folders;
-  if (!defaultFolder) return [];
-  return [
-    defaultFolder,
-    ...rest.sort(
-      (a, b) => Number(b.pinned) - Number(a.pinned) || a.createdAt.localeCompare(b.createdAt),
-    ),
-  ];
+  return [...folders].sort(
+    (a, b) => Number(b.pinned) - Number(a.pinned) || a.createdAt.localeCompare(b.createdAt),
+  );
 }
 
 export { useFolders } from "./queries";

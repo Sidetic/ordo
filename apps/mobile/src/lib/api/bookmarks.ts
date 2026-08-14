@@ -4,18 +4,20 @@
 import { BookmarkRoutes, buildPath } from "@ordo/shared";
 import { api } from "./client";
 
+/** `folderId` is null for the unfiled root list ("Bookmarks"). */
 export interface ListBookmarksParams {
-  folderId: string;
+  folderId: string | null;
   cursor?: string | null;
   limit?: number;
 }
 
 export const bookmarksApi = {
-  create: (url: string, folderId: string) =>
-    api.post<typeof BookmarkRoutes.create.response>(BookmarkRoutes.create.path, {
-      url,
-      folderId,
-    }),
+  create: (url: string, folderId: string | null) =>
+    api.post<typeof BookmarkRoutes.create.response>(
+      BookmarkRoutes.create.path,
+      { url, folderId },
+      { folderId },
+    ),
 
   list: ({ folderId, cursor, limit }: ListBookmarksParams) =>
     api.get<typeof BookmarkRoutes.list.response>(BookmarkRoutes.list.path, {
@@ -29,13 +31,16 @@ export const bookmarksApi = {
       auth: true,
     }),
 
-  detail: (id: string) =>
-    api.get<typeof BookmarkRoutes.detail.response>(buildPath(BookmarkRoutes.detail.path, { id })),
+  detail: (id: string, folderId?: string | null) =>
+    api.get<typeof BookmarkRoutes.detail.response>(
+      buildPath(BookmarkRoutes.detail.path, { id }),
+      { folderId },
+    ),
 
   update: (
     id: string,
-    body: { folderId?: string; isRead?: boolean },
-    opts?: { folderId?: string },
+    body: { folderId?: string | null; isRead?: boolean },
+    opts?: { folderId?: string | null },
   ) =>
     api.patch<typeof BookmarkRoutes.update.response>(
       buildPath(BookmarkRoutes.update.path, { id }),
@@ -43,14 +48,16 @@ export const bookmarksApi = {
       opts,
     ),
 
-  remove: (id: string, opts?: { folderId?: string }) =>
+  remove: (id: string, opts?: { folderId?: string | null }) =>
     api.delete<typeof BookmarkRoutes.remove.response>(
       buildPath(BookmarkRoutes.remove.path, { id }),
       opts,
     ),
 
-  markAllRead: (folderId: string) =>
-    api.post<typeof BookmarkRoutes.markAllRead.response>(BookmarkRoutes.markAllRead.path, {
-      folderId,
-    }),
+  markAllRead: (folderId: string | null) =>
+    api.post<typeof BookmarkRoutes.markAllRead.response>(
+      BookmarkRoutes.markAllRead.path,
+      { folderId },
+      { folderId },
+    ),
 };

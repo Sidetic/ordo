@@ -16,14 +16,22 @@ import { spacing } from "../../theme/tokens";
 export interface AddBookmarkSheetProps {
   visible: boolean;
   onDismiss: () => void;
-  folderId: string;
-  folderName?: string;
+  /** Target folder, or null to save unfiled (root "Bookmarks"). */
+  folderId: string | null;
+  folderName?: string | null;
+}
+
+/** Display name for the save destination; unfiled bookmarks land in "Bookmarks". */
+function destinationLabel(folderId: string | null, folderName?: string | null): string | null {
+  if (folderName) return folderName;
+  return folderId === null ? "Bookmarks" : null;
 }
 
 export function AddBookmarkSheet({ visible, onDismiss, folderId, folderName }: AddBookmarkSheetProps) {
   const create = useCreateBookmark();
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
+  const destination = destinationLabel(folderId, folderName);
 
   const reset = () => {
     setUrl("");
@@ -53,7 +61,7 @@ export function AddBookmarkSheet({ visible, onDismiss, folderId, folderName }: A
     try {
       await create.mutateAsync({ url: normalized, folderId });
       haptics.success();
-      toast.success("Saved to" + (folderName ? ` ${folderName}` : ""));
+      toast.success(destination ? `Saved to ${destination}` : "Saved");
       close();
     } catch (e) {
       haptics.error();
@@ -64,9 +72,9 @@ export function AddBookmarkSheet({ visible, onDismiss, folderId, folderName }: A
   return (
     <FloatingPanel visible={visible} onDismiss={close}>
       <Text variant="title3" style={{ marginBottom: spacing[4] }}>Save bookmark</Text>
-      {folderName ? (
+      {destination ? (
         <Text variant="footnote" color="secondary" style={{ marginBottom: spacing[16] }}>
-          Saving to <Text variant="footnote" color="accent">{folderName}</Text>
+          Saving to <Text variant="footnote" color="accent">{destination}</Text>
         </Text>
       ) : null}
 

@@ -165,6 +165,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     try {
       await del.mutateAsync(folder.id);
       clearToken(folder.id);
+      invalidateBookmarks();
       haptics.success();
       onDeleted?.(folder.id);
       onDismiss();

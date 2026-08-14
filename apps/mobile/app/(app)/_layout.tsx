@@ -1,5 +1,5 @@
 /**
- * Authenticated app layout — tabbed (Folders · Search · Settings).
+ * Authenticated app layout — tabbed (Bookmarks · Search · Settings).
  * Detail routes stay focused on phones and retain the navigation rail when
  * there is enough horizontal room.
  */
@@ -209,11 +209,11 @@ export default function AppLayout() {
     ? "settings"
     : pathname.startsWith("/search")
       ? "search"
-      : "folders";
+      : "bookmarks";
   const tabItemStyle = (section: typeof activeSection) => ({
     flex: sideNavigation ? 0 : 1,
     marginHorizontal: floating ? (sideNavigation || compact ? spacing[2] : spacing[4]) : 0,
-    marginTop: sideNavigation && section === "folders" ? ("auto" as const) : floating ? spacing[4] : 0,
+    marginTop: sideNavigation && section === "bookmarks" ? ("auto" as const) : floating ? spacing[4] : 0,
     marginBottom: sideNavigation && section === "settings" ? ("auto" as const) : floating ? spacing[4] : 0,
     borderRadius: floating ? radius.xl : 0,
     overflow: "hidden" as const,
@@ -270,12 +270,12 @@ export default function AppLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Folders",
-          tabBarItemStyle: tabItemStyle("folders"),
+          title: "Bookmarks",
+          tabBarItemStyle: tabItemStyle("bookmarks"),
           tabBarIcon: ({ color }) => (
-            <Ionicons name="folder-outline" size={compact ? 20 : 22} color={tabColor("folders", color)} />
+            <Ionicons name="bookmark-outline" size={compact ? 20 : 22} color={tabColor("bookmarks", color)} />
           ),
-          tabBarLabel: ({ color }) => tabLabel("folders", "Folders", color),
+          tabBarLabel: ({ color }) => tabLabel("bookmarks", "Bookmarks", color),
         }}
       />
       <Tabs.Screen

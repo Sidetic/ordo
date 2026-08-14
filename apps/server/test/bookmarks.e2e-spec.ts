@@ -683,12 +683,33 @@ describe("Bookmarks & Folders (e2e)", () => {
       const token: string = unlocked.body.token;
       expect(token).toBeTruthy();
 
+      await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/new-secret", folderId: folder.body.id })
+        .expect(403);
+      await agent
+        .post("/api/bookmarks")
+        .set("x-folder-token", token)
+        .send({ url: "https://example.com/new-secret", folderId: folder.body.id })
+        .expect(201);
+
+      await agent
+        .post("/api/bookmarks/mark-all-read")
+        .send({ folderId: folder.body.id })
+        .expect(403);
+      const marked = await agent
+        .post("/api/bookmarks/mark-all-read")
+        .set("x-folder-token", token)
+        .send({ folderId: folder.body.id })
+        .expect(200);
+      expect(marked.body.updated).toBe(2);
+
       // with token, list works
       const ok = await agent
         .get(`/api/bookmarks?folderId=${folder.body.id}`)
         .set("x-folder-token", token)
         .expect(200);
-      expect(ok.body.items).toHaveLength(1);
+      expect(ok.body.items).toHaveLength(2);
 
       // removing the password opens the folder again
       await agent.delete(`/api/folders/${folder.body.id}/password`).expect(200);

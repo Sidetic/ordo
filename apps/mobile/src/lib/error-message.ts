@@ -16,7 +16,6 @@ const FRIENDLY: Record<string, string> = {
   [ErrorCode.FOLDER_NOT_FOUND]: "This folder no longer exists.",
   [ErrorCode.FOLDER_PROTECTED]: "This folder is locked.",
   [ErrorCode.INVALID_FOLDER_PASSWORD]: "That password is incorrect.",
-  [ErrorCode.DEFAULT_FOLDER_IMMUTABLE]: "The default folder can't be deleted.",
   [ErrorCode.BOOKMARK_NOT_FOUND]: "This bookmark no longer exists.",
   [ErrorCode.VALIDATION_ERROR]: "Please check your input and try again.",
   [ErrorCode.RATE_LIMITED]: "Too many requests. Please wait a moment.",

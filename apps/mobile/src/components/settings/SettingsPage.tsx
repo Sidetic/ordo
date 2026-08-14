@@ -151,8 +151,8 @@ const styles = StyleSheet.create({
   page: { flex: 1 },
   // The header→content gap is defined once here; screens must not add their
   // own top padding for the first group (compact labels sit flush under it).
-  scrollContent: { paddingTop: spacing[16], paddingBottom: spacing[40] },
-  contentFrame: { width: "100%", paddingTop: spacing[16] },
+  scrollContent: { paddingTop: spacing[8], paddingBottom: spacing[40] },
+  contentFrame: { width: "100%", paddingTop: spacing[8] },
   contentColumn: { width: "100%", alignSelf: "center" },
   formColumn: { width: "100%", alignSelf: "center" },
   sectionLabel: {

@@ -103,7 +103,7 @@ export default function AboutScreen() {
 }
 
 const styles = StyleSheet.create({
-  tagline: { maxWidth: 300, alignSelf: "center" },
+  tagline: { maxWidth: 300, alignSelf: "center", marginBottom: spacing[16] },
   fingerprint: {
     minHeight: 64,
     paddingHorizontal: spacing[16],

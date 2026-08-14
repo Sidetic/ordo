@@ -67,8 +67,8 @@ export interface RequestOptions<B = unknown> {
   query?: Record<string, string | number | boolean | null | undefined>;
   /** Attach the current access token (default: true). */
   auth?: boolean;
-  /** If set, attach the cached folder unlock token for this folder (if any). */
-  folderId?: string;
+  /** If set (non-null), attach the cached folder unlock token for this folder (if any). */
+  folderId?: string | null;
   signal?: AbortSignal;
 }
 

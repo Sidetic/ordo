@@ -2,7 +2,7 @@
  * Active sessions / devices list with per-session revoke (optimistic).
  */
 import React from "react";
-import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
+import { ActivityIndicator, FlatList, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -68,6 +68,7 @@ function deviceIcon(s: SessionDto): keyof typeof Ionicons.glyphMap {
 export default function SessionsScreen() {
   const { palette } = useTheme();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const { data: sessions, isLoading, error, refetch } = useSessions();
   const revoke = useRevokeSession();
 
@@ -104,8 +105,8 @@ export default function SessionsScreen() {
           contentContainerStyle={[
             styles.listContent,
             {
-              paddingLeft: insets.left + spacing[16],
-              paddingRight: insets.right + spacing[16],
+              paddingLeft: width > layout.maxSettingsWidth + spacing[32] ? 0 : insets.left + spacing[16],
+              paddingRight: width > layout.maxSettingsWidth + spacing[32] ? 0 : insets.right + spacing[16],
             },
             !(sessions?.length ?? 0) && styles.listContentEmpty,
           ]}
@@ -163,9 +164,8 @@ export default function SessionsScreen() {
 const styles = StyleSheet.create({
   skeleton: { width: "100%", marginBottom: spacing[10] },
   list: { width: "100%", maxWidth: layout.maxSettingsWidth, alignSelf: "center" },
-  // Matches the central SettingsScrollView header→content gap so the loaded
-  // list, loading skeletons, and error state all start at the same offset.
-  listContent: { paddingTop: spacing[16], paddingBottom: spacing[32] },
+  // Matches SettingsPage so loading, error, and loaded states do not jump.
+  listContent: { paddingTop: spacing[8], paddingBottom: spacing[40] },
   listContentEmpty: { flexGrow: 1, justifyContent: "center" },
   card: { width: "100%", borderWidth: StyleSheet.hairlineWidth, borderRadius: radius["2xl"], padding: spacing[16] },
   cardHead: { flexDirection: "row", gap: spacing[12], alignItems: "flex-start" },
