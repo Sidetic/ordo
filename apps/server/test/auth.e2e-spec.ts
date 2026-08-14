@@ -388,18 +388,22 @@ describe("Auth (e2e)", () => {
         const before = await agent.get("/api/auth/sessions").expect(200);
         expect(before.body).toHaveLength(2);
 
-        await agent
+        const changed = await agent
           .post("/api/auth/password")
+          .set("x-client-type", "mobile")
           .send({ currentPassword: "password123", newPassword: "brandnew123" })
           .expect(200);
 
-        // the other session is revoked
+        // Both old sessions are revoked and the response provides a fresh current session.
         await request(pctx.app.getHttpServer())
           .get("/api/auth/me")
           .set("authorization", `Bearer ${second.body.tokens.accessToken}`)
           .expect(401);
-        // the current session survives
-        await agent.get("/api/auth/me").expect(200);
+        await agent.get("/api/auth/me").expect(401);
+        await request(pctx.app.getHttpServer())
+          .get("/api/auth/me")
+          .auth(changed.body.tokens.accessToken, { type: "bearer" })
+          .expect(200);
       });
     });
 
