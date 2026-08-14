@@ -308,6 +308,7 @@ export default function AppLayout() {
       <Tabs.Screen name="settings/account" options={hiddenOptions} />
       <Tabs.Screen name="settings/appearance" options={hiddenOptions} />
       <Tabs.Screen name="settings/server" options={hiddenOptions} />
+      <Tabs.Screen name="settings/username" options={hiddenOptions} />
       <Tabs.Screen name="settings/email" options={hiddenOptions} />
       <Tabs.Screen name="settings/verify-email" options={hiddenOptions} />
       <Tabs.Screen name="settings/password" options={hiddenOptions} />
