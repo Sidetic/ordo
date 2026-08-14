@@ -2,7 +2,6 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import bcrypt from "bcryptjs";
 import type { Session } from "@prisma/client";
 import {
-  DEFAULT_FOLDER_NAME,
   ErrorCode,
   type AuthResponse,
   type SessionDeviceType,
@@ -69,11 +68,7 @@ export class AuthService {
         username,
         email,
         passwordHash,
-        folders: {
-          create: [{ name: DEFAULT_FOLDER_NAME, isDefault: true, position: 0 }],
-        },
       },
-      include: { folders: true },
     });
 
     if (this.cfg.emailVerificationRequired) {

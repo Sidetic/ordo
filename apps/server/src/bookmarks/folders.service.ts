@@ -22,9 +22,8 @@ export class FoldersService {
   async list(userId: string): Promise<FolderDto[]> {
     const folders = await this.prisma.folder.findMany({
       where: { userId },
-      // default folder first, then pinned folders, then manual/creation order
+      // pinned folders first, then manual position, then creation order
       orderBy: [
-        { isDefault: "desc" },
         { pinned: "desc" },
         { position: "asc" },
         { createdAt: "asc" },
@@ -80,13 +79,11 @@ export class FoldersService {
     return toFolderDto(updated, await this.folderCounts(folderId));
   }
 
+  /** Any folder may be deleted. Bookmarks inside are removed by the schema's
+   *  cascading delete. */
   async remove(folderId: string, userId: string): Promise<void> {
     const folder = await this.prisma.folder.findFirst({ where: { id: folderId, userId } });
     if (!folder) throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "Folder not found");
-    if (folder.isDefault) {
-      throw new AppError(ErrorCode.DEFAULT_FOLDER_IMMUTABLE, "The default folder cannot be deleted");
-    }
-    // Bookmarks are removed by the schema's cascading delete.
     await this.prisma.folder.delete({ where: { id: folderId } });
   }
 

@@ -7,15 +7,22 @@ const url = z
   .url({ message: "Enter a valid URL" })
   .max(2048);
 
+/**
+ * Target folder for a bookmark. Omitted or `null` means the bookmark is
+ * "unfiled" (it lives outside every folder).
+ */
+const folderId = z.string().min(1, { message: "Folder is required" }).nullish();
+
 export const CreateBookmarkSchema = z.object({
   url,
-  folderId: z.string().min(1),
+  folderId,
 });
 export type CreateBookmarkInput = z.infer<typeof CreateBookmarkSchema>;
 
 export const UpdateBookmarkSchema = z
   .object({
-    folderId: z.string().min(1).optional(),
+    /** Passing `null` moves the bookmark to unfiled. */
+    folderId: folderId.optional(),
     isRead: z.boolean().optional(),
   })
   .refine((v) => v.folderId !== undefined || v.isRead !== undefined, {
@@ -23,7 +30,8 @@ export const UpdateBookmarkSchema = z
   });
 export type UpdateBookmarkInput = z.infer<typeof UpdateBookmarkSchema>;
 
+/** Without a `folderId` (or with `null`), only unfiled bookmarks are marked read. */
 export const MarkAllReadSchema = z.object({
-  folderId: z.string().min(1),
+  folderId,
 });
 export type MarkAllReadInput = z.infer<typeof MarkAllReadSchema>;

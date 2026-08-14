@@ -26,7 +26,7 @@ describe("Auth (e2e)", () => {
   });
 
   describe("registration", () => {
-    it("registers a new user, returns tokens for mobile, and creates a default folder", async () => {
+    it("registers a new user, returns tokens for mobile, and creates no folders", async () => {
       const res = await request(ctx.app.getHttpServer())
         .post("/api/auth/register")
         .set("x-client-type", "mobile")
@@ -39,11 +39,11 @@ describe("Auth (e2e)", () => {
       expect(res.body.tokens.refreshToken).toBeTruthy();
       expect(res.body.tokens.expiresIn).toBeGreaterThan(0);
 
+      // Accounts start empty — bookmarks may live outside any folder (unfiled).
       const folders = await ctx.prisma.folder.findMany({
         where: { userId: res.body.user.id },
       });
-      expect(folders).toHaveLength(1);
-      expect(folders[0].isDefault).toBe(true);
+      expect(folders).toHaveLength(0);
     });
 
     it("does not return tokens in the body for web clients (cookies instead)", async () => {
@@ -410,8 +410,9 @@ describe("Auth (e2e)", () => {
     describe("account deletion", () => {
       it("requires the exact phrase and password, then deletes all account data", async () => {
         const auth = await registerUser(pctx.app, "delete@ordo.app");
-        const folder = await pctx.prisma.folder.findFirstOrThrow({
-          where: { userId: auth.user.id },
+        // Accounts start folderless: create one folder plus unfiled + filed bookmarks.
+        const folder = await pctx.prisma.folder.create({
+          data: { userId: auth.user.id, name: "To delete" },
         });
         await pctx.prisma.folderToken.create({
           data: {
@@ -426,6 +427,15 @@ describe("Auth (e2e)", () => {
             folderId: folder.id,
             url: "https://example.com/article",
             title: "Example article",
+            domain: "example.com",
+          },
+        });
+        await pctx.prisma.bookmark.create({
+          data: {
+            userId: auth.user.id,
+            folderId: null,
+            url: "https://example.com/unfiled",
+            title: "Unfiled article",
             domain: "example.com",
           },
         });

@@ -219,7 +219,7 @@ export const BookmarkRoutes = {
   create: {
     path: `${API_PREFIX}/bookmarks`,
     method: "POST",
-    body: {} as { url: string; folderId: string },
+    body: {} as { url: string; folderId?: string | null },
     query: {} as Empty,
     params: {} as Empty,
     response: {} as BookmarkDto,
@@ -228,7 +228,7 @@ export const BookmarkRoutes = {
     path: `${API_PREFIX}/bookmarks`,
     method: "GET",
     body: {} as Empty,
-    query: {} as { folderId: string; cursor?: string; limit?: number },
+    query: {} as { folderId?: string | null; cursor?: string; limit?: number },
     params: {} as Empty,
     response: {} as CursorPage<BookmarkDto>,
   },
@@ -251,7 +251,7 @@ export const BookmarkRoutes = {
   update: {
     path: `${API_PREFIX}/bookmarks/:id`,
     method: "PATCH",
-    body: {} as { folderId?: string; isRead?: boolean },
+    body: {} as { folderId?: string | null; isRead?: boolean },
     query: {} as Empty,
     params: {} as { id: string },
     response: {} as BookmarkDto,
@@ -267,7 +267,7 @@ export const BookmarkRoutes = {
   markAllRead: {
     path: `${API_PREFIX}/bookmarks/mark-all-read`,
     method: "POST",
-    body: {} as { folderId: string },
+    body: {} as { folderId?: string | null },
     query: {} as Empty,
     params: {} as Empty,
     response: {} as { updated: number },

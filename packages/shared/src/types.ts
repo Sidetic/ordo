@@ -49,7 +49,8 @@ export interface FolderDto {
 
 export interface BookmarkDto {
   id: string;
-  folderId: string;
+  /** Owning folder, or null when the bookmark is unfiled. */
+  folderId: string | null;
   url: string;
   title: string;
   description: string | null;

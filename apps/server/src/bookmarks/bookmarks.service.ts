@@ -47,8 +47,9 @@ export class BookmarksService {
   ) {}
 
   /** Save a URL: best-effort content extraction. The bookmark is always stored,
-   *  even if the fetch fails (status reflected in fetchStatus). */
-  async create(folder: Folder, url: string): Promise<BookmarkDto> {
+   *  even if the fetch fails (status reflected in fetchStatus). A null folder
+   *  stores it as unfiled. */
+  async create(userId: string, folder: Folder | null, url: string): Promise<BookmarkDto> {
     let extracted = null;
     try {
       extracted = await this.reader.extract(url);
@@ -58,8 +59,8 @@ export class BookmarksService {
 
     const bookmark = await this.prisma.bookmark.create({
       data: {
-        userId: folder.userId,
-        folderId: folder.id,
+        userId,
+        folderId: folder ? folder.id : null,
         url,
         title: extracted?.title ?? this.safeHostname(url),
         description: extracted?.description ?? null,
@@ -73,12 +74,14 @@ export class BookmarksService {
     return toBookmarkDto(bookmark);
   }
 
+  /** List a folder's bookmarks; a null folder lists only unfiled bookmarks. */
   async list(
-    folder: Folder,
+    userId: string,
+    folder: Folder | null,
     opts: { cursor?: string; limit?: number },
   ): Promise<CursorPage<BookmarkDto>> {
     return this.paginate(
-      { folderId: folder.id },
+      { userId, folderId: folder ? folder.id : null },
       opts.cursor,
       opts.limit,
       (b) => toBookmarkDto(b),
@@ -112,15 +115,17 @@ export class BookmarksService {
       where: { id: bookmarkId, userId },
     });
     if (!bookmark) throw new AppError(ErrorCode.BOOKMARK_NOT_FOUND, "Bookmark not found");
-    // Enforce protection on the owning folder.
-    await this.access.requireFolder(bookmark.folderId, userId, folderToken);
+    // Enforce protection on the owning folder (unfiled bookmarks have none).
+    if (bookmark.folderId) {
+      await this.access.requireFolder(bookmark.folderId, userId, folderToken);
+    }
     return toBookmarkDetailDto(bookmark);
   }
 
   async update(
     userId: string,
     bookmarkId: string,
-    changes: { folderId?: string; isRead?: boolean },
+    changes: { folderId?: string | null; isRead?: boolean },
     folderToken: string | null,
   ): Promise<BookmarkDto> {
     const bookmark = await this.prisma.bookmark.findFirst({
@@ -129,14 +134,21 @@ export class BookmarksService {
     if (!bookmark) throw new AppError(ErrorCode.BOOKMARK_NOT_FOUND, "Bookmark not found");
 
     // If the current folder is protected, require a valid token to mutate it.
-    await this.access.requireFolder(bookmark.folderId, userId, folderToken);
+    if (bookmark.folderId) {
+      await this.access.requireFolder(bookmark.folderId, userId, folderToken);
+    }
 
-    const data: { folderId?: string; isRead?: boolean } = {};
+    const data: { folderId?: string | null; isRead?: boolean } = {};
     if (changes.isRead !== undefined) data.isRead = changes.isRead;
-    if (changes.folderId !== undefined && changes.folderId !== bookmark.folderId) {
-      // target folder must exist & be owned; if protected, the token must cover it.
-      await this.access.requireFolder(changes.folderId, userId, folderToken);
-      data.folderId = changes.folderId;
+    if (changes.folderId !== undefined) {
+      if (changes.folderId === null) {
+        // null explicitly moves the bookmark to unfiled.
+        data.folderId = null;
+      } else if (changes.folderId !== bookmark.folderId) {
+        // target folder must exist & be owned; if protected, the token must cover it.
+        await this.access.requireFolder(changes.folderId, userId, folderToken);
+        data.folderId = changes.folderId;
+      }
     }
 
     const updated = await this.prisma.bookmark.update({
@@ -155,13 +167,17 @@ export class BookmarksService {
       where: { id: bookmarkId, userId },
     });
     if (!bookmark) throw new AppError(ErrorCode.BOOKMARK_NOT_FOUND, "Bookmark not found");
-    await this.access.requireFolder(bookmark.folderId, userId, folderToken);
+    if (bookmark.folderId) {
+      await this.access.requireFolder(bookmark.folderId, userId, folderToken);
+    }
     await this.prisma.bookmark.delete({ where: { id: bookmarkId } });
   }
 
-  async markAllRead(folder: Folder): Promise<number> {
+  /** Mark every unread bookmark in a folder as read; a null folder targets the
+   *  user's unfiled bookmarks only. */
+  async markAllRead(userId: string, folder: Folder | null): Promise<number> {
     const result = await this.prisma.bookmark.updateMany({
-      where: { folderId: folder.id, isRead: false },
+      where: { userId, folderId: folder ? folder.id : null, isRead: false },
       data: { isRead: true },
     });
     return result.count;

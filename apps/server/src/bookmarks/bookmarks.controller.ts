@@ -40,23 +40,29 @@ export class BookmarksController {
   @Post()
   async create(
     @CurrentUser() user: AuthContext,
-    @Body(new ZodValidationPipe(CreateBookmarkSchema)) body: { url: string; folderId: string },
+    @Body(new ZodValidationPipe(CreateBookmarkSchema)) body: { url: string; folderId?: string | null },
     @Req() req: Request,
   ): Promise<BookmarkDto> {
-    const folder = await this.access.requireFolder(body.folderId, user.userId, getFolderToken(req));
-    return this.bookmarks.create(folder, body.url);
+    // A missing/null folderId stores the bookmark as unfiled.
+    const folder = body.folderId
+      ? await this.access.requireFolder(body.folderId, user.userId, getFolderToken(req))
+      : null;
+    return this.bookmarks.create(user.userId, folder, body.url);
   }
 
   @Get()
   async list(
     @CurrentUser() user: AuthContext,
-    @Query("folderId") folderId: string,
+    @Query("folderId") folderId: string | undefined,
     @Query("cursor") cursor: string | undefined,
     @Query("limit") limit: string | undefined,
     @Req() req: Request,
   ): Promise<CursorPage<BookmarkDto>> {
-    const folder = await this.access.requireFolder(folderId, user.userId, getFolderToken(req));
-    return this.bookmarks.list(folder, {
+    // Without a folderId only the user's unfiled bookmarks are listed.
+    const folder = folderId
+      ? await this.access.requireFolder(folderId, user.userId, getFolderToken(req))
+      : null;
+    return this.bookmarks.list(user.userId, folder, {
       cursor,
       limit: limit ? parseInt(limit, 10) : undefined,
     });
@@ -88,7 +94,7 @@ export class BookmarksController {
   async update(
     @CurrentUser() user: AuthContext,
     @Param("id") id: string,
-    @Body(new ZodValidationPipe(UpdateBookmarkSchema)) body: { folderId?: string; isRead?: boolean },
+    @Body(new ZodValidationPipe(UpdateBookmarkSchema)) body: { folderId?: string | null; isRead?: boolean },
     @Req() req: Request,
   ): Promise<BookmarkDto> {
     return this.bookmarks.update(user.userId, id, body, getFolderToken(req));
@@ -109,11 +115,14 @@ export class BookmarksController {
   @HttpCode(200)
   async markAllRead(
     @CurrentUser() user: AuthContext,
-    @Body(new ZodValidationPipe(MarkAllReadSchema)) body: { folderId: string },
+    @Body(new ZodValidationPipe(MarkAllReadSchema)) body: { folderId?: string | null },
     @Req() req: Request,
   ): Promise<{ updated: number }> {
-    const folder = await this.access.requireFolder(body.folderId, user.userId, getFolderToken(req));
-    const updated = await this.bookmarks.markAllRead(folder);
+    // Without a folderId (or with null) only unfiled bookmarks are targeted.
+    const folder = body.folderId
+      ? await this.access.requireFolder(body.folderId, user.userId, getFolderToken(req))
+      : null;
+    const updated = await this.bookmarks.markAllRead(user.userId, folder);
     return { updated };
   }
 }

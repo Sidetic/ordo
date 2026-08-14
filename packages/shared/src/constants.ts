@@ -30,8 +30,6 @@ export const TOKEN_TTL = {
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
 
-export const DEFAULT_FOLDER_NAME = "All Bookmarks";
-
 /** Icon used when a folder is created without an explicit icon. */
 export const DEFAULT_FOLDER_ICON = "folder-outline";
 
