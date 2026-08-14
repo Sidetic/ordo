@@ -50,4 +50,7 @@ export const authApi = {
 
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
     api.post<typeof AuthRoutes.changePassword.response>(AuthRoutes.changePassword.path, body),
+
+  deleteAccount: (body: { currentPassword: string; confirmation: string }) =>
+    api.delete<typeof AuthRoutes.deleteAccount.response>(AuthRoutes.deleteAccount.path, { body }),
 };

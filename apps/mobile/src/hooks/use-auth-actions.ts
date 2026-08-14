@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "../lib/query-client";
 import { authApi } from "../lib/api/auth";
 import { useAuthStore } from "../store/auth";
+import { useFolderTokenStore } from "../store/folder-tokens";
 import { qk } from "../lib/api/query-keys";
 import { cancelProactiveRefresh, scheduleProactiveRefresh } from "../lib/api/client";
 import type { SessionDto, UserDto } from "@ordo/shared";
@@ -78,6 +79,22 @@ export function useChangePassword() {
       setSession(data);
       scheduleProactiveRefresh(data.tokens.expiresIn);
       void qc.invalidateQueries({ queryKey: qk.sessions });
+    },
+  });
+}
+
+export function useDeleteAccount() {
+  const clear = useAuthStore((s) => s.clear);
+  return useMutation({
+    mutationFn: authApi.deleteAccount,
+    onSuccess: async () => {
+      cancelProactiveRefresh();
+      const cleanup = Promise.allSettled([
+        clear(),
+        useFolderTokenStore.getState().clearAll(),
+      ]);
+      queryClient.clear();
+      await cleanup;
     },
   });
 }

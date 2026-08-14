@@ -279,6 +279,16 @@ export class AuthService {
     return this.buildAuthResponse(updated, session, tokens);
   }
 
+  async deleteAccount(userId: string, currentPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok) {
+      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password");
+    }
+    await this.prisma.user.deleteMany({ where: { id: userId } });
+  }
+
   private async createAndSendVerification(userId: string, email: string): Promise<void> {
     // invalidate previous tokens for this user
     await this.prisma.emailVerificationToken.deleteMany({ where: { userId } });

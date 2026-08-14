@@ -15,6 +15,7 @@ import {
   ChangeEmailSchema,
   ChangePasswordSchema,
   ChangeUsernameSchema,
+  DeleteAccountSchema,
   LoginSchema,
   RegisterSchema,
   VerifyEmailChangeSchema,
@@ -194,5 +195,18 @@ export class AuthController {
     );
     if (!mobile) setAuthCookies(res, result.tokens);
     return this.maybeStripTokens(result, mobile);
+  }
+
+  @Delete("account")
+  @UseGuards(AuthGuard)
+  @HttpCode(200)
+  async deleteAccount(
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(DeleteAccountSchema)) body: { currentPassword: string; confirmation: string },
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ success: true }> {
+    await this.auth.deleteAccount(user.userId, body.currentPassword);
+    clearAuthCookies(res);
+    return { success: true };
   }
 }

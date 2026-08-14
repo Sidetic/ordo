@@ -311,6 +311,7 @@ export default function AppLayout() {
       <Tabs.Screen name="settings/email" options={hiddenOptions} />
       <Tabs.Screen name="settings/verify-email" options={hiddenOptions} />
       <Tabs.Screen name="settings/password" options={hiddenOptions} />
+      <Tabs.Screen name="settings/delete-account" options={hiddenOptions} />
     </Tabs>
   );
 }

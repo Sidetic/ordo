@@ -97,6 +97,18 @@ export default function AccountScreen() {
               divider={false}
             />
           </SettingsGroup>
+
+          <SettingsGroup label="Danger zone">
+            <SettingRow
+              icon="trash-outline"
+              label="Delete account"
+              description="Permanently delete your account and data"
+              destructive
+              onPress={() => router.push("/settings/delete-account")}
+              showChevron
+              divider={false}
+            />
+          </SettingsGroup>
         </SettingsScrollView>
       </KeyboardAvoidingView>
     </SettingsPage>

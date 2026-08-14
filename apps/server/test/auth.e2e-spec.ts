@@ -1,5 +1,5 @@
 import request from "supertest";
-import { ErrorCode } from "@ordo/shared";
+import { DELETE_ACCOUNT_CONFIRMATION, ErrorCode } from "@ordo/shared";
 import { MailService } from "../src/auth/mail.service.js";
 import {
   authedAgent,
@@ -400,6 +400,63 @@ describe("Auth (e2e)", () => {
           .expect(401);
         // the current session survives
         await agent.get("/api/auth/me").expect(200);
+      });
+    });
+
+    describe("account deletion", () => {
+      it("requires the exact phrase and password, then deletes all account data", async () => {
+        const auth = await registerUser(pctx.app, "delete@ordo.app");
+        const folder = await pctx.prisma.folder.findFirstOrThrow({
+          where: { userId: auth.user.id },
+        });
+        await pctx.prisma.folderToken.create({
+          data: {
+            folderId: folder.id,
+            tokenHash: "delete-account-folder-token",
+            expiresAt: new Date(Date.now() + 60_000),
+          },
+        });
+        await pctx.prisma.bookmark.create({
+          data: {
+            userId: auth.user.id,
+            folderId: folder.id,
+            url: "https://example.com/article",
+            title: "Example article",
+            domain: "example.com",
+          },
+        });
+
+        const agent = request
+          .agent(pctx.app.getHttpServer())
+          .auth(auth.tokens.accessToken, { type: "bearer" });
+
+        const invalidConfirmation = await agent
+          .delete("/api/auth/account")
+          .send({ currentPassword: "password123", confirmation: "delete my account" })
+          .expect(400);
+        expect(invalidConfirmation.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+
+        const invalidPassword = await agent
+          .delete("/api/auth/account")
+          .send({ currentPassword: "wrongpassword", confirmation: DELETE_ACCOUNT_CONFIRMATION })
+          .expect(401);
+        expect(invalidPassword.body.error.code).toBe(ErrorCode.INVALID_CREDENTIALS);
+
+        await agent
+          .delete("/api/auth/account")
+          .send({ currentPassword: "password123", confirmation: DELETE_ACCOUNT_CONFIRMATION })
+          .expect(200, { success: true });
+
+        expect(await pctx.prisma.user.count({ where: { id: auth.user.id } })).toBe(0);
+        expect(await pctx.prisma.folder.count({ where: { userId: auth.user.id } })).toBe(0);
+        expect(await pctx.prisma.bookmark.count({ where: { userId: auth.user.id } })).toBe(0);
+        expect(await pctx.prisma.session.count({ where: { userId: auth.user.id } })).toBe(0);
+        expect(await pctx.prisma.folderToken.count({ where: { folderId: folder.id } })).toBe(0);
+
+        await request(pctx.app.getHttpServer())
+          .get("/api/auth/me")
+          .auth(auth.tokens.accessToken, { type: "bearer" })
+          .expect(401);
       });
     });
   });

@@ -70,6 +70,15 @@ export const ChangePasswordSchema = z.object({
   });
 export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
 
+export const DELETE_ACCOUNT_CONFIRMATION = "DELETE MY ACCOUNT";
+export const DeleteAccountSchema = z.object({
+  currentPassword: password,
+  confirmation: z.string().refine((value) => value === DELETE_ACCOUNT_CONFIRMATION, {
+    message: `Type ${DELETE_ACCOUNT_CONFIRMATION} exactly`,
+  }),
+});
+export type DeleteAccountInput = z.infer<typeof DeleteAccountSchema>;
+
 export const VerifyEmailChangeSchema = z.object({
   token: z.string().min(1),
 });

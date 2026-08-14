@@ -144,6 +144,14 @@ export const AuthRoutes = {
     params: {} as Empty,
     response: {} as AuthResponse,
   },
+  deleteAccount: {
+    path: `${API_PREFIX}/auth/account`,
+    method: "DELETE",
+    body: {} as { currentPassword: string; confirmation: string },
+    query: {} as Empty,
+    params: {} as Empty,
+    response: {} as { success: true },
+  },
 } satisfies Record<string, RouteDef>;
 
 // ---------- Folders ----------
