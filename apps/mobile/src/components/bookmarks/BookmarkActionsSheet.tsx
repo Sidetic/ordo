@@ -68,7 +68,7 @@ export function BookmarkActionsSheet({
 
   return (
     <Sheet visible={visible} onDismiss={onDismiss}>
-      <Text variant="title3" numberOfLines={2} style={{ marginBottom: spacing[12] }}>
+      <Text variant="title3" align="center" numberOfLines={2} style={{ marginBottom: spacing[12] }}>
         {bookmark.title || bookmark.url}
       </Text>
       <View>
