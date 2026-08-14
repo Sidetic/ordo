@@ -180,7 +180,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     <Sheet visible={visible} onDismiss={close}>
       {mode === "menu" ? (
         <>
-          <Text variant="title3" numberOfLines={1} style={{ marginBottom: spacing[8] }}>{folder.name}</Text>
+          <Text variant="title3" align="center" numberOfLines={1} style={{ marginBottom: spacing[8] }}>{folder.name}</Text>
           {error ? (
             <Text variant="footnote" color="danger" style={{ marginBottom: spacing[8] }}>
               {error}
