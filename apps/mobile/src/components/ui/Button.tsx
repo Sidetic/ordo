@@ -83,7 +83,7 @@ export function Button({
           borderWidth,
           borderColor,
           opacity: disabled ? 0.45 : 1,
-          ...(block ? { flex: 1 } : {}),
+          ...(block ? { width: "100%" as const } : {}),
         },
         style,
       ]}
