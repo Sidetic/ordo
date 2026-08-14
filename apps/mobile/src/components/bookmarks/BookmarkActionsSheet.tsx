@@ -92,7 +92,11 @@ export function BookmarkActionsSheet({
           icon="open-outline"
           label="Open original"
           onPress={() => {
-            Linking.openURL(bookmark.url).catch(() => toast.error("Couldn't open the link."));
+            Linking.openURL(bookmark.url)
+              .then(() => {
+                if (!bookmark.isRead) onToggleRead(bookmark);
+              })
+              .catch(() => toast.error("Couldn't open the link."));
             onDismiss();
           }}
         />
