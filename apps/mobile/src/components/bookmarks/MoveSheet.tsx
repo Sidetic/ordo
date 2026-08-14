@@ -15,7 +15,7 @@ import { toast } from "../ui/toast-store";
 import { useTheme } from "../../theme/ThemeProvider";
 import { spacing } from "../../theme/tokens";
 import { useResponsiveLayout } from "../../hooks/use-responsive-layout";
-import type { BookmarkDto, FolderDto } from "@ordo/shared";
+import { DEFAULT_FOLDER_ICON, type BookmarkDto, type FolderDto } from "@ordo/shared";
 
 export interface MoveSheetProps {
   visible: boolean;
@@ -66,7 +66,7 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
           keyExtractor={(f) => f.id}
           renderItem={({ item }) => (
             <PressableScale style={[styles.row, { borderBottomColor: palette.border }]} onPress={() => pick(item)}>
-              <Ionicons name={item.icon} size={20} color={palette.accent} />
+              <Ionicons name={item.icon ?? DEFAULT_FOLDER_ICON} size={20} color={palette.accent} />
               <Text variant="body" style={{ flex: 1 }} numberOfLines={1}>{item.name}</Text>
               {item.pinned ? <Ionicons name="pin" size={14} color={palette.accent} /> : null}
               {item.protected ? <Ionicons name="lock-closed" size={14} color={palette.textTertiary} /> : null}

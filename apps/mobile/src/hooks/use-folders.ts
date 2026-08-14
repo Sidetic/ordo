@@ -7,7 +7,28 @@ import { queryClient } from "../lib/query-client";
 import { qk } from "../lib/api/query-keys";
 import { errorMessage, isFolderProtected } from "../lib/error-message";
 import { toast } from "../components/ui/toast-store";
-import type { CreateFolderInput, FolderDto, UpdateFolderInput } from "@ordo/shared";
+import {
+  normalizeFolderIcon,
+  type CreateFolderInput,
+  type FolderDto,
+  type UpdateFolderInput,
+} from "@ordo/shared";
+
+function mergeMetadata(
+  current: FolderDto,
+  updated: FolderDto,
+  input: UpdateFolderInput,
+): FolderDto {
+  return {
+    ...current,
+    ...updated,
+    ...input,
+    icon: normalizeFolderIcon(input.icon ?? updated.icon ?? current.icon),
+    pinned: input.pinned ?? updated.pinned ?? current.pinned ?? false,
+    bookmarkCount: current.bookmarkCount,
+    unreadCount: current.unreadCount,
+  };
+}
 
 function sortFolders(folders: FolderDto[]) {
   const [defaultFolder, ...rest] = folders;
@@ -27,7 +48,16 @@ export function useCreateFolder() {
   return useMutation({
     mutationFn: (input: CreateFolderInput) => foldersApi.create(input),
     onSuccess: (folder) => {
-      qc.setQueryData<FolderDto[]>(qk.folders, (old) => sortFolders([...(old ?? []), folder]));
+      qc.setQueryData<FolderDto[]>(qk.folders, (old) =>
+        sortFolders([
+          ...(old ?? []),
+          {
+            ...folder,
+            icon: normalizeFolderIcon(folder.icon),
+            pinned: folder.pinned ?? false,
+          },
+        ]),
+      );
     },
   });
 }
@@ -46,9 +76,11 @@ export function useRenameFolder() {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(qk.folders, ctx.prev);
     },
-    onSuccess: (folder, { id }) => {
+    onSuccess: (folder, { id, name }) => {
       qc.setQueryData<FolderDto[]>(qk.folders, (old) =>
-        (old ?? []).map((f) => (f.id === id ? folder : f)),
+        (old ?? []).map((current) =>
+          current.id === id ? mergeMetadata(current, folder, { name }) : current,
+        ),
       );
     },
   });
@@ -69,9 +101,13 @@ export function useUpdateFolder() {
     onError: (_error, _variables, context) => {
       if (context?.prev) qc.setQueryData(qk.folders, context.prev);
     },
-    onSuccess: (updated) => {
+    onSuccess: (updated, { id, input }) => {
       qc.setQueryData<FolderDto[]>(qk.folders, (old) =>
-        sortFolders((old ?? []).map((folder) => (folder.id === updated.id ? updated : folder))),
+        sortFolders(
+          (old ?? []).map((current) =>
+            current.id === id ? mergeMetadata(current, updated, input) : current,
+          ),
+        ),
       );
     },
   });

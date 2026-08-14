@@ -2,6 +2,7 @@
  * Read-side React Query hooks.
  */
 import { useQuery } from "@tanstack/react-query";
+import { normalizeFolderIcon } from "@ordo/shared";
 import { authApi } from "../lib/api/auth";
 import { serverApi } from "../lib/api/server";
 import { foldersApi } from "../lib/api/folders";
@@ -49,7 +50,14 @@ export function useSessions() {
 export function useFolders() {
   return useQuery({
     queryKey: qk.folders,
-    queryFn: () => foldersApi.list(),
+    queryFn: async () => {
+      const folders = await foldersApi.list();
+      return folders.map((folder) => ({
+        ...folder,
+        icon: normalizeFolderIcon(folder.icon),
+        pinned: folder.pinned ?? false,
+      }));
+    },
     staleTime: 30_000,
   });
 }

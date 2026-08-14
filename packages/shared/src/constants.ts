@@ -105,6 +105,12 @@ export const FOLDER_ICONS = [
 
 export type FolderIcon = (typeof FOLDER_ICONS)[number];
 
+export function normalizeFolderIcon(value: unknown): FolderIcon {
+  return typeof value === "string" && (FOLDER_ICONS as readonly string[]).includes(value)
+    ? (value as FolderIcon)
+    : DEFAULT_FOLDER_ICON;
+}
+
 /** Query param keys. */
 export const QUERY = {
   CURSOR: "cursor",

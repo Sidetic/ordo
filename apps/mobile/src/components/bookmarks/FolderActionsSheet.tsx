@@ -22,7 +22,7 @@ import {
 } from "../../hooks/use-folders";
 import { useFolderTokenStore } from "../../store/folder-tokens";
 
-type Mode = "menu" | "rename" | "password" | "icon" | "delete";
+type Mode = "menu" | "rename" | "password" | "icon" | "pin" | "delete";
 
 export interface FolderActionsSheetProps {
   visible: boolean;
@@ -70,15 +70,18 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
   const [password, setPassword] = useState("");
   const [icon, setIcon] = useState<FolderIcon>(DEFAULT_FOLDER_ICON);
   const [error, setError] = useState("");
+  const folderRef = React.useRef(folder);
+  folderRef.current = folder;
 
   React.useEffect(() => {
     if (!visible) return;
+    const currentFolder = folderRef.current;
     setMode("menu");
-    setName(folder?.name ?? "");
+    setName(currentFolder?.name ?? "");
     setPassword("");
-    setIcon(folder?.icon ?? DEFAULT_FOLDER_ICON);
+    setIcon(currentFolder?.icon ?? DEFAULT_FOLDER_ICON);
     setError("");
-  }, [visible, folder]);
+  }, [visible, folder?.id]);
 
   const showMode = (nextMode: Mode) => {
     setError("");
@@ -176,7 +179,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
         <>
           <View style={styles.titleRow}>
             <View style={[styles.titleIcon, { backgroundColor: palette.surfaceSecondary }]}>
-              <Ionicons name={folder.icon} size={22} color={palette.accent} />
+              <Ionicons name={folder.icon ?? DEFAULT_FOLDER_ICON} size={22} color={palette.accent} />
             </View>
             <View style={styles.titleBody}>
               <Text variant="title3" numberOfLines={1}>{folder.name}</Text>
@@ -188,7 +191,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
           </View>
           {error ? <Text variant="footnote" color="danger" style={styles.error}>{error}</Text> : null}
           <View>
-            <Row icon={folder.pinned ? "pin" : "pin-outline"} label={folder.pinned ? "Unpin folder" : "Pin folder"} onPress={doTogglePinned} />
+            <Row icon={folder.pinned ? "pin" : "pin-outline"} label={folder.pinned ? "Unpin folder" : "Pin folder"} onPress={() => showMode("pin")} />
             <Row icon="happy-outline" label="Change icon" onPress={() => showMode("icon")} />
             <Row icon="create-outline" label="Rename" onPress={() => showMode("rename")} />
             {folder.protected ? (
@@ -198,6 +201,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
             )}
             <Row icon="trash-outline" label="Delete folder" tone="danger" onPress={() => showMode("delete")} />
           </View>
+          <Button label="Cancel" variant="ghost" block onPress={onDismiss} style={styles.menuCancel} />
         </>
       ) : null}
 
@@ -237,6 +241,33 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
         </>
       ) : null}
 
+      {folder && mode === "pin" ? (
+        <>
+          <View style={[styles.pinIcon, { backgroundColor: palette.accentSoft }]}>
+            <Ionicons name={folder.pinned ? "pin-outline" : "pin"} size={24} color={palette.accent} />
+          </View>
+          <Text variant="title3" align="center">
+            {folder.pinned ? "Unpin folder?" : "Pin folder?"}
+          </Text>
+          <Text variant="body" color="secondary" align="center" style={styles.confirmCopy}>
+            {folder.pinned
+              ? `${folder.name} will return to its normal position.`
+              : `${folder.name} will stay near the top of your folder list.`}
+          </Text>
+          {error ? <Text variant="footnote" color="danger" align="center" style={styles.error}>{error}</Text> : null}
+          <View style={styles.actions}>
+            <Button
+              label={folder.pinned ? "Unpin folder" : "Pin folder"}
+              block
+              size="lg"
+              onPress={doTogglePinned}
+              loading={update.isPending}
+            />
+            <Button label="Cancel" variant="ghost" block disabled={update.isPending} onPress={() => showMode("menu")} />
+          </View>
+        </>
+      ) : null}
+
       {folder && mode === "delete" ? (
         <ScrollView keyboardShouldPersistTaps="handled">
           <View style={[styles.dangerIcon, { backgroundColor: palette.dangerSoft }]}>
@@ -268,7 +299,9 @@ const styles = StyleSheet.create({
   error: { marginTop: spacing[10] },
   row: { flexDirection: "row", alignItems: "center", gap: spacing[12], minHeight: 50, paddingHorizontal: spacing[4], borderBottomWidth: StyleSheet.hairlineWidth },
   rowLabel: { flex: 1 },
+  menuCancel: { marginTop: spacing[8] },
   actions: { gap: spacing[8], marginTop: spacing[20] },
+  pinIcon: { width: 48, height: 48, borderRadius: 16, alignSelf: "center", alignItems: "center", justifyContent: "center", marginBottom: spacing[12] },
   dangerIcon: { width: 48, height: 48, borderRadius: 16, alignSelf: "center", alignItems: "center", justifyContent: "center", marginBottom: spacing[12] },
   confirmCopy: { marginTop: spacing[8] },
 });

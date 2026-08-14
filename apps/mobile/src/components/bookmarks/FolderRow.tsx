@@ -10,7 +10,7 @@ import { Badge } from "../ui/Badge";
 import { useTheme } from "../../theme/ThemeProvider";
 import { haptics } from "../../lib/haptics";
 import { radius, spacing } from "../../theme/tokens";
-import type { FolderDto } from "@ordo/shared";
+import { DEFAULT_FOLDER_ICON, type FolderDto } from "@ordo/shared";
 
 export interface FolderRowProps {
   folder: FolderDto;
@@ -34,7 +34,7 @@ export function FolderRow({ folder, onPress, onLongPress }: FolderRowProps) {
       onLongPress={() => onLongPress?.(folder)}
     >
       <View style={[styles.iconWrap, { backgroundColor: palette.surfaceSecondary }]}>
-        <Ionicons name={folder.icon} size={18} color={palette.accent} />
+        <Ionicons name={folder.icon ?? DEFAULT_FOLDER_ICON} size={18} color={palette.accent} />
       </View>
       <View style={styles.body}>
         <Text variant="title3" numberOfLines={1}>{folder.name}</Text>

@@ -79,12 +79,14 @@ export function useToggleRead(folderId: string) {
       bookmarksApi.update(id, { isRead }, { folderId }),
     onMutate: ({ id, isRead }) => {
       const prev = qc.getQueryData(qk.bookmarks(folderId));
+      const prevFolders = qc.getQueryData<FolderDto[]>(qk.folders);
       updateBookmarkInPages(qc, qk.bookmarks(folderId), id, (b) => ({ ...b, isRead }));
       bumpFolderCount(folderId, 0, isRead ? -1 : +1);
-      return { prev };
+      return { prev, prevFolders };
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(qk.bookmarks(folderId), ctx.prev);
+      if (ctx?.prevFolders) qc.setQueryData(qk.folders, ctx.prevFolders);
     },
   });
 }
@@ -95,16 +97,18 @@ export function useDeleteBookmark(folderId: string) {
     mutationFn: (id: string) => bookmarksApi.remove(id, { folderId }),
     onMutate: (id) => {
       const prev = qc.getQueryData(qk.bookmarks(folderId));
+      const prevFolders = qc.getQueryData<FolderDto[]>(qk.folders);
       let unreadDelta = 0;
       const list = qc.getQueryData<{ pages: { items: BookmarkDto[] }[] }>(qk.bookmarks(folderId));
       const target = list?.pages.flatMap((p) => p.items).find((b) => b.id === id);
       if (target && !target.isRead) unreadDelta = -1;
       removeBookmarkFromPages(qc, qk.bookmarks(folderId), id);
       bumpFolderCount(folderId, -1, unreadDelta);
-      return { prev };
+      return { prev, prevFolders };
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(qk.bookmarks(folderId), ctx.prev);
+      if (ctx?.prevFolders) qc.setQueryData(qk.folders, ctx.prevFolders);
     },
   });
 }
@@ -116,6 +120,8 @@ export function useMoveBookmark(fromFolderId: string) {
       bookmarksApi.update(id, { folderId: toFolderId }, { folderId: fromFolderId }),
     onMutate: ({ id, toFolderId }) => {
       const prev = qc.getQueryData(qk.bookmarks(fromFolderId));
+      const prevDestination = qc.getQueryData(qk.bookmarks(toFolderId));
+      const prevFolders = qc.getQueryData<FolderDto[]>(qk.folders);
       let unreadDelta = 0;
       const list = qc.getQueryData<{ pages: { items: BookmarkDto[] }[] }>(qk.bookmarks(fromFolderId));
       const target = list?.pages.flatMap((p) => p.items).find((b) => b.id === id);
@@ -127,10 +133,12 @@ export function useMoveBookmark(fromFolderId: string) {
       removeBookmarkFromPages(qc, qk.bookmarks(fromFolderId), id);
       bumpFolderCount(fromFolderId, -1, unreadDelta);
       bumpFolderCount(toFolderId, +1, target && !target.isRead ? +1 : 0);
-      return { prev };
+      return { prev, prevDestination, prevFolders, toFolderId };
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(qk.bookmarks(fromFolderId), ctx.prev);
+      if (ctx?.prevDestination) qc.setQueryData(qk.bookmarks(ctx.toFolderId), ctx.prevDestination);
+      if (ctx?.prevFolders) qc.setQueryData(qk.folders, ctx.prevFolders);
     },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ["bookmarks"] });
@@ -144,6 +152,7 @@ export function useMarkAllRead(folderId: string) {
     mutationFn: () => bookmarksApi.markAllRead(folderId),
     onMutate: () => {
       const prev = qc.getQueryData(qk.bookmarks(folderId));
+      const prevFolders = qc.getQueryData<FolderDto[]>(qk.folders);
       qc.setQueriesData<{ pages: { items: BookmarkDto[] }[] }>(
         { queryKey: qk.bookmarks(folderId) },
         (data) =>
@@ -161,10 +170,11 @@ export function useMarkAllRead(folderId: string) {
       queryClient.setQueryData<FolderDto[]>(qk.folders, (old) =>
         (old ?? []).map((f) => (f.id === folderId ? { ...f, unreadCount: 0 } : f)),
       );
-      return { prev };
+      return { prev, prevFolders };
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(qk.bookmarks(folderId), ctx.prev);
+      if (ctx?.prevFolders) qc.setQueryData(qk.folders, ctx.prevFolders);
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.bookmarks(folderId) });

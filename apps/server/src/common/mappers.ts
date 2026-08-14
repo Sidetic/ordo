@@ -1,10 +1,8 @@
 import type { Bookmark, Folder, Session, User } from "@prisma/client";
 import {
-  DEFAULT_FOLDER_ICON,
-  FOLDER_ICONS,
+  normalizeFolderIcon,
   type BookmarkDto,
   type FolderDto,
-  type FolderIcon,
   type SessionDto,
   type UserDto,
 } from "@ordo/shared";
@@ -54,7 +52,7 @@ export function toFolderDto(
   return {
     id: f.id,
     name: f.name,
-    icon: FOLDER_ICONS.includes(f.icon as FolderIcon) ? (f.icon as FolderIcon) : DEFAULT_FOLDER_ICON,
+    icon: normalizeFolderIcon(f.icon),
     pinned: f.pinned,
     protected: f.passwordHash !== null,
     bookmarkCount: counts.bookmarkCount,
