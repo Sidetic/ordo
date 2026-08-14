@@ -1,7 +1,9 @@
 import React from "react";
 import {
   Animated,
+  Keyboard,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -42,20 +44,26 @@ export function SettingsSelect<T extends string>({
 
   const show = () => {
     haptics.selection();
-    anchorRef.current?.measureInWindow((x, y, measuredWidth, measuredHeight) => {
-      setAnchor({ x, y, width: measuredWidth, height: measuredHeight });
-      setMounted(true);
-      progress.setValue(0);
-      requestAnimationFrame(() => {
-        Animated.spring(progress, {
-          toValue: 1,
-          damping: 22,
-          stiffness: 260,
-          mass: 0.75,
-          useNativeDriver: true,
-        }).start();
-      });
-    });
+    Keyboard.dismiss();
+    setTimeout(
+      () => {
+        anchorRef.current?.measureInWindow((x, y, measuredWidth, measuredHeight) => {
+          setAnchor({ x, y, width: measuredWidth, height: measuredHeight });
+          setMounted(true);
+          progress.setValue(0);
+          requestAnimationFrame(() => {
+            Animated.spring(progress, {
+              toValue: 1,
+              damping: 22,
+              stiffness: 260,
+              mass: 0.75,
+              useNativeDriver: true,
+            }).start();
+          });
+        });
+      },
+      Platform.OS === "web" ? 0 : 160,
+    );
   };
 
   const dismiss = React.useCallback(() => {

@@ -26,7 +26,7 @@ export interface InputProps extends Omit<TextInputProps, "style"> {
   containerStyle?: ViewStyle;
 }
 
-export function Input({
+export const Input = React.forwardRef<TextInput, InputProps>(function Input({
   label,
   error,
   helper,
@@ -37,7 +37,7 @@ export function Input({
   onFocus,
   onBlur,
   ...rest
-}: InputProps) {
+}, ref) {
   const { palette } = useTheme();
   const [focused, setFocused] = useState(false);
 
@@ -64,6 +64,7 @@ export function Input({
       >
         {icon ? <View style={styles.icon}>{icon}</View> : null}
         <TextInput
+          ref={ref}
           placeholderTextColor={palette.textFaint}
           autoCorrect={false}
           autoCapitalize="none"
@@ -94,7 +95,7 @@ export function Input({
       ) : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   label: { marginBottom: spacing[6] },

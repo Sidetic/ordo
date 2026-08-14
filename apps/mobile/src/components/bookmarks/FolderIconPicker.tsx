@@ -53,7 +53,8 @@ export function FolderIconPicker({
 }
 
 const styles = StyleSheet.create({
-  scroll: { maxHeight: 224 },
+  // Three 42px rows with two 8px gaps; remaining icons scroll vertically.
+  scroll: { maxHeight: 142 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing[8] },
   icon: {
     width: 42,

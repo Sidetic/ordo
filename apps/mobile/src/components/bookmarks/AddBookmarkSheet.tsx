@@ -2,13 +2,19 @@
  * Floating dialog to save a new URL. Validates + creates optimistically.
  */
 import React, { useState } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { FloatingPanel } from "../ui/FloatingPanel";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
+import { LockPrompt } from "./LockPrompt";
+import {
+  SettingsSelect,
+  type SettingsSelectOption,
+} from "../settings/SettingsSelect";
 import { useCreateBookmark } from "../../hooks/use-bookmarks";
-import { errorMessage } from "../../lib/error-message";
+import { useFolders } from "../../hooks/queries";
+import { errorMessage, isFolderProtected } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
 import { toast } from "../ui/toast-store";
 import { spacing } from "../../theme/tokens";
@@ -19,7 +25,10 @@ export interface AddBookmarkSheetProps {
   /** Target folder, or null to save unfiled (root "Bookmarks"). */
   folderId: string | null;
   folderName?: string | null;
+  allowFolderSelection?: boolean;
 }
+
+const ROOT_DESTINATION = "__bookmarks__";
 
 /** Display name for the save destination; unfiled bookmarks land in "Bookmarks". */
 function destinationLabel(folderId: string | null, folderName?: string | null): string | null {
@@ -27,15 +36,43 @@ function destinationLabel(folderId: string | null, folderName?: string | null): 
   return folderId === null ? "Bookmarks" : null;
 }
 
-export function AddBookmarkSheet({ visible, onDismiss, folderId, folderName }: AddBookmarkSheetProps) {
+export function AddBookmarkSheet({
+  visible,
+  onDismiss,
+  folderId,
+  folderName,
+  allowFolderSelection = false,
+}: AddBookmarkSheetProps) {
   const create = useCreateBookmark();
+  const { data: folders } = useFolders();
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
-  const destination = destinationLabel(folderId, folderName);
+  const [lockedFolderId, setLockedFolderId] = useState<string | null>(null);
+  const [selectedDestination, setSelectedDestination] = useState(folderId ?? ROOT_DESTINATION);
+  const selectedFolderId = selectedDestination === ROOT_DESTINATION ? null : selectedDestination;
+  const selectedFolder = folders?.find((folder) => folder.id === selectedFolderId);
+  const destination = destinationLabel(
+    selectedFolderId,
+    allowFolderSelection ? selectedFolder?.name : folderName,
+  );
+  const destinationOptions: SettingsSelectOption<string>[] = [
+    { value: ROOT_DESTINATION, label: "Bookmarks", icon: "bookmark-outline" },
+    ...(folders ?? []).map((folder) => ({
+      value: folder.id,
+      label: folder.name,
+      icon: folder.icon,
+    })),
+  ];
+
+  React.useEffect(() => {
+    if (visible) setSelectedDestination(folderId ?? ROOT_DESTINATION);
+  }, [folderId, visible]);
 
   const reset = () => {
     setUrl("");
     setError("");
+    setLockedFolderId(null);
+    setSelectedDestination(folderId ?? ROOT_DESTINATION);
   };
 
   const close = () => {
@@ -59,20 +96,35 @@ export function AddBookmarkSheet({ visible, onDismiss, folderId, folderName }: A
       return;
     }
     try {
-      await create.mutateAsync({ url: normalized, folderId });
+      await create.mutateAsync({ url: normalized, folderId: selectedFolderId });
       haptics.success();
       toast.success(destination ? `Saved to ${destination}` : "Saved");
       close();
     } catch (e) {
+      if (selectedFolderId && isFolderProtected(e)) {
+        setLockedFolderId(selectedFolderId);
+        return;
+      }
       haptics.error();
       setError(errorMessage(e));
     }
   };
 
   return (
-    <FloatingPanel visible={visible} onDismiss={close}>
+    <>
+    <FloatingPanel visible={visible && !lockedFolderId} onDismiss={close}>
       <Text variant="title3" style={{ marginBottom: spacing[4] }}>Save bookmark</Text>
-      {destination ? (
+      {allowFolderSelection ? (
+        <View style={styles.destinationRow}>
+          <Text variant="label" color="tertiary">SAVE TO</Text>
+          <SettingsSelect
+            value={selectedDestination}
+            options={destinationOptions}
+            onChange={setSelectedDestination}
+            title="Save to"
+          />
+        </View>
+      ) : destination ? (
         <Text variant="footnote" color="secondary" style={{ marginBottom: spacing[16] }}>
           Saving to <Text variant="footnote" color="accent">{destination}</Text>
         </Text>
@@ -96,5 +148,27 @@ export function AddBookmarkSheet({ visible, onDismiss, folderId, folderName }: A
       <View style={{ height: spacing[10] }} />
       <Button label="Cancel" variant="ghost" block onPress={close} />
     </FloatingPanel>
+    <LockPrompt
+      visible={visible && !!lockedFolderId}
+      folderId={lockedFolderId ?? ""}
+      folderName={folders?.find((folder) => folder.id === lockedFolderId)?.name}
+      onDismiss={() => setLockedFolderId(null)}
+      onUnlocked={() => {
+        setLockedFolderId(null);
+        void submit();
+      }}
+    />
+    </>
   );
 }
+
+const styles = StyleSheet.create({
+  destinationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing[12],
+    marginTop: spacing[12],
+    marginBottom: spacing[16],
+  },
+});

@@ -1,6 +1,6 @@
 /** Bookmarks home: unfiled bookmarks first, with folders available above them. */
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, View, type TextInput } from "react-native";
 import { useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
@@ -62,6 +62,7 @@ export default function BookmarksScreen() {
   const [newName, setNewName] = useState("");
   const [newIcon, setNewIcon] = useState<FolderIcon>(DEFAULT_FOLDER_ICON);
   const [createError, setCreateError] = useState("");
+  const folderNameRef = React.useRef<TextInput>(null);
 
   const items = useMemo(() => flattenPages(bookmarks.data?.pages ?? []), [bookmarks.data]);
   const hasUnread = items.some((bookmark) => !bookmark.isRead);
@@ -124,26 +125,31 @@ export default function BookmarksScreen() {
     <View style={styles.listHeader}>
       <View style={styles.sectionHeading}>
         <Text variant="caption" color="secondary">FOLDERS</Text>
-        <Button label="New folder" variant="ghost" onPress={() => setCreateOpen(true)} />
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel="New folder"
+          style={[styles.addFolderButton, { backgroundColor: palette.accentSoft }]}
+          hitSlop={5}
+          onPress={() => setCreateOpen(true)}
+        >
+          <Ionicons name="add" size={21} color={palette.accent} />
+        </PressableScale>
       </View>
       {folders.isLoading ? (
-        <View style={styles.folderCard}><Skeleton height={68} radiusKey="lg" /></View>
+        <Skeleton height={68} radiusKey="lg" />
       ) : folders.data?.length ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.folderStrip}
-        >
-          {folders.data.map((folder) => (
-            <View key={folder.id} style={styles.folderCard}>
+        <View style={styles.folderList}>
+          {folders.data.map((folder, index) => (
+            <React.Fragment key={folder.id}>
               <FolderRow
                 folder={folder}
                 onPress={(selected) => router.push(`/folder/${selected.id}`)}
                 onLongPress={setActionsFolder}
               />
-            </View>
+              {index < folders.data.length - 1 ? <View style={styles.folderSeparator} /> : null}
+            </React.Fragment>
           ))}
-        </ScrollView>
+        </View>
       ) : (
         <PressableScale
           style={[styles.noFolders, { borderColor: palette.border, backgroundColor: palette.surface }]}
@@ -236,7 +242,12 @@ export default function BookmarksScreen() {
         />
       </FABLayer>
 
-      <AddBookmarkSheet visible={addOpen} onDismiss={() => setAddOpen(false)} folderId={null} />
+      <AddBookmarkSheet
+        visible={addOpen}
+        onDismiss={() => setAddOpen(false)}
+        folderId={null}
+        allowFolderSelection
+      />
 
       <BookmarkActionsSheet
         visible={!!actionBookmark}
@@ -254,10 +265,15 @@ export default function BookmarksScreen() {
         onDismiss={() => setMoveTarget(null)}
       />
 
-      <FloatingPanel visible={createOpen} onDismiss={closeCreate}>
+      <FloatingPanel
+        visible={createOpen}
+        onDismiss={closeCreate}
+        onShow={() => setTimeout(() => folderNameRef.current?.focus(), 100)}
+      >
         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Text variant="title3" style={styles.dialogTitle}>New folder</Text>
           <Input
+            ref={folderNameRef}
             label="Name"
             value={newName}
             onChangeText={setNewName}
@@ -298,10 +314,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingLeft: spacing[4],
-    minHeight: 42,
+    minHeight: 44,
   },
-  folderStrip: { gap: spacing[10], paddingBottom: spacing[8] },
-  folderCard: { width: 280 },
+  addFolderButton: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  folderList: { paddingBottom: spacing[4] },
+  folderSeparator: { height: spacing[8] },
   noFolders: {
     minHeight: 68,
     flexDirection: "row",

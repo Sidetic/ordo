@@ -21,6 +21,7 @@ export interface FloatingPanelProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   maxWidth?: number;
+  onShow?: () => void;
 }
 
 export function FloatingPanel({
@@ -29,6 +30,7 @@ export function FloatingPanel({
   children,
   style,
   maxWidth = 420,
+  onShow,
 }: FloatingPanelProps) {
   const { palette, shadows } = useTheme();
   const { width, height } = useWindowDimensions();
@@ -55,6 +57,7 @@ export function FloatingPanel({
       transparent
       animationType="fade"
       statusBarTranslucent
+      onShow={onShow}
       onRequestClose={onDismiss}
     >
       <View accessibilityViewIsModal style={styles.root}>
