@@ -17,18 +17,14 @@ export default function AccountScreen() {
   return (
     <SettingsPage title="Account">
       <SettingsScrollView>
-        <SettingsGroup label="Profile" compact>
+        <SettingsGroup label="Account details" compact>
           <SettingRow
             icon="person-outline"
             label="Username"
             value={user?.username ?? "—"}
             onPress={() => router.push("/settings/username")}
             showChevron
-            divider={false}
           />
-        </SettingsGroup>
-
-        <SettingsGroup label="Sign-in">
           <SettingRow
             icon="mail-outline"
             label="Email"
