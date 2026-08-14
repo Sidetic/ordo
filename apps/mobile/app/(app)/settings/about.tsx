@@ -1,6 +1,7 @@
 /** About, build provenance, updates, and project links. */
 import React from "react";
 import { Linking, StyleSheet, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { Text } from "../../../src/components/ui/Text";
 import { Badge } from "../../../src/components/ui/Badge";
@@ -12,12 +13,14 @@ import {
 } from "../../../src/components/settings/SettingsPage";
 import { useBuildInfo } from "../../../src/hooks/use-build-info";
 import { useOtaUpdate } from "../../../src/hooks/use-ota-update";
-import { spacing } from "../../../src/theme/tokens";
+import { useTheme } from "../../../src/theme/ThemeProvider";
+import { radius, spacing } from "../../../src/theme/tokens";
 
 const REPO_URL = "https://github.com/axoletlabs/ordo";
 const PUBLISHED_YEAR = 2026;
 
 export default function AboutScreen() {
+  const { palette } = useTheme();
   const build = useBuildInfo();
   const ota = useOtaUpdate();
   const commit = build.gitHashShort ?? build.gitHash ?? "—";
@@ -53,13 +56,28 @@ export default function AboutScreen() {
             }
           />
           <View style={styles.fingerprint}>
+            <View
+              style={[
+                styles.fingerprintIcon,
+                { backgroundColor: palette.surfaceSecondary, borderRadius: radius.sm },
+              ]}
+            >
+              <Ionicons name="finger-print-outline" size={16} color={palette.accent} />
+            </View>
             <View style={styles.fingerprintCopy}>
               <Text variant="body">Build fingerprint</Text>
-              <Text variant="footnote" color="tertiary">Compatibility key for over-the-air updates.</Text>
+              <Text
+                variant="monoSmall"
+                color="secondary"
+                selectable
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+                style={styles.fingerprintValue}
+              >
+                {ota.runtimeVersion ?? "—"}
+              </Text>
             </View>
-            <Text variant="monoSmall" color="secondary" selectable numberOfLines={2} style={styles.fingerprintValue}>
-              {ota.runtimeVersion ?? "—"}
-            </Text>
           </View>
         </SettingsGroup>
 
@@ -90,10 +108,15 @@ const styles = StyleSheet.create({
   hero: { paddingHorizontal: spacing[28], paddingTop: spacing[12] },
   tagline: { maxWidth: 300, alignSelf: "center", lineHeight: 21 },
   fingerprint: {
-    minHeight: 76,
-    padding: spacing[16],
+    minHeight: 64,
+    paddingHorizontal: spacing[16],
+    paddingVertical: spacing[12],
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[12],
   },
-  fingerprintCopy: { marginBottom: spacing[8] },
-  fingerprintValue: { width: "100%", textAlign: "right" },
+  fingerprintIcon: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
+  fingerprintCopy: { flex: 1, minWidth: 0 },
+  fingerprintValue: { marginTop: spacing[2] },
   footer: { marginTop: spacing[32] },
 });

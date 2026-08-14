@@ -57,9 +57,10 @@ export function OtaUpdateCard() {
     }
   }, [ota]);
 
+  const channel = ota.channel ?? "default";
   const description = !ota.enabled
     ? "Automatic updates are available in production builds."
-    : `Channel ${ota.channel ?? "default"} · Last checked ${ota.lastChecked ? ota.lastChecked.toLocaleString() : "never"}`;
+    : `${channel.charAt(0).toUpperCase()}${channel.slice(1)} channel`;
 
   return (
     <SettingRow
