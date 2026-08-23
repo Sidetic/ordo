@@ -41,6 +41,7 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRow
         accessibilityState={{ selected: !!selected }}
         style={styles.body}
         onPress={() => onPress(bookmark)}
+        onLongPress={onMore ? () => onMore(bookmark) : undefined}
       >
         <View style={styles.topRow}>
           <View style={[styles.dot, { backgroundColor: bookmark.isRead ? "transparent" : palette.accent }]} />

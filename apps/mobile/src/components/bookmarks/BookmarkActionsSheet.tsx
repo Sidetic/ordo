@@ -1,5 +1,4 @@
-import React from "react";
-import { Linking, StyleSheet, View } from "react-native";
+import { Linking, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { FloatingPanel } from "../ui/FloatingPanel";
 import { Button } from "../ui/Button";
@@ -56,83 +55,56 @@ export function BookmarkActionsSheet({
   onMove,
   onDelete,
 }: BookmarkActionsSheetProps) {
-  const { palette } = useTheme();
-  const [confirmingDelete, setConfirmingDelete] = React.useState(false);
-
-  React.useEffect(() => {
-    if (visible) setConfirmingDelete(false);
-  }, [visible, bookmark]);
-
   if (!bookmark) return null;
 
   return (
     <FloatingPanel visible={visible} onDismiss={onDismiss}>
-      {confirmingDelete ? (
-        <>
-          <View style={[styles.dangerIcon, { backgroundColor: palette.dangerSoft }]}>
-            <Ionicons name="trash-outline" size={24} color={palette.danger} />
-          </View>
-          <Text variant="title3" align="center">Delete bookmark?</Text>
-          <Text variant="body" color="secondary" align="center" numberOfLines={3} style={styles.confirmCopy}>
-            {bookmark.title || bookmark.url} will be permanently removed.
-          </Text>
-          <View style={styles.actions}>
-            <Button
-              label="Delete bookmark"
-              variant="danger"
-              block
-              size="lg"
-              onPress={() => {
-                onDelete(bookmark);
-                onDismiss();
-              }}
-            />
-            <Button label="Cancel" variant="ghost" block onPress={() => setConfirmingDelete(false)} />
-          </View>
-        </>
-      ) : (
-        <>
-          <Text variant="title3" numberOfLines={2} style={styles.title}>{bookmark.title || bookmark.url}</Text>
-          <ActionRow
-            icon={bookmark.isRead ? "radio-button-off" : "checkmark-circle"}
-            label={bookmark.isRead ? "Mark as unread" : "Mark as read"}
-            onPress={() => {
-              onToggleRead(bookmark);
-              onDismiss();
-            }}
-          />
-          <ActionRow
-            icon="folder-open-outline"
-            label="Move to folder"
-            onPress={() => {
-              onMove(bookmark);
-              onDismiss();
-            }}
-          />
-          <ActionRow
-            icon="open-outline"
-            label="Open original"
-            onPress={() => {
-              Linking.openURL(bookmark.url)
-                .then(() => {
-                  if (!bookmark.isRead) onToggleRead(bookmark);
-                })
-                .catch(() => toast.error("Couldn't open the link."));
-              onDismiss();
-            }}
-          />
-          <ActionRow icon="trash-outline" label="Delete" tone="danger" onPress={() => setConfirmingDelete(true)} />
-        </>
-      )}
+      <Text variant="title3" numberOfLines={2} style={styles.title}>{bookmark.title || bookmark.url}</Text>
+      <ActionRow
+        icon={bookmark.isRead ? "radio-button-off" : "checkmark-circle"}
+        label={bookmark.isRead ? "Mark as unread" : "Mark as read"}
+        onPress={() => {
+          onToggleRead(bookmark);
+          onDismiss();
+        }}
+      />
+      <ActionRow
+        icon="folder-open-outline"
+        label="Move to folder"
+        onPress={() => {
+          onMove(bookmark);
+          onDismiss();
+        }}
+      />
+      <ActionRow
+        icon="open-outline"
+        label="Open original"
+        onPress={() => {
+          Linking.openURL(bookmark.url)
+            .then(() => {
+              if (!bookmark.isRead) onToggleRead(bookmark);
+            })
+            .catch(() => toast.error("Couldn't open the link."));
+          onDismiss();
+        }}
+      />
+      <ActionRow
+        icon="trash-outline"
+        label="Delete"
+        tone="danger"
+        onPress={() => {
+          onDelete(bookmark);
+          onDismiss();
+        }}
+      />
+      <Button label="Cancel" variant="ghost" block onPress={onDismiss} style={styles.menuCancel} />
     </FloatingPanel>
   );
 }
 
 const styles = StyleSheet.create({
   title: { marginBottom: spacing[12] },
+  menuCancel: { marginTop: spacing[8] },
   row: { flexDirection: "row", alignItems: "center", gap: spacing[12], minHeight: 50, paddingHorizontal: spacing[4], borderBottomWidth: StyleSheet.hairlineWidth },
   rowLabel: { flex: 1 },
-  dangerIcon: { width: 48, height: 48, borderRadius: 16, alignSelf: "center", alignItems: "center", justifyContent: "center", marginBottom: spacing[12] },
-  confirmCopy: { marginTop: spacing[8] },
-  actions: { gap: spacing[8], marginTop: spacing[20] },
 });

@@ -112,7 +112,7 @@ export default function BookmarksScreen() {
               <FolderRow
                 folder={folder}
                 onPress={(selected) => router.push(`/folder/${selected.id}`)}
-                onLongPress={setActionsFolder}
+                onMore={setActionsFolder}
               />
               {index < folders.data.length - 1 ? <View style={styles.folderSeparator} /> : null}
             </React.Fragment>
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[16],
   },
   noFoldersCopy: { flex: 1 },
-  bookmarksLabel: { paddingTop: spacing[24], paddingBottom: spacing[8] },
+  bookmarksLabel: { paddingTop: spacing[16], paddingBottom: spacing[8] },
   emptyBookmarks: { minHeight: 300, justifyContent: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
   createMenuTitle: { marginBottom: spacing[16] },
