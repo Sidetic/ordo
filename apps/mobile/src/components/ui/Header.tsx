@@ -70,12 +70,16 @@ export function Header({
         ]}
       >
         {right ? (
-          <View style={styles.row}>
-            <View style={styles.backBtn} />
-            <View style={styles.right}>{right}</View>
+          <View
+            style={[
+              styles.largeRight,
+              { top: topInset - spacing[2], right: Math.max(insets.right, spacing[16]) },
+            ]}
+          >
+            {right}
           </View>
         ) : null}
-        <View style={[styles.largeTitles, !right && styles.largeTitlesWithoutControls]}>
+        <View style={styles.largeTitles}>
           <Text variant="header" align="center" numberOfLines={1}>{title}</Text>
           {subtitle ? (
             <Text variant="footnote" color="secondary" align="center" numberOfLines={1} style={{ marginTop: spacing[2] }}>
@@ -97,16 +101,19 @@ export function Header({
     >
       <View style={styles.compactRow}>
         {showBack ? (
-          <PressableScale style={styles.backBtn} scaleTo={0.85} onPress={handleBack} hitSlop={8}>
+          <PressableScale
+            style={[styles.backBtn, styles.compactLeft]}
+            scaleTo={0.85}
+            onPress={handleBack}
+            hitSlop={8}
+          >
             <Ionicons name="chevron-back" size={24} color={palette.text} />
           </PressableScale>
-        ) : (
-          <View style={styles.backBtn} />
-        )}
+        ) : null}
         <View pointerEvents="none" style={styles.compactTitle}>
           <Text variant="header" align="center" numberOfLines={1}>{title}</Text>
         </View>
-        {right ? <View style={styles.right}>{right}</View> : <View style={styles.right} />}
+        {right ? <View style={styles.compactRight}>{right}</View> : null}
       </View>
       {subtitle ? (
         <Text variant="footnote" color="secondary" align="center" numberOfLines={1} style={styles.compactSubtitle}>
@@ -126,14 +133,14 @@ const styles = StyleSheet.create({
   compactWrap: {
     width: "100%",
     alignSelf: "center",
-    paddingBottom: spacing[4],
+    paddingBottom: spacing[6],
   },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 36 },
-  compactRow: { minHeight: 32, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  compactRow: { height: 21, justifyContent: "center" },
   backBtn: { width: 36, height: 32, alignItems: "center", justifyContent: "center" },
-  right: { minWidth: 36, alignItems: "flex-end", justifyContent: "center" },
-  largeTitles: { marginTop: spacing[4], alignItems: "center" },
-  largeTitlesWithoutControls: { marginTop: 0 },
+  compactLeft: { position: "absolute", left: 0, top: -spacing[6] },
+  compactRight: { position: "absolute", right: 0, top: -spacing[6], height: 32, justifyContent: "center" },
+  largeRight: { position: "absolute", height: 32, justifyContent: "center", zIndex: 1 },
+  largeTitles: { alignItems: "center" },
   compactTitle: { position: "absolute", top: 0, bottom: 0, left: 48, right: 48, alignItems: "center", justifyContent: "center" },
   compactSubtitle: { marginTop: -spacing[4], paddingHorizontal: 48 },
 });

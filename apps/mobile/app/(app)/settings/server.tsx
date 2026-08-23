@@ -3,6 +3,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 import {
   SettingsForm,
   SettingsGroup,
@@ -33,6 +41,58 @@ import { restartRuntime } from "../../../src/store/update-restart";
 import { useTheme } from "../../../src/theme/ThemeProvider";
 import { haptics } from "../../../src/lib/haptics";
 import { radius, spacing } from "../../../src/theme/tokens";
+
+function RefreshConnectionButton({
+  refreshing,
+  onPress,
+}: {
+  refreshing: boolean;
+  onPress: () => void;
+}) {
+  const { palette } = useTheme();
+  const rotation = useSharedValue(0);
+  const wasRefreshing = useRef(false);
+
+  useEffect(() => {
+    cancelAnimation(rotation);
+    if (refreshing) {
+      rotation.value = 0;
+      rotation.value = withRepeat(
+        withTiming(360, { duration: 850, easing: Easing.linear }),
+        -1,
+        false,
+      );
+    } else if (wasRefreshing.current) {
+      const nextTurn = Math.ceil(rotation.value / 360) * 360;
+      rotation.value = withTiming(nextTurn, { duration: 180, easing: Easing.out(Easing.quad) });
+    } else {
+      rotation.value = 0;
+    }
+    wasRefreshing.current = refreshing;
+    return () => cancelAnimation(rotation);
+  }, [refreshing, rotation]);
+
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel="Refresh current server connection"
+      accessibilityState={{ disabled: refreshing }}
+      style={[styles.refreshAction, { backgroundColor: palette.accentSoft }]}
+      scaleTo={0.88}
+      hitSlop={8}
+      disabled={refreshing}
+      onPress={onPress}
+    >
+      <Animated.View style={iconStyle}>
+        <Ionicons name="refresh" size={19} color={palette.accent} />
+      </Animated.View>
+    </PressableScale>
+  );
+}
 
 export default function ServerScreen() {
   const { palette } = useTheme();
@@ -133,44 +193,14 @@ export default function ServerScreen() {
     : serverInfo.data
       ? "Connected"
       : "Checking...";
-  const testing = probing || rechecking || serverInfo.isFetching;
-
   const refreshConnection = () => {
-    if (testing) return;
+    if (serverInfo.isFetching) return;
     haptics.light();
     void serverInfo.refetch();
-    if (!unchanged && url.trim()) {
-      setProbing(true);
-      setReachable(false);
-      void probeServer(url, setSteps).then((result) => {
-        setProbing(false);
-        setReachable(result.status === "up");
-      });
-    }
   };
 
   return (
-    <SettingsPage
-      title="Server"
-      right={
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel="Refresh connection test"
-          accessibilityState={{ disabled: testing }}
-          style={styles.refreshAction}
-          scaleTo={0.85}
-          hitSlop={8}
-          disabled={testing}
-          onPress={refreshConnection}
-        >
-          <Ionicons
-            name={testing ? "sync-outline" : "refresh"}
-            size={22}
-            color={testing ? palette.textTertiary : palette.accent}
-          />
-        </PressableScale>
-      }
-    >
+    <SettingsPage title="Server">
       <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <SettingsGroup label="Current server" compact>
           <SettingRow
@@ -184,6 +214,12 @@ export default function ServerScreen() {
             label={hostOf(currentUrl)}
             description={currentUrl}
             value={connectionValue}
+            right={
+              <RefreshConnectionButton
+                refreshing={serverInfo.isFetching}
+                onPress={refreshConnection}
+              />
+            }
             divider={false}
           />
         </SettingsGroup>
@@ -265,7 +301,13 @@ export default function ServerScreen() {
 const styles = StyleSheet.create({
   editor: { padding: spacing[16] },
   changeButton: { marginTop: spacing[16] },
-  refreshAction: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  refreshAction: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   confirmHeader: { flexDirection: "row", alignItems: "flex-start", gap: spacing[12] },
   confirmIcon: {
     width: 38,

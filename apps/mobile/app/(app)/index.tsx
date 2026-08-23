@@ -6,10 +6,12 @@ import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../src/components/ui/Header";
 import { FAB, FABLayer } from "../../src/components/ui/FAB";
+import { FloatingPanel } from "../../src/components/ui/FloatingPanel";
 import { Button } from "../../src/components/ui/Button";
 import { Text } from "../../src/components/ui/Text";
 import { PressableScale } from "../../src/components/ui/PressableScale";
 import { ScreenContent } from "../../src/components/ui/ScreenContent";
+import { SettingsSectionLabel } from "../../src/components/settings/SettingsPage";
 import { BookmarkListSkeleton } from "../../src/components/ui/BookmarkListSkeleton";
 import { Skeleton } from "../../src/components/ui/Skeleton";
 import { EmptyState } from "../../src/components/ui/EmptyState";
@@ -48,6 +50,7 @@ export default function BookmarksScreen() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [actionsFolder, setActionsFolder] = useState<FolderDto | null>(null);
   const [actionBookmark, setActionBookmark] = useState<BookmarkDto | null>(null);
   const [moveTarget, setMoveTarget] = useState<BookmarkDto | null>(null);
@@ -89,7 +92,7 @@ export default function BookmarksScreen() {
   const listHeader = (
     <View style={styles.listHeader}>
       <View style={styles.sectionHeading}>
-        <Text variant="caption" color="secondary">FOLDERS</Text>
+        <SettingsSectionLabel compact>Folders</SettingsSectionLabel>
         <PressableScale
           accessibilityRole="button"
           accessibilityLabel="New folder"
@@ -200,12 +203,48 @@ export default function BookmarksScreen() {
 
       <FABLayer maxWidth={layout.maxContentWidth}>
         <FAB
-          onPress={() => setAddOpen(true)}
+          onPress={() => setCreateMenuOpen(true)}
           testID="add-bookmark-fab"
           bottom={floatingNavigation ? bottomClearance : spacing[20]}
           right={spacing[20]}
         />
       </FABLayer>
+
+      <FloatingPanel visible={createMenuOpen} onDismiss={() => setCreateMenuOpen(false)}>
+        <Text variant="title3" style={styles.createMenuTitle}>Create</Text>
+        <View style={styles.createMenuActions}>
+          <PressableScale
+            accessibilityRole="button"
+            style={[styles.createMenuAction, { backgroundColor: palette.surfaceSecondary }]}
+            onPress={() => {
+              setCreateMenuOpen(false);
+              setTimeout(() => setAddOpen(true), 100);
+            }}
+          >
+            <Ionicons name="bookmark-outline" size={20} color={palette.accent} />
+            <View style={styles.createMenuCopy}>
+              <Text variant="bodyStrong">Save bookmark</Text>
+              <Text variant="footnote" color="tertiary">Add a link to your library</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
+          </PressableScale>
+          <PressableScale
+            accessibilityRole="button"
+            style={[styles.createMenuAction, { backgroundColor: palette.surfaceSecondary }]}
+            onPress={() => {
+              setCreateMenuOpen(false);
+              setTimeout(() => setCreateOpen(true), 100);
+            }}
+          >
+            <Ionicons name="folder-outline" size={20} color={palette.accent} />
+            <View style={styles.createMenuCopy}>
+              <Text variant="bodyStrong">New folder</Text>
+              <Text variant="footnote" color="tertiary">Organize bookmarks into a folder</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
+          </PressableScale>
+        </View>
+      </FloatingPanel>
 
       <AddBookmarkSheet
         visible={addOpen}
@@ -251,12 +290,18 @@ const styles = StyleSheet.create({
   headerAction: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   listHeader: { paddingTop: spacing[8] },
   sectionHeading: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing[4],
+    position: "relative",
   },
-  addFolderButton: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  addFolderButton: {
+    position: "absolute",
+    top: -spacing[6],
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   folderList: { paddingBottom: spacing[4] },
   folderSeparator: { height: spacing[8] },
   noFolders: {
@@ -272,4 +317,15 @@ const styles = StyleSheet.create({
   bookmarksLabel: { paddingTop: spacing[24], paddingBottom: spacing[8] },
   emptyBookmarks: { minHeight: 300, justifyContent: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
+  createMenuTitle: { marginBottom: spacing[16] },
+  createMenuActions: { gap: spacing[8] },
+  createMenuAction: {
+    minHeight: 64,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[12],
+    paddingHorizontal: spacing[16],
+    borderRadius: 12,
+  },
+  createMenuCopy: { flex: 1 },
 });
