@@ -43,7 +43,7 @@ module.exports = {
       "expo-share-intent",
       {
         disableIOS: true,
-        androidIntentFilters: ["text/plain"],
+        disableAndroid: true,
       },
     ],
     [

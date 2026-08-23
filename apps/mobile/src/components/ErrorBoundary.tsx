@@ -5,6 +5,7 @@
  */
 import React, { Component, type ReactNode } from "react";
 import { Platform, StyleSheet, View } from "react-native";
+import * as Updates from "expo-updates";
 import { Text } from "./ui/Text";
 import { Button } from "./ui/Button";
 import { useTheme } from "../theme/ThemeProvider";
@@ -18,10 +19,12 @@ interface State {
   error: Error | null;
 }
 
-function reload() {
+async function reload() {
   if (Platform.OS === "web" && typeof window !== "undefined") {
     window.location.reload();
+    return;
   }
+  await Updates.reloadAsync();
 }
 
 function Fallback({ onReset }: { onReset: () => void }) {
@@ -35,7 +38,13 @@ function Fallback({ onReset }: { onReset: () => void }) {
         </Text>
         <View style={styles.actions}>
           <View style={{ flex: 1 }}>
-            <Button label="Reload" variant="primary" size="lg" block onPress={() => { reload(); onReset(); }} />
+            <Button
+              label="Reload"
+              variant="primary"
+              size="lg"
+              block
+              onPress={() => void reload().catch(onReset)}
+            />
           </View>
           <View style={{ flex: 1 }}>
             <Button label="Try again" variant="secondary" size="lg" block onPress={onReset} />
