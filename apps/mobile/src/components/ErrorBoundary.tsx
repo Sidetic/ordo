@@ -4,12 +4,15 @@
  * refreshes the page on web; "Try again" clears the error and re-renders.
  */
 import React, { Component, type ReactNode } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from "react-native";
 import * as Updates from "expo-updates";
-import { Text } from "./ui/Text";
-import { Button } from "./ui/Button";
-import { useTheme } from "../theme/ThemeProvider";
-import { spacing } from "../theme/tokens";
 
 interface Props {
   children: ReactNode;
@@ -27,28 +30,37 @@ async function reload() {
   await Updates.reloadAsync();
 }
 
-function Fallback({ onReset }: { onReset: () => void }) {
-  const { palette } = useTheme();
+function Fallback({ error, onReset }: { error: Error; onReset: () => void }) {
+  const dark = useColorScheme() === "dark";
+  const foreground = dark ? "#F4F1E8" : "#24231F";
+  const secondary = dark ? "#AAA79F" : "#656159";
+  const background = dark ? "#11110F" : "#EFE7D2";
+
   return (
-    <View style={[styles.root, { backgroundColor: palette.background }]}>
+    <View style={[styles.root, { backgroundColor: background }]}>
       <View style={styles.card}>
-        <Text variant="title2">Something went wrong</Text>
-        <Text variant="body" color="secondary" style={styles.message}>
+        <Text style={[styles.title, { color: foreground }]}>Something went wrong</Text>
+        <Text style={[styles.message, { color: secondary }]}>
           An unexpected error occurred. Reloading usually fixes it.
         </Text>
+        <Text style={styles.details} selectable>
+          {error.message || error.name}
+        </Text>
         <View style={styles.actions}>
-          <View style={{ flex: 1 }}>
-            <Button
-              label="Reload"
-              variant="primary"
-              size="lg"
-              block
-              onPress={() => void reload().catch(onReset)}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Button label="Try again" variant="secondary" size="lg" block onPress={onReset} />
-          </View>
+          <Pressable
+            accessibilityRole="button"
+            style={[styles.button, styles.primaryButton]}
+            onPress={() => void reload().catch(onReset)}
+          >
+            <Text style={[styles.buttonLabel, styles.primaryButtonLabel]}>Reload</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            style={[styles.button, { borderColor: secondary }]}
+            onPress={onReset}
+          >
+            <Text style={[styles.buttonLabel, { color: foreground }]}>Try again</Text>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -70,15 +82,29 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.error) {
-      return <Fallback onReset={this.reset} />;
+      return <Fallback error={this.state.error} onReset={this.reset} />;
     }
     return this.props.children;
   }
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing[24] },
+  root: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   card: { width: "100%", maxWidth: 360, alignItems: "stretch" },
-  message: { marginTop: spacing[8] },
-  actions: { flexDirection: "row", gap: spacing[10], marginTop: spacing[24] },
+  title: { fontSize: 24, lineHeight: 30, fontWeight: "700" },
+  message: { marginTop: 8, fontSize: 16, lineHeight: 23 },
+  details: { marginTop: 12, color: "#D95D4F", fontSize: 12, lineHeight: 17 },
+  actions: { flexDirection: "row", gap: 10, marginTop: 24 },
+  button: {
+    flex: 1,
+    minHeight: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+  },
+  primaryButton: { backgroundColor: "#EF705F", borderColor: "#EF705F" },
+  buttonLabel: { fontSize: 14, fontWeight: "700", letterSpacing: 1.1, textTransform: "uppercase" },
+  primaryButtonLabel: { color: "#FFFFFF" },
 });
