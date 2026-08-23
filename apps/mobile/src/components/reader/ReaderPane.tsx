@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   body: { width: "100%" },
   title: { lineHeight: 32 },
-  iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  iconBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   stateBody: {
     flex: 1,
     width: "100%",

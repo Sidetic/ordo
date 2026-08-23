@@ -8,6 +8,7 @@ import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
 import { LockPrompt } from "./LockPrompt";
+import { CreateFolderPanel } from "./CreateFolderPanel";
 import {
   SettingsSelect,
   type SettingsSelectOption,
@@ -29,6 +30,7 @@ export interface AddBookmarkSheetProps {
 }
 
 const ROOT_DESTINATION = "__bookmarks__";
+const NEW_FOLDER_DESTINATION = "__new_folder__";
 
 /** Display name for the save destination; unfiled bookmarks land in "Bookmarks". */
 function destinationLabel(folderId: string | null, folderName?: string | null): string | null {
@@ -48,6 +50,7 @@ export function AddBookmarkSheet({
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   const [lockedFolderId, setLockedFolderId] = useState<string | null>(null);
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState(folderId ?? ROOT_DESTINATION);
   const selectedFolderId = selectedDestination === ROOT_DESTINATION ? null : selectedDestination;
   const selectedFolder = folders?.find((folder) => folder.id === selectedFolderId);
@@ -62,7 +65,16 @@ export function AddBookmarkSheet({
       label: folder.name,
       icon: folder.icon,
     })),
+    { value: NEW_FOLDER_DESTINATION, label: "New folder", icon: "add" },
   ];
+
+  const chooseDestination = (value: string) => {
+    if (value === NEW_FOLDER_DESTINATION) {
+      setCreateFolderOpen(true);
+      return;
+    }
+    setSelectedDestination(value);
+  };
 
   React.useEffect(() => {
     if (visible) setSelectedDestination(folderId ?? ROOT_DESTINATION);
@@ -120,7 +132,7 @@ export function AddBookmarkSheet({
           <SettingsSelect
             value={selectedDestination}
             options={destinationOptions}
-            onChange={setSelectedDestination}
+            onChange={chooseDestination}
             title="Save to"
           />
         </View>
@@ -157,6 +169,11 @@ export function AddBookmarkSheet({
         setLockedFolderId(null);
         void submit();
       }}
+    />
+    <CreateFolderPanel
+      visible={createFolderOpen}
+      onDismiss={() => setCreateFolderOpen(false)}
+      onCreated={(folder) => setSelectedDestination(folder.id)}
     />
     </>
   );

@@ -11,6 +11,7 @@ import {
 } from "../../../src/components/settings/SettingsPage";
 import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
+import { PressableScale } from "../../../src/components/ui/PressableScale";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { ServerProbeLog } from "../../../src/components/ui/ServerProbeLog";
 import { FloatingPanel } from "../../../src/components/ui/FloatingPanel";
@@ -30,6 +31,7 @@ import { useFolderTokenStore } from "../../../src/store/folder-tokens";
 import { useSettingsStore } from "../../../src/store/settings";
 import { restartRuntime } from "../../../src/store/update-restart";
 import { useTheme } from "../../../src/theme/ThemeProvider";
+import { haptics } from "../../../src/lib/haptics";
 import { radius, spacing } from "../../../src/theme/tokens";
 
 export default function ServerScreen() {
@@ -131,9 +133,44 @@ export default function ServerScreen() {
     : serverInfo.data
       ? "Connected"
       : "Checking...";
+  const testing = probing || rechecking || serverInfo.isFetching;
+
+  const refreshConnection = () => {
+    if (testing) return;
+    haptics.light();
+    void serverInfo.refetch();
+    if (!unchanged && url.trim()) {
+      setProbing(true);
+      setReachable(false);
+      void probeServer(url, setSteps).then((result) => {
+        setProbing(false);
+        setReachable(result.status === "up");
+      });
+    }
+  };
 
   return (
-    <SettingsPage title="Server">
+    <SettingsPage
+      title="Server"
+      right={
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel="Refresh connection test"
+          accessibilityState={{ disabled: testing }}
+          style={styles.refreshAction}
+          scaleTo={0.85}
+          hitSlop={8}
+          disabled={testing}
+          onPress={refreshConnection}
+        >
+          <Ionicons
+            name={testing ? "sync-outline" : "refresh"}
+            size={22}
+            color={testing ? palette.textTertiary : palette.accent}
+          />
+        </PressableScale>
+      }
+    >
       <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <SettingsGroup label="Current server" compact>
           <SettingRow
@@ -228,6 +265,7 @@ export default function ServerScreen() {
 const styles = StyleSheet.create({
   editor: { padding: spacing[16] },
   changeButton: { marginTop: spacing[16] },
+  refreshAction: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   confirmHeader: { flexDirection: "row", alignItems: "flex-start", gap: spacing[12] },
   confirmIcon: {
     width: 38,

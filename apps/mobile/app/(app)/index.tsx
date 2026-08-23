@@ -1,13 +1,11 @@
 /** Bookmarks home: unfiled bookmarks first, with folders available above them. */
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, View, type TextInput } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../src/components/ui/Header";
 import { FAB, FABLayer } from "../../src/components/ui/FAB";
-import { FloatingPanel } from "../../src/components/ui/FloatingPanel";
-import { Input } from "../../src/components/ui/Input";
 import { Button } from "../../src/components/ui/Button";
 import { Text } from "../../src/components/ui/Text";
 import { PressableScale } from "../../src/components/ui/PressableScale";
@@ -19,10 +17,10 @@ import { AddBookmarkSheet } from "../../src/components/bookmarks/AddBookmarkShee
 import { BookmarkActionsSheet } from "../../src/components/bookmarks/BookmarkActionsSheet";
 import { FolderRow } from "../../src/components/bookmarks/FolderRow";
 import { FolderActionsSheet } from "../../src/components/bookmarks/FolderActionsSheet";
-import { FolderIconPicker } from "../../src/components/bookmarks/FolderIconPicker";
+import { CreateFolderPanel } from "../../src/components/bookmarks/CreateFolderPanel";
 import { MoveSheet } from "../../src/components/bookmarks/MoveSheet";
 import { BookmarkRow } from "../../src/components/bookmarks/BookmarkRow";
-import { useFolders, useCreateFolder } from "../../src/hooks/use-folders";
+import { useFolders } from "../../src/hooks/use-folders";
 import {
   useDeleteBookmark,
   useInfiniteBookmarks,
@@ -36,12 +34,7 @@ import { toast } from "../../src/components/ui/toast-store";
 import { errorMessage } from "../../src/lib/error-message";
 import { flattenPages } from "../../src/lib/api/query-keys";
 import { layout, spacing } from "../../src/theme/tokens";
-import {
-  DEFAULT_FOLDER_ICON,
-  type BookmarkDto,
-  type FolderDto,
-  type FolderIcon,
-} from "@ordo/shared";
+import { type BookmarkDto, type FolderDto } from "@ordo/shared";
 
 export default function BookmarksScreen() {
   const { palette } = useTheme();
@@ -49,7 +42,6 @@ export default function BookmarksScreen() {
   const { visible: floatingNavigation, clearance: bottomClearance } = useFloatingDockMetrics();
   const folders = useFolders();
   const bookmarks = useInfiniteBookmarks(null);
-  const createFolder = useCreateFolder();
   const toggleRead = useToggleRead(null);
   const deleteBookmark = useDeleteBookmark(null);
   const markAllRead = useMarkAllRead(null);
@@ -59,36 +51,9 @@ export default function BookmarksScreen() {
   const [actionsFolder, setActionsFolder] = useState<FolderDto | null>(null);
   const [actionBookmark, setActionBookmark] = useState<BookmarkDto | null>(null);
   const [moveTarget, setMoveTarget] = useState<BookmarkDto | null>(null);
-  const [newName, setNewName] = useState("");
-  const [newIcon, setNewIcon] = useState<FolderIcon>(DEFAULT_FOLDER_ICON);
-  const [createError, setCreateError] = useState("");
-  const folderNameRef = React.useRef<TextInput>(null);
 
   const items = useMemo(() => flattenPages(bookmarks.data?.pages ?? []), [bookmarks.data]);
   const hasUnread = items.some((bookmark) => !bookmark.isRead);
-
-  const closeCreate = () => {
-    setCreateOpen(false);
-    setNewName("");
-    setNewIcon(DEFAULT_FOLDER_ICON);
-    setCreateError("");
-  };
-
-  const submitCreate = async () => {
-    setCreateError("");
-    const name = newName.trim();
-    if (!name) {
-      setCreateError("Enter a folder name.");
-      return;
-    }
-    try {
-      await createFolder.mutateAsync({ name, icon: newIcon });
-      haptics.success();
-      closeCreate();
-    } catch (cause) {
-      setCreateError(errorMessage(cause));
-    }
-  };
 
   const onToggleRead = (bookmark: BookmarkDto) => {
     haptics.light();
@@ -129,10 +94,10 @@ export default function BookmarksScreen() {
           accessibilityRole="button"
           accessibilityLabel="New folder"
           style={[styles.addFolderButton, { backgroundColor: palette.accentSoft }]}
-          hitSlop={5}
+          hitSlop={8}
           onPress={() => setCreateOpen(true)}
         >
-          <Ionicons name="add" size={21} color={palette.accent} />
+          <Ionicons name="add" size={18} color={palette.accent} />
         </PressableScale>
       </View>
       {folders.isLoading ? (
@@ -265,31 +230,7 @@ export default function BookmarksScreen() {
         onDismiss={() => setMoveTarget(null)}
       />
 
-      <FloatingPanel
-        visible={createOpen}
-        onDismiss={closeCreate}
-        onShow={() => setTimeout(() => folderNameRef.current?.focus(), 100)}
-      >
-        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <Text variant="title3" style={styles.dialogTitle}>New folder</Text>
-          <Input
-            ref={folderNameRef}
-            label="Name"
-            value={newName}
-            onChangeText={setNewName}
-            placeholder="e.g. Recipes"
-            autoFocus
-            error={createError || undefined}
-            onSubmitEditing={submitCreate}
-          />
-          <Text variant="label" color="tertiary" style={styles.iconLabel}>ICON</Text>
-          <FolderIconPicker value={newIcon} onChange={setNewIcon} />
-          <View style={styles.dialogActions}>
-            <Button label="Create" block size="lg" onPress={submitCreate} loading={createFolder.isPending} />
-            <Button label="Cancel" variant="ghost" block onPress={closeCreate} />
-          </View>
-        </ScrollView>
-      </FloatingPanel>
+      <CreateFolderPanel visible={createOpen} onDismiss={() => setCreateOpen(false)} />
 
       <FolderActionsSheet
         visible={!!actionsFolder}
@@ -307,16 +248,15 @@ export default function BookmarksScreen() {
 const styles = StyleSheet.create({
   content: { flex: 1, width: "100%" },
   center: { flex: 1, width: "100%", justifyContent: "center" },
-  headerAction: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  headerAction: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   listHeader: { paddingTop: spacing[8] },
   sectionHeading: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingLeft: spacing[4],
-    minHeight: 44,
+    marginBottom: spacing[4],
   },
-  addFolderButton: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  addFolderButton: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   folderList: { paddingBottom: spacing[4] },
   folderSeparator: { height: spacing[8] },
   noFolders: {
@@ -329,10 +269,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[16],
   },
   noFoldersCopy: { flex: 1 },
-  bookmarksLabel: { paddingTop: spacing[24], paddingBottom: spacing[8], paddingLeft: spacing[4] },
+  bookmarksLabel: { paddingTop: spacing[24], paddingBottom: spacing[8] },
   emptyBookmarks: { minHeight: 300, justifyContent: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
-  dialogTitle: { marginBottom: spacing[16] },
-  iconLabel: { marginTop: spacing[16], marginBottom: spacing[8] },
-  dialogActions: { gap: spacing[8], marginTop: spacing[20] },
 });

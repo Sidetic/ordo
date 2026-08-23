@@ -92,7 +92,7 @@ export function Header({
       style={[
         styles.compactWrap,
         horizontalInsets,
-        { maxWidth, paddingTop: topInset + spacing[8], borderBottomColor: palette.border },
+        { maxWidth, paddingTop: topInset + spacing[4], borderBottomColor: palette.border },
       ]}
     >
       <View style={styles.compactRow}>
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[4],
   },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 36 },
-  compactRow: { minHeight: 36, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  compactRow: { minHeight: 32, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backBtn: { width: 36, height: 32, alignItems: "center", justifyContent: "center" },
   right: { minWidth: 36, alignItems: "flex-end", justifyContent: "center" },
   largeTitles: { marginTop: spacing[4], alignItems: "center" },

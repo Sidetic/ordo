@@ -277,7 +277,7 @@ export default function FolderDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  iconBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   content: { flex: 1, width: "100%" },
   center: { flex: 1, width: "100%", justifyContent: "center" },
   singlePane: { flex: 1, width: "100%" },
