@@ -40,6 +40,13 @@ module.exports = {
   plugins: [
     "expo-asset",
     [
+      "expo-share-intent",
+      {
+        disableIOS: true,
+        androidIntentFilters: ["text/plain"],
+      },
+    ],
+    [
       "expo-splash-screen",
       {
         image: "./assets/logo-mark.png",

@@ -35,6 +35,7 @@
     "expo-network": "~7.0.5",
     "expo-router": "~4.0.17",
     "expo-secure-store": "~14.0.1",
+    "expo-share-intent": "3.2.3",
     "expo-splash-screen": "~0.29.24",
     "expo-status-bar": "~2.0.1",
     "expo-system-ui": "~4.0.7",

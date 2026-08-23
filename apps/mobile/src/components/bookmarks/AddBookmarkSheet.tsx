@@ -27,6 +27,7 @@ export interface AddBookmarkSheetProps {
   folderId: string | null;
   folderName?: string | null;
   allowFolderSelection?: boolean;
+  initialUrl?: string;
 }
 
 const ROOT_DESTINATION = "__bookmarks__";
@@ -44,6 +45,7 @@ export function AddBookmarkSheet({
   folderId,
   folderName,
   allowFolderSelection = false,
+  initialUrl,
 }: AddBookmarkSheetProps) {
   const create = useCreateBookmark();
   const { data: folders } = useFolders();
@@ -77,8 +79,11 @@ export function AddBookmarkSheet({
   };
 
   React.useEffect(() => {
-    if (visible) setSelectedDestination(folderId ?? ROOT_DESTINATION);
-  }, [folderId, visible]);
+    if (!visible) return;
+    setSelectedDestination(folderId ?? ROOT_DESTINATION);
+    setUrl(initialUrl ?? "");
+    setError("");
+  }, [folderId, initialUrl, visible]);
 
   const reset = () => {
     setUrl("");

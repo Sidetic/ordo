@@ -11,6 +11,7 @@ import React, { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
+import { ShareIntentProvider } from "expo-share-intent";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -27,6 +28,7 @@ import { UpdateReadyWatcher } from "../src/components/UpdateReadyWatcher";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { LaunchSplash } from "../src/components/LaunchSplash";
 import { fontAssets } from "../src/theme/tokens";
+import { IncomingShareHandler } from "../src/components/IncomingShareHandler";
 import {
   markRestartSplashPresented,
   useUpdateRestartStore,
@@ -109,6 +111,7 @@ function RootShell() {
       </Stack>
       <ConnectionBanner />
       <ToastHost />
+      <IncomingShareHandler />
       <UpdateReadyWatcher />
       {(showSplash || restarting) && (
         <LaunchSplash
@@ -148,14 +151,16 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <ErrorBoundary>{booted ? <RootShell /> : <LaunchSplash />}</ErrorBoundary>
-          </ThemeProvider>
-        </QueryClientProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ShareIntentProvider options={{ resetOnBackground: false }}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <ThemeProvider>
+              <ErrorBoundary>{booted ? <RootShell /> : <LaunchSplash />}</ErrorBoundary>
+            </ThemeProvider>
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ShareIntentProvider>
   );
 }
