@@ -1,5 +1,5 @@
 /** Bookmarks home: unfiled bookmarks first, with folders available above them. */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
@@ -36,7 +36,6 @@ import { toast } from "../../src/components/ui/toast-store";
 import { errorMessage } from "../../src/lib/error-message";
 import { flattenPages } from "../../src/lib/api/query-keys";
 import { layout, spacing } from "../../src/theme/tokens";
-import { useIncomingShareStore } from "../../src/store/incoming-share";
 import { type BookmarkDto, type FolderDto } from "@ordo/shared";
 
 export default function BookmarksScreen() {
@@ -48,8 +47,6 @@ export default function BookmarksScreen() {
   const toggleRead = useToggleRead(null);
   const deleteBookmark = useDeleteBookmark(null);
   const markAllRead = useMarkAllRead(null);
-  const sharedUrl = useIncomingShareStore((state) => state.pendingUrl);
-  const clearSharedUrl = useIncomingShareStore((state) => state.clear);
 
   const [addOpen, setAddOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -57,10 +54,6 @@ export default function BookmarksScreen() {
   const [actionsFolder, setActionsFolder] = useState<FolderDto | null>(null);
   const [actionBookmark, setActionBookmark] = useState<BookmarkDto | null>(null);
   const [moveTarget, setMoveTarget] = useState<BookmarkDto | null>(null);
-
-  useEffect(() => {
-    if (sharedUrl) setAddOpen(true);
-  }, [sharedUrl]);
 
   const items = useMemo(() => flattenPages(bookmarks.data?.pages ?? []), [bookmarks.data]);
   const hasUnread = items.some((bookmark) => !bookmark.isRead);
@@ -255,13 +248,9 @@ export default function BookmarksScreen() {
 
       <AddBookmarkSheet
         visible={addOpen}
-        onDismiss={() => {
-          setAddOpen(false);
-          clearSharedUrl();
-        }}
+        onDismiss={() => setAddOpen(false)}
         folderId={null}
         allowFolderSelection
-        initialUrl={sharedUrl ?? undefined}
       />
 
       <BookmarkActionsSheet

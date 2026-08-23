@@ -13,6 +13,7 @@ import {
   useColorScheme,
 } from "react-native";
 import * as Updates from "expo-updates";
+import * as SplashScreen from "expo-splash-screen";
 
 interface Props {
   children: ReactNode;
@@ -76,6 +77,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack?: string }) {
     console.error("Unhandled render error:", error, info.componentStack);
+    SplashScreen.hideAsync().catch(() => {});
   }
 
   reset = () => this.setState({ error: null });

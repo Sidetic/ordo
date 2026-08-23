@@ -29,6 +29,8 @@ import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { LaunchSplash } from "../src/components/LaunchSplash";
 import { fontAssets } from "../src/theme/tokens";
 import { IncomingShareHandler } from "../src/components/IncomingShareHandler";
+import { AddBookmarkSheet } from "../src/components/bookmarks/AddBookmarkSheet";
+import { useIncomingShareStore } from "../src/store/incoming-share";
 import {
   markRestartSplashPresented,
   useUpdateRestartStore,
@@ -60,6 +62,8 @@ function RootShell() {
   const status = useAuthStore((s) => s.status);
   const tokens = useAuthStore((s) => s.tokens);
   const restarting = useUpdateRestartStore((s) => s.restarting);
+  const sharedUrl = useIncomingShareStore((s) => s.pendingUrl);
+  const clearSharedUrl = useIncomingShareStore((s) => s.clear);
   const [minElapsed, setMinElapsed] = React.useState(false);
 
   // Minimum brand display so the launch reads as intentional, not a flicker.
@@ -112,6 +116,15 @@ function RootShell() {
       <ConnectionBanner />
       <ToastHost />
       <IncomingShareHandler />
+      {!showSplash && !restarting && routeMatchesAuth && status === "authenticated" ? (
+        <AddBookmarkSheet
+          visible={!!sharedUrl}
+          onDismiss={clearSharedUrl}
+          folderId={null}
+          allowFolderSelection
+          initialUrl={sharedUrl ?? undefined}
+        />
+      ) : null}
       <UpdateReadyWatcher />
       {(showSplash || restarting) && (
         <LaunchSplash
