@@ -15,6 +15,8 @@ import { haptics } from "../../lib/haptics";
 import { layout, spacing } from "../../theme/tokens";
 import { useResponsiveLayout } from "../../hooks/use-responsive-layout";
 
+const HEADER_LINE_HEIGHT = 21;
+
 export interface HeaderProps {
   title: string;
   subtitle?: string;
@@ -79,7 +81,7 @@ export function Header({
             {right}
           </View>
         ) : null}
-        <View style={styles.largeTitles}>
+        <View style={[styles.largeTitles, !subtitle && styles.singleLineTitle]}>
           <Text variant="header" align="center" numberOfLines={1}>{title}</Text>
           {subtitle ? (
             <Text variant="footnote" color="secondary" align="center" numberOfLines={1} style={{ marginTop: spacing[2] }}>
@@ -135,12 +137,13 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     paddingBottom: spacing[6],
   },
-  compactRow: { height: 21, justifyContent: "center" },
+  compactRow: { height: HEADER_LINE_HEIGHT, justifyContent: "center" },
   backBtn: { width: 36, height: 32, alignItems: "center", justifyContent: "center" },
   compactLeft: { position: "absolute", left: 0, top: -spacing[6] },
   compactRight: { position: "absolute", right: 0, top: -spacing[6], height: 32, justifyContent: "center" },
   largeRight: { position: "absolute", height: 32, justifyContent: "center", zIndex: 1 },
   largeTitles: { alignItems: "center" },
+  singleLineTitle: { height: HEADER_LINE_HEIGHT, justifyContent: "center" },
   compactTitle: { position: "absolute", top: 0, bottom: 0, left: 48, right: 48, alignItems: "center", justifyContent: "center" },
   compactSubtitle: { marginTop: -spacing[4], paddingHorizontal: 48 },
 });
