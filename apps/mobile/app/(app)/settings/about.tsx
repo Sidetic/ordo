@@ -29,10 +29,6 @@ export default function AboutScreen() {
   return (
     <SettingsPage title="About">
       <SettingsScrollView>
-        <Text variant="callout" align="center" style={styles.tagline}>
-          The app that keeps your life in order
-        </Text>
-
         <SettingsGroup
           label="Version"
           compact
@@ -103,7 +99,6 @@ export default function AboutScreen() {
 }
 
 const styles = StyleSheet.create({
-  tagline: { maxWidth: 300, alignSelf: "center", marginBottom: spacing[16] },
   fingerprint: {
     minHeight: 64,
     paddingHorizontal: spacing[16],
