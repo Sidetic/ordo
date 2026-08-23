@@ -164,7 +164,9 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <ShareIntentProvider options={{ resetOnBackground: false }}>
+    <ShareIntentProvider
+      options={{ scheme: "com.axolet.ordo", resetOnBackground: false }}
+    >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <QueryClientProvider client={queryClient}>
