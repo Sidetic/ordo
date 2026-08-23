@@ -35,6 +35,11 @@ import { haptics } from "../../src/lib/haptics";
 import { toast } from "../../src/components/ui/toast-store";
 import { errorMessage } from "../../src/lib/error-message";
 import { flattenPages } from "../../src/lib/api/query-keys";
+import {
+  useSettingsStore,
+  type CreateButtonAction,
+  type CreateButtonHoldAction,
+} from "../../src/store/settings";
 import { layout, spacing } from "../../src/theme/tokens";
 import { type BookmarkDto, type FolderDto } from "@ordo/shared";
 
@@ -47,6 +52,8 @@ export default function BookmarksScreen() {
   const toggleRead = useToggleRead(null);
   const deleteBookmark = useDeleteBookmark(null);
   const markAllRead = useMarkAllRead(null);
+  const createButtonTapAction = useSettingsStore((s) => s.createButtonTapAction);
+  const createButtonHoldAction = useSettingsStore((s) => s.createButtonHoldAction);
 
   const [addOpen, setAddOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -89,20 +96,21 @@ export default function BookmarksScreen() {
     }
   };
 
+  const runCreateAction = (action: CreateButtonHoldAction) => {
+    if (action === "menu") setCreateMenuOpen(true);
+    if (action === "bookmark") setAddOpen(true);
+    if (action === "folder") setCreateOpen(true);
+  };
+
+  const createActionDescription = (action: CreateButtonAction) => {
+    if (action === "menu") return "show create choices";
+    if (action === "bookmark") return "save a bookmark";
+    return "create a folder";
+  };
+
   const listHeader = (
     <View style={styles.listHeader}>
-      <View style={styles.sectionHeading}>
-        <SettingsSectionLabel compact>Folders</SettingsSectionLabel>
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel="New folder"
-          style={[styles.addFolderButton, { backgroundColor: palette.accentSoft }]}
-          hitSlop={8}
-          onPress={() => setCreateOpen(true)}
-        >
-          <Ionicons name="add" size={18} color={palette.accent} />
-        </PressableScale>
-      </View>
+      <SettingsSectionLabel compact>Folders</SettingsSectionLabel>
       {folders.isLoading ? (
         <Skeleton height={68} radiusKey="lg" />
       ) : folders.data?.length ? (
@@ -203,7 +211,16 @@ export default function BookmarksScreen() {
 
       <FABLayer maxWidth={layout.maxContentWidth}>
         <FAB
-          onPress={() => setCreateMenuOpen(true)}
+          onPress={() => runCreateAction(createButtonTapAction)}
+          onLongPress={() => {
+            if (createButtonHoldAction !== "none") haptics.medium();
+            runCreateAction(createButtonHoldAction);
+          }}
+          accessibilityHint={
+            createButtonHoldAction === "none"
+              ? `Tap to ${createActionDescription(createButtonTapAction)}. Press and hold is disabled.`
+              : `Tap to ${createActionDescription(createButtonTapAction)}. Press and hold to ${createActionDescription(createButtonHoldAction)}.`
+          }
           testID="add-bookmark-fab"
           bottom={floatingNavigation ? bottomClearance : spacing[20]}
           right={spacing[20]}
@@ -289,19 +306,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, width: "100%", justifyContent: "center" },
   headerAction: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   listHeader: { paddingTop: spacing[8] },
-  sectionHeading: {
-    position: "relative",
-  },
-  addFolderButton: {
-    position: "absolute",
-    top: -spacing[6],
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   folderList: { paddingBottom: spacing[4] },
   folderSeparator: { height: spacing[8] },
   noFolders: {

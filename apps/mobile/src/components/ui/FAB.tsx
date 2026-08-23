@@ -12,6 +12,9 @@ import { layout, spacing } from "../../theme/tokens";
 export interface FABProps {
   icon?: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
+  onLongPress?: () => void;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
   testID?: string;
   bottom?: number;
   right?: number;
@@ -37,6 +40,9 @@ export function FABLayer({ children, maxWidth }: FABLayerProps) {
 export function FAB({
   icon = "add",
   onPress,
+  onLongPress,
+  accessibilityLabel = "Create",
+  accessibilityHint,
   testID,
   bottom = spacing[20],
   right: rightOverride,
@@ -51,10 +57,14 @@ export function FAB({
   );
   return (
     <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       testID={testID}
       style={[styles.fab, { backgroundColor: palette.accent, bottom, right }, shadows.level2]}
       scaleTo={0.9}
       onPress={onPress}
+      onLongPress={onLongPress}
     >
       <Ionicons name={icon} size={24} color={palette.onAccent} />
     </PressableScale>

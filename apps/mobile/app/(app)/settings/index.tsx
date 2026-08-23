@@ -45,6 +45,13 @@ export default function SettingsScreen() {
             showChevron
           />
           <SettingRow
+            icon="options-outline"
+            label="Controls"
+            description="Button shortcuts and gestures"
+            onPress={() => router.push("/settings/controls")}
+            showChevron
+          />
+          <SettingRow
             icon="phone-portrait-outline"
             label="Active sessions"
             description="Review devices signed in to your account"
