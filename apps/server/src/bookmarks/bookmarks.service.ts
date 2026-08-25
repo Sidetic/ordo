@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common";
 import type { Folder, Prisma } from "@prisma/client";
 import {
   DEFAULT_PAGE_SIZE,
@@ -37,7 +37,7 @@ const LIST_SELECT = {
 type ListItem = Prisma.BookmarkGetPayload<{ select: typeof LIST_SELECT }>;
 
 @Injectable()
-export class BookmarksService {
+export class BookmarksService implements OnApplicationBootstrap {
   private readonly logger = new Logger(BookmarksService.name);
 
   constructor(
@@ -46,31 +46,29 @@ export class BookmarksService {
     private readonly access: FolderAccessService,
   ) {}
 
-  /** Save a URL: best-effort content extraction. The bookmark is always stored,
-   *  even if the fetch fails (status reflected in fetchStatus). A null folder
-   *  stores it as unfiled. */
-  async create(userId: string, folder: Folder | null, url: string): Promise<BookmarkDto> {
-    let extracted = null;
-    try {
-      extracted = await this.reader.extract(url);
-    } catch (err) {
-      this.logger.warn(`Extraction failed for ${url}: ${(err as Error).message}`);
+  async onApplicationBootstrap(): Promise<void> {
+    const interrupted = await this.prisma.bookmark.updateMany({
+      where: { fetchStatus: "pending" },
+      data: { fetchStatus: "failed" },
+    });
+    if (interrupted.count > 0) {
+      this.logger.warn(`Marked ${interrupted.count} interrupted extractions as failed`);
     }
+  }
 
+  /** Save immediately, then enrich the bookmark in the background. */
+  async create(userId: string, folder: Folder | null, url: string): Promise<BookmarkDto> {
     const bookmark = await this.prisma.bookmark.create({
       data: {
         userId,
         folderId: folder ? folder.id : null,
         url,
-        title: extracted?.title ?? this.safeHostname(url),
-        description: extracted?.description ?? null,
-        domain: extracted?.domain ?? this.safeHostname(url),
-        contentHtml: extracted?.contentHtml ?? null,
-        contentMarkdown: extracted?.contentMarkdown ?? null,
-        contentText: extracted?.contentText ?? null,
-        fetchStatus: extracted ? "ok" : "failed",
+        title: this.safeHostname(url),
+        domain: this.safeHostname(url),
+        fetchStatus: "pending",
       },
     });
+    void this.enrichBookmark(bookmark.id, url);
     return toBookmarkDto(bookmark);
   }
 
@@ -184,6 +182,35 @@ export class BookmarksService {
   }
 
   // --- internals ---
+
+  private async enrichBookmark(bookmarkId: string, url: string): Promise<void> {
+    try {
+      const extracted = await this.reader.extract(url);
+      await this.prisma.bookmark.updateMany({
+        where: { id: bookmarkId },
+        data: {
+          title: extracted.title,
+          description: extracted.description,
+          domain: extracted.domain,
+          contentHtml: extracted.contentHtml,
+          contentMarkdown: extracted.contentMarkdown,
+          contentText: extracted.contentText,
+          fetchStatus: "ok",
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Extraction failed for bookmark ${bookmarkId} (${this.safeHostname(url)}): ${(err as Error).message}`,
+      );
+      await this.prisma.bookmark
+        .updateMany({ where: { id: bookmarkId }, data: { fetchStatus: "failed" } })
+        .catch((updateError: unknown) => {
+          this.logger.error(
+            `Could not update extraction status for bookmark ${bookmarkId}: ${(updateError as Error).message}`,
+          );
+        });
+    }
+  }
 
   private async paginate<T>(
     where: Record<string, unknown>,

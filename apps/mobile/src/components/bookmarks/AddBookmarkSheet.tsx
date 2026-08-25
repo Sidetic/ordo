@@ -1,8 +1,9 @@
 /**
- * Floating dialog to save a new URL. Validates + creates optimistically.
+ * Floating dialog to validate and save a new URL.
  */
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { FloatingPanel } from "../ui/FloatingPanel";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
@@ -19,6 +20,7 @@ import { errorMessage, isFolderProtected } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
 import { toast } from "../ui/toast-store";
 import { spacing } from "../../theme/tokens";
+import { useTheme } from "../../theme/ThemeProvider";
 
 export interface AddBookmarkSheetProps {
   visible: boolean;
@@ -47,6 +49,7 @@ export function AddBookmarkSheet({
   allowFolderSelection = false,
   initialUrl,
 }: AddBookmarkSheetProps) {
+  const { palette } = useTheme();
   const create = useCreateBookmark();
   const { data: folders } = useFolders();
   const [url, setUrl] = useState("");
@@ -98,6 +101,7 @@ export function AddBookmarkSheet({
   };
 
   const submit = async () => {
+    if (create.isPending) return;
     setError("");
     const trimmed = url.trim();
     if (!trimmed) {
@@ -130,10 +134,10 @@ export function AddBookmarkSheet({
   return (
     <>
     <FloatingPanel visible={visible && !lockedFolderId} onDismiss={close}>
-      <Text variant="title3" style={{ marginBottom: spacing[4] }}>Save bookmark</Text>
+      <Text variant="title3" style={styles.title}>Save bookmark</Text>
       {allowFolderSelection ? (
         <View style={styles.destinationRow}>
-          <Text variant="label" color="tertiary">SAVE TO</Text>
+          <Text variant="label" color="tertiary">DESTINATION</Text>
           <SettingsSelect
             value={selectedDestination}
             options={destinationOptions}
@@ -148,22 +152,23 @@ export function AddBookmarkSheet({
       ) : null}
 
       <Input
-        label="URL"
         value={url}
         onChangeText={setUrl}
-        placeholder="https://example.com/article"
+        placeholder="Paste a link"
         keyboardType="url"
         autoCapitalize="none"
         autoCorrect={false}
         autoFocus
         error={error || undefined}
-        helper={error ? undefined : "Paste any link — we'll fetch the article for clean reading."}
+        icon={<Ionicons name="link-outline" size={18} color={palette.textTertiary} />}
+        onSubmitEditing={() => void submit()}
+        returnKeyType="done"
       />
 
-      <View style={{ height: spacing[20] }} />
-      <Button label="Save" block size="lg" onPress={submit} loading={create.isPending} />
-      <View style={{ height: spacing[10] }} />
-      <Button label="Cancel" variant="ghost" block onPress={close} />
+      <View style={styles.actions}>
+        <Button label="Cancel" variant="secondary" onPress={close} style={styles.action} />
+        <Button label="Save" onPress={submit} loading={create.isPending} style={styles.saveAction} />
+      </View>
     </FloatingPanel>
     <LockPrompt
       visible={visible && !!lockedFolderId}
@@ -185,12 +190,19 @@ export function AddBookmarkSheet({
 }
 
 const styles = StyleSheet.create({
+  title: { marginBottom: spacing[16] },
   destinationRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing[12],
-    marginTop: spacing[12],
     marginBottom: spacing[16],
   },
+  actions: {
+    flexDirection: "row",
+    gap: spacing[10],
+    marginTop: spacing[20],
+  },
+  action: { flex: 1 },
+  saveAction: { flex: 1.4 },
 });

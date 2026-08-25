@@ -227,10 +227,22 @@ describe("Bookmarks & Folders (e2e)", () => {
         .send({ url: "https://example.com/article" })
         .expect(201);
       expect(res.body.folderId).toBeNull();
-      expect(res.body.title).toBe("Sample Article");
+      expect(res.body.title).toBe("example.com");
       expect(res.body.domain).toBe("example.com");
-      expect(res.body.contentMarkdown).toBe("Hello world.");
+      expect(res.body.contentMarkdown).toBeNull();
+      expect(res.body.fetchStatus).toBe("pending");
       expect(res.body.isRead).toBe(false);
+
+      let stored = await ctx.prisma.bookmark.findUnique({ where: { id: res.body.id } });
+      for (let attempt = 0; attempt < 20 && stored?.fetchStatus === "pending"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        stored = await ctx.prisma.bookmark.findUnique({ where: { id: res.body.id } });
+      }
+      expect(stored).toMatchObject({
+        title: "Sample Article",
+        contentMarkdown: "Hello world.",
+        fetchStatus: "ok",
+      });
     });
 
     it("creates an unfiled bookmark with an explicit null folderId", async () => {

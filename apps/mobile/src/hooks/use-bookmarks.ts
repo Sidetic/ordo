@@ -2,7 +2,13 @@
  * Bookmark queries + mutations. Optimistic updates keep the UI instant;
  * background refetch reconciles with the server.
  */
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
 import { bookmarksApi } from "../lib/api/bookmarks";
 import { queryClient } from "../lib/query-client";
 import { useFolderTokenStore } from "../store/folder-tokens";
@@ -12,7 +18,19 @@ import {
   removeBookmarkFromPages,
   updateBookmarkInPages,
 } from "../lib/cache-helpers";
-import { DEFAULT_PAGE_SIZE, type BookmarkDetailDto, type BookmarkDto, type FolderDto } from "@ordo/shared";
+import {
+  DEFAULT_PAGE_SIZE,
+  type BookmarkDetailDto,
+  type BookmarkDto,
+  type CursorPage,
+  type FolderDto,
+} from "@ordo/shared";
+
+const EXTRACTION_POLL_MS = 1_500;
+
+function hasPendingBookmark(data?: InfiniteData<CursorPage<BookmarkDto>>): boolean {
+  return data?.pages.some((page) => page.items.some((bookmark) => bookmark.fetchStatus === "pending")) ?? false;
+}
 
 /** Decrement a folder's bookmarkCount + unreadCount in the folders cache. No-op for unfiled (null). */
 function bumpFolderCount(id: string | null, bookmarkDelta: number, unreadDelta: number) {
@@ -38,6 +56,8 @@ export function useInfiniteBookmarks(folderId: string | null, enabled = true) {
     initialPageParam: null as string | null,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor : undefined),
     enabled,
+    refetchInterval: (query) =>
+      hasPendingBookmark(query.state.data) ? EXTRACTION_POLL_MS : false,
   });
 }
 
@@ -50,6 +70,8 @@ export function useInfiniteSearch(q: string) {
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor : undefined),
     enabled: q.trim().length > 0,
     placeholderData: (prev) => prev,
+    refetchInterval: (query) =>
+      hasPendingBookmark(query.state.data) ? EXTRACTION_POLL_MS : false,
   });
 }
 
@@ -59,6 +81,8 @@ export function useBookmarkDetail(id: string, enabled = true, folderId?: string 
     queryFn: () => bookmarksApi.detail(id, folderId),
     enabled: !!id && enabled,
     staleTime: 5 * 60_000,
+    refetchInterval: (query) =>
+      query.state.data?.fetchStatus === "pending" ? EXTRACTION_POLL_MS : false,
   });
 }
 

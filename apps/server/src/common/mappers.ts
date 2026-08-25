@@ -72,6 +72,7 @@ export type BookmarkDtoFields = Pick<
   | "domain"
   | "contentText"
   | "contentMarkdown"
+  | "fetchStatus"
   | "isRead"
   | "createdAt"
   | "updatedAt"
@@ -87,6 +88,8 @@ export function toBookmarkDto(b: BookmarkDtoFields): BookmarkDto {
     domain: b.domain,
     contentText: b.contentText,
     contentMarkdown: b.contentMarkdown,
+    fetchStatus:
+      b.fetchStatus === "pending" || b.fetchStatus === "ok" ? b.fetchStatus : "failed",
     isRead: b.isRead,
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),

@@ -49,6 +49,7 @@ export function ReaderPane({
   const bookmark = detail.data ?? cached;
   const loading = !!bookmarkId && !bookmark && detail.isLoading;
   const hasContent = !!bookmark?.contentMarkdown;
+  const preparingContent = bookmark?.fetchStatus === "pending";
 
   const toggleRead = useToggleRead(bookmark?.folderId ?? null);
   const markedRef = useRef<string | null>(null);
@@ -142,6 +143,15 @@ export function ReaderPane({
               <View style={{ marginTop: spacing[24] }}>
                 <Markdown>{bookmark.contentMarkdown ?? ""}</Markdown>
               </View>
+            ) : preparingContent ? (
+              <View style={styles.inlineEmpty}>
+                <Skeleton width="100%" height={16} />
+                <Skeleton width="92%" height={16} style={{ marginTop: spacing[8] }} />
+                <Skeleton width="68%" height={16} style={{ marginTop: spacing[8] }} />
+                <Text variant="body" color="secondary" style={styles.preparingText}>
+                  Preparing this page for reading...
+                </Text>
+              </View>
             ) : (
               <View style={styles.inlineEmpty}>
                 <Ionicons name="reader-outline" size={36} color={palette.textTertiary} />
@@ -212,6 +222,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: spacing[32],
   },
+  preparingText: { marginTop: spacing[16], textAlign: "center" },
   placeholderIcon: {
     width: 64,
     height: 64,

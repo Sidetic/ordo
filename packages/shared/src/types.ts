@@ -57,6 +57,7 @@ export interface BookmarkDto {
   domain: string;
   contentText: string | null;
   contentMarkdown: string | null;
+  fetchStatus: "pending" | "ok" | "failed";
   isRead: boolean;
   createdAt: string;
   updatedAt: string;
