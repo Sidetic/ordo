@@ -34,8 +34,8 @@ export default function AboutScreen() {
           compact
           footer={build.gitDirty ? "Built from a working copy with uncommitted changes." : undefined}
         >
-          <SettingRow icon="pricetag-outline" label="Version" value={`v${build.version}`} />
-          <SettingRow icon="git-commit-outline" label="Commit" value={commit} divider={false} />
+          <SettingRow icon="pricetag-outline" label="Version" description={`v${build.version}`} />
+          <SettingRow icon="git-commit-outline" label="Commit" description={commit} divider={false} />
         </SettingsGroup>
 
         <SettingsGroup label="Running">
@@ -87,7 +87,12 @@ export default function AboutScreen() {
             onPress={() => Linking.openURL(REPO_URL).catch(() => {})}
             showChevron
           />
-          <SettingRow icon="shield-checkmark-outline" label="License" value="AGPL-3.0" divider={false} />
+          <SettingRow
+            icon="shield-checkmark-outline"
+            label="License"
+            description="AGPL-3.0"
+            divider={false}
+          />
         </SettingsGroup>
 
         <Text variant="caption" color="tertiary" align="center" style={styles.footer}>
