@@ -45,4 +45,10 @@ describe("TokenService", () => {
     expect(ft.token).toBeTruthy();
     expect(svc.hash(ft.token)).toBe(ft.hash);
   });
+
+  it("generates a 6-digit verification OTP", () => {
+    for (let i = 0; i < 20; i++) {
+      expect(svc.generateVerificationToken()).toMatch(/^\d{6}$/);
+    }
+  });
 });

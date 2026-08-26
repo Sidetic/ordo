@@ -26,6 +26,8 @@ import {
   type SessionDto,
   type UpdateReaderPreferencesInput,
   type UserDto,
+  type VerifyEmailChangeInput,
+  type VerifyEmailInput,
 } from "@ordo/shared";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe.js";
 import {
@@ -148,8 +150,10 @@ export class AuthController {
 
   @Post("verify-email")
   @HttpCode(200)
-  async verifyEmail(@Body(new ZodValidationPipe(VerifyEmailSchema)) body: { token: string }): Promise<{ success: true }> {
-    await this.auth.verifyEmail(body.token);
+  async verifyEmail(
+    @Body(new ZodValidationPipe(VerifyEmailSchema)) body: VerifyEmailInput,
+  ): Promise<{ success: true }> {
+    await this.auth.verifyEmail(body.email, body.token);
     return { success: true };
   }
 
@@ -187,7 +191,7 @@ export class AuthController {
   @HttpCode(200)
   async verifyEmailChange(
     @CurrentUser() user: AuthContext,
-    @Body(new ZodValidationPipe(VerifyEmailChangeSchema)) body: { token: string },
+    @Body(new ZodValidationPipe(VerifyEmailChangeSchema)) body: VerifyEmailChangeInput,
   ): Promise<UserDto> {
     return this.auth.verifyEmailChange(user.userId, body.token);
   }

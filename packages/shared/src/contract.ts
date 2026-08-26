@@ -99,7 +99,7 @@ export const AuthRoutes = {
   verifyEmail: {
     path: `${API_PREFIX}/auth/verify-email`,
     method: "POST",
-    body: {} as { token: string },
+    body: {} as { email: string; token: string },
     query: {} as Empty,
     params: {} as Empty,
     response: {} as { success: true },

@@ -1,5 +1,6 @@
+import { randomInt } from "node:crypto";
 import { Injectable } from "@nestjs/common";
-import { TOKEN_TTL } from "@ordo/shared";
+import { EMAIL_OTP, TOKEN_TTL } from "@ordo/shared";
 import { generateToken, hashToken } from "../common/utils/tokens.js";
 
 export interface TokenPair {
@@ -39,7 +40,8 @@ export class TokenService {
   }
 
   generateVerificationToken(): string {
-    return generateToken(32);
+    const max = 10 ** EMAIL_OTP.LENGTH;
+    return String(randomInt(0, max)).padStart(EMAIL_OTP.LENGTH, "0");
   }
 
   hash(token: string): string {

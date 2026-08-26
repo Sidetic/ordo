@@ -1,5 +1,5 @@
 import request from "supertest";
-import { DELETE_ACCOUNT_CONFIRMATION, ErrorCode } from "@ordo/shared";
+import { DELETE_ACCOUNT_CONFIRMATION, EMAIL_OTP, ErrorCode } from "@ordo/shared";
 import { MailService } from "../src/auth/mail.service.js";
 import {
   authedAgent,
@@ -330,6 +330,7 @@ describe("Auth (e2e)", () => {
 
         const last = sent[sent.length - 1];
         expect(last.to).toBe("changed@ordo.app");
+        expect(last.token).toMatch(/^\d{6}$/);
 
         const res = await agent
           .post("/api/auth/email/verify-change")
@@ -360,11 +361,48 @@ describe("Auth (e2e)", () => {
           .post("/api/auth/email/change")
           .send({ currentPassword: "password123", newEmail: "badcode2@ordo.app" })
           .expect(200);
+        const real = sent[sent.length - 1].token;
+        const wrong = real === "000000" ? "111111" : "000000";
+        const res = await agent
+          .post("/api/auth/email/verify-change")
+          .send({ token: wrong })
+          .expect(400);
+        expect(res.body.error.code).toBe(ErrorCode.INVALID_VERIFICATION_TOKEN);
+      });
+
+      it("invalidates the code after too many failed attempts", async () => {
+        const agent = await authedAgent(pctx.app, "lockout@ordo.app");
+        await agent
+          .post("/api/auth/email/change")
+          .send({ currentPassword: "password123", newEmail: "lockout2@ordo.app" })
+          .expect(200);
+        const real = sent[sent.length - 1].token;
+        const wrong = real === "000000" ? "111111" : "000000";
+        for (let i = 0; i < EMAIL_OTP.MAX_ATTEMPTS; i++) {
+          const res = await agent
+            .post("/api/auth/email/verify-change")
+            .send({ token: wrong })
+            .expect(400);
+          expect(res.body.error.code).toBe(ErrorCode.INVALID_VERIFICATION_TOKEN);
+        }
+        const res = await agent
+          .post("/api/auth/email/verify-change")
+          .send({ token: real })
+          .expect(400);
+        expect(res.body.error.code).toBe(ErrorCode.INVALID_VERIFICATION_TOKEN);
+      });
+
+      it("rejects a non-numeric code before lookup", async () => {
+        const agent = await authedAgent(pctx.app, "badshape@ordo.app");
+        await agent
+          .post("/api/auth/email/change")
+          .send({ currentPassword: "password123", newEmail: "badshape2@ordo.app" })
+          .expect(200);
         const res = await agent
           .post("/api/auth/email/verify-change")
           .send({ token: "not-a-real-token" })
           .expect(400);
-        expect(res.body.error.code).toBe(ErrorCode.INVALID_VERIFICATION_TOKEN);
+        expect(res.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
       });
     });
 
@@ -558,5 +596,82 @@ describe("Auth (e2e)", () => {
           .expect(401);
       });
     });
+  });
+});
+
+describe("signup email verification (e2e)", () => {
+  let vctx: TestCtx;
+  const sent: { to: string; token: string }[] = [];
+
+  beforeAll(async () => {
+    vctx = await createTestApp({
+      config: { emailVerificationRequired: true },
+      customize: (b) =>
+        b.overrideProvider(MailService).useValue({
+          isConfigured: true,
+          sendVerification: async (to: string, token: string) => {
+            sent.push({ to, token });
+          },
+        }),
+    });
+  });
+
+  afterAll(async () => {
+    await teardownApp(vctx);
+  });
+
+  beforeEach(async () => {
+    await clearDb(vctx.prisma);
+    sent.length = 0;
+  });
+
+  it("emails a 6-digit code and verifies with email + code", async () => {
+    await request(vctx.app.getHttpServer())
+      .post("/api/auth/register")
+      .set("x-client-type", "mobile")
+      .send({ username: "verifyme", email: "verifyme@ordo.app", password: "supersecret" })
+      .expect(201);
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toBe("verifyme@ordo.app");
+    expect(sent[0].token).toMatch(/^\d{6}$/);
+
+    const blocked = await request(vctx.app.getHttpServer())
+      .post("/api/auth/login")
+      .set("x-client-type", "mobile")
+      .send({ identifier: "verifyme@ordo.app", password: "supersecret" })
+      .expect(401);
+    expect(blocked.body.error.code).toBe(ErrorCode.EMAIL_NOT_VERIFIED);
+
+    await request(vctx.app.getHttpServer())
+      .post("/api/auth/verify-email")
+      .send({ email: "verifyme@ordo.app", token: sent[0].token })
+      .expect(200);
+
+    await request(vctx.app.getHttpServer())
+      .post("/api/auth/login")
+      .set("x-client-type", "mobile")
+      .send({ identifier: "verifyme@ordo.app", password: "supersecret" })
+      .expect(200);
+  });
+
+  it("rejects a code without the matching email", async () => {
+    await request(vctx.app.getHttpServer())
+      .post("/api/auth/register")
+      .set("x-client-type", "mobile")
+      .send({ username: "noemail", email: "noemail@ordo.app", password: "supersecret" })
+      .expect(201);
+
+    const missingEmail = await request(vctx.app.getHttpServer())
+      .post("/api/auth/verify-email")
+      .send({ token: sent[0].token })
+      .expect(400);
+    expect(missingEmail.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+
+    const wrongEmail = await request(vctx.app.getHttpServer())
+      .post("/api/auth/verify-email")
+      .send({ email: "other@ordo.app", token: sent[0].token })
+      .expect(400);
+    expect(wrongEmail.body.error.code).toBe(ErrorCode.INVALID_VERIFICATION_TOKEN);
   });
 });

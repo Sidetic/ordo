@@ -1,0 +1,25 @@
+import { equalHex, hashEmailOtp, pepperedHash } from "./tokens.js";
+
+describe("token helpers", () => {
+  it("peppers hashes so a DB leak of 6-digit codes is not enough", () => {
+    const otp = "123456";
+    const userId = "user-1";
+    const a = hashEmailOtp(userId, otp, "secret-a");
+    const b = hashEmailOtp(userId, otp, "secret-b");
+    expect(a).not.toBe(b);
+    expect(a).not.toBe(otp);
+  });
+
+  it("binds the OTP to the user so identical codes do not collide", () => {
+    const otp = "123456";
+    const secret = "shared-secret";
+    expect(hashEmailOtp("user-1", otp, secret)).not.toBe(hashEmailOtp("user-2", otp, secret));
+  });
+
+  it("compares stored hashes in constant time", () => {
+    const hash = pepperedHash("user-1:123456", "secret");
+    expect(equalHex(hash, hash)).toBe(true);
+    expect(equalHex(hash, pepperedHash("user-1:000000", "secret"))).toBe(false);
+    expect(equalHex(hash, "abcd")).toBe(false);
+  });
+});

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EMAIL_OTP } from "../constants.js";
 
 const email = z
   .string()
@@ -44,8 +45,16 @@ export const RefreshSchema = z.object({
 });
 export type RefreshInput = z.infer<typeof RefreshSchema>;
 
+const emailOtp = z
+  .string()
+  .trim()
+  .regex(new RegExp(`^\\d{${EMAIL_OTP.LENGTH}}$`), {
+    message: `Enter the ${EMAIL_OTP.LENGTH}-digit code`,
+  });
+
 export const VerifyEmailSchema = z.object({
-  token: z.string().min(1),
+  email,
+  token: emailOtp,
 });
 export type VerifyEmailInput = z.infer<typeof VerifyEmailSchema>;
 
@@ -80,6 +89,6 @@ export const DeleteAccountSchema = z.object({
 export type DeleteAccountInput = z.infer<typeof DeleteAccountSchema>;
 
 export const VerifyEmailChangeSchema = z.object({
-  token: z.string().min(1),
+  token: emailOtp,
 });
 export type VerifyEmailChangeInput = z.infer<typeof VerifyEmailChangeSchema>;

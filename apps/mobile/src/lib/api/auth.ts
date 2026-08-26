@@ -27,10 +27,10 @@ export const authApi = {
       buildPath(AuthRoutes.revokeSession.path, { id }),
     ),
 
-  verifyEmail: (token: string) =>
+  verifyEmail: (body: { email: string; token: string }) =>
     api.post<typeof AuthRoutes.verifyEmail.response>(
       AuthRoutes.verifyEmail.path,
-      { token },
+      body,
       { auth: false },
     ),
 

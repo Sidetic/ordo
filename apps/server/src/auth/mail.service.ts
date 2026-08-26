@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import nodemailer, { type Transporter } from "nodemailer";
+import { EMAIL_OTP } from "@ordo/shared";
 import { APP_CONFIG } from "../config/config.module.js";
 import type { AppConfig } from "../config/config.module.js";
 
@@ -32,8 +33,9 @@ export class MailService {
   }
 
   async sendVerification(to: string, token: string): Promise<void> {
-    const subject = "Verify your Ordo account";
-    const text = `Welcome to Ordo!\n\nYour verification token is:\n\n${token}\n\nUse it to verify your email address.`;
+    const minutes = Math.round(EMAIL_OTP.TTL_MS / 60_000);
+    const subject = "Your Ordo verification code";
+    const text = `Your verification code is:\n\n${token}\n\nThis code expires in ${minutes} minutes.`;
     await this.send({ to, subject, text });
   }
 

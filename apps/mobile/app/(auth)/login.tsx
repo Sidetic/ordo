@@ -3,7 +3,7 @@
  */
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthShell } from "../../src/components/auth/AuthShell";
 import { Input } from "../../src/components/ui/Input";
@@ -15,13 +15,15 @@ import { EyeToggle } from "../../src/components/ui/EyeToggle";
 import { useSettingsStore } from "../../src/store/settings";
 import { useLogin } from "../../src/hooks/use-auth-actions";
 import { errorMessage } from "../../src/lib/error-message";
+import { ApiClientError } from "../../src/lib/api/client";
 import { haptics } from "../../src/lib/haptics";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { radius, spacing } from "../../src/theme/tokens";
-import { LoginSchema } from "@ordo/shared";
+import { ErrorCode, LoginSchema } from "@ordo/shared";
 
 export default function LoginScreen() {
   const { palette } = useTheme();
+  const router = useRouter();
   const serverUrl = useSettingsStore((s) => s.serverUrl);
   const login = useLogin();
 
@@ -43,6 +45,13 @@ export default function LoginScreen() {
       haptics.success();
     } catch (e) {
       haptics.error();
+      if (e instanceof ApiClientError && e.code === ErrorCode.EMAIL_NOT_VERIFIED) {
+        const email = parsed.data.identifier.includes("@")
+          ? parsed.data.identifier.trim().toLowerCase()
+          : "";
+        router.replace({ pathname: "/(auth)/verify-email", params: email ? { email } : {} });
+        return;
+      }
       setFormError(errorMessage(e));
     }
   };

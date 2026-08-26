@@ -3,6 +3,8 @@ import {
   DELETE_ACCOUNT_CONFIRMATION,
   DeleteAccountSchema,
   ErrorCode,
+  VerifyEmailChangeSchema,
+  VerifyEmailSchema,
 } from "@ordo/shared";
 import { AuthService } from "./auth.service.js";
 
@@ -52,5 +54,25 @@ describe("AuthService account deletion", () => {
     await service.deleteAccount("user-1", "password123");
 
     expect(deleteUser).toHaveBeenCalledWith({ where: { id: "user-1" } });
+  });
+});
+
+describe("email OTP schemas", () => {
+  it("accepts a 6-digit code with email for signup verification", () => {
+    expect(
+      VerifyEmailSchema.safeParse({ email: "a@ordo.app", token: "123456" }).success,
+    ).toBe(true);
+    expect(VerifyEmailSchema.safeParse({ token: "123456" }).success).toBe(false);
+    expect(
+      VerifyEmailSchema.safeParse({ email: "a@ordo.app", token: "12345" }).success,
+    ).toBe(false);
+    expect(
+      VerifyEmailSchema.safeParse({ email: "a@ordo.app", token: "abcdef" }).success,
+    ).toBe(false);
+  });
+
+  it("accepts a 6-digit code for email-change verification", () => {
+    expect(VerifyEmailChangeSchema.safeParse({ token: "000000" }).success).toBe(true);
+    expect(VerifyEmailChangeSchema.safeParse({ token: "12 3456" }).success).toBe(false);
   });
 });

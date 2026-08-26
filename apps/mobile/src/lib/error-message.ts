@@ -8,7 +8,7 @@ const FRIENDLY: Record<string, string> = {
   [ErrorCode.INVALID_CREDENTIALS]: "Incorrect email, username or password",
   [ErrorCode.EMAIL_ALREADY_EXISTS]: "An account with this email already exists.",
   [ErrorCode.EMAIL_NOT_VERIFIED]: "Please verify your email before signing in.",
-  [ErrorCode.INVALID_VERIFICATION_TOKEN]: "This verification link is invalid or has expired.",
+  [ErrorCode.INVALID_VERIFICATION_TOKEN]: "This verification code is invalid or has expired.",
   [ErrorCode.REGISTRATION_DISABLED]: "This server isn't accepting new sign-ups.",
   [ErrorCode.SESSION_REVOKED]: "Your session has ended. Please sign in again.",
   [ErrorCode.TOKEN_EXPIRED]: "Your session has expired.",

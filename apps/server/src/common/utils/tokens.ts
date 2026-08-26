@@ -22,3 +22,16 @@ export function verifyToken(token: string, expectedHash: string): boolean {
 export function pepperedHash(token: string, secret: string): string {
   return createHash("sha256").update(`${secret}:${token}`).digest("hex");
 }
+
+/** Constant-time equality for stored hex hashes (e.g. peppered OTPs). */
+export function equalHex(a: string, b: string): boolean {
+  const left = Buffer.from(a, "hex");
+  const right = Buffer.from(b, "hex");
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
+
+/** Hash a 6-digit email OTP bound to a user so identical codes don't collide. */
+export function hashEmailOtp(userId: string, otp: string, secret: string): string {
+  return pepperedHash(`${userId}:${otp}`, secret);
+}

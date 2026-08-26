@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import bcrypt from "bcryptjs";
 import type { Session, User } from "@prisma/client";
 import {
+  EMAIL_OTP,
   ErrorCode,
   normalizeReaderPreferences,
   type AuthResponse,
@@ -12,7 +13,7 @@ import {
 } from "@ordo/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { AppError } from "../common/errors/app-error.js";
-import { hashToken } from "../common/utils/tokens.js";
+import { equalHex, hashEmailOtp, hashToken } from "../common/utils/tokens.js";
 import { APP_CONFIG } from "../config/config.module.js";
 import type { AppConfig } from "../config/config.module.js";
 import { SessionService } from "./session.service.js";
@@ -21,7 +22,6 @@ import { MailService } from "./mail.service.js";
 import { toUserDto, toSessionDto } from "../common/mappers.js";
 
 const BCRYPT_COST = 12;
-const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 interface ClientMeta {
   deviceInfo: string;
@@ -159,24 +159,21 @@ export class AuthService {
     await this.sessions.revoke(sessionId, userId);
   }
 
-  async verifyEmail(token: string): Promise<void> {
-    const hash = hashToken(token);
-    const record = await this.prisma.emailVerificationToken.findUnique({
-      where: { token: hash },
+  async verifyEmail(email: string, token: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
     });
-    if (!record || record.consumedAt || record.expiresAt < new Date()) {
-      throw new AppError(
-        ErrorCode.INVALID_VERIFICATION_TOKEN,
-        "This verification link is invalid or has expired",
-      );
+    if (!user) {
+      throw this.invalidOtp();
     }
+    const record = await this.matchOtp(user.id, token);
     await this.prisma.$transaction([
       this.prisma.emailVerificationToken.update({
         where: { id: record.id },
         data: { consumedAt: new Date() },
       }),
       this.prisma.user.update({
-        where: { id: record.userId },
+        where: { id: user.id },
         data: { emailVerifiedAt: new Date() },
       }),
     ]);
@@ -234,16 +231,6 @@ export class AuthService {
   }
 
   async verifyEmailChange(userId: string, token: string): Promise<UserDto> {
-    const hash = hashToken(token);
-    const record = await this.prisma.emailVerificationToken.findUnique({
-      where: { token: hash },
-    });
-    if (!record || record.userId !== userId || record.consumedAt || record.expiresAt < new Date()) {
-      throw new AppError(
-        ErrorCode.INVALID_VERIFICATION_TOKEN,
-        "This verification code is invalid or has expired",
-      );
-    }
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.pendingEmail) {
       throw new AppError(
@@ -251,6 +238,7 @@ export class AuthService {
         "No pending email change to verify",
       );
     }
+    const record = await this.matchOtp(userId, token);
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.emailVerificationToken.update({
         where: { id: record.id },
@@ -302,14 +290,13 @@ export class AuthService {
   }
 
   private async createAndSendVerification(userId: string, email: string): Promise<void> {
-    // invalidate previous tokens for this user
     await this.prisma.emailVerificationToken.deleteMany({ where: { userId } });
     const token = this.tokens.generateVerificationToken();
     await this.prisma.emailVerificationToken.create({
       data: {
         userId,
-        token: hashToken(token),
-        expiresAt: new Date(Date.now() + VERIFICATION_TTL_MS),
+        token: hashEmailOtp(userId, token, this.cfg.jwtSecret),
+        expiresAt: new Date(Date.now() + EMAIL_OTP.TTL_MS),
       },
     });
     try {
@@ -317,6 +304,40 @@ export class AuthService {
     } catch (err) {
       this.logger.error(`Failed to send verification email: ${(err as Error).message}`);
     }
+  }
+
+  private hashOtp(userId: string, otp: string): string {
+    return hashEmailOtp(userId, otp, this.cfg.jwtSecret);
+  }
+
+  private invalidOtp(): AppError {
+    return new AppError(
+      ErrorCode.INVALID_VERIFICATION_TOKEN,
+      "This verification code is invalid or has expired",
+    );
+  }
+
+  /** Validate a user-scoped OTP. Does not consume on success (caller does). */
+  private async matchOtp(userId: string, otp: string) {
+    const record = await this.prisma.emailVerificationToken.findFirst({
+      where: { userId, consumedAt: null },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!record || record.expiresAt < new Date()) {
+      throw this.invalidOtp();
+    }
+    if (!equalHex(this.hashOtp(userId, otp), record.token)) {
+      const attempts = record.attempts + 1;
+      await this.prisma.emailVerificationToken.update({
+        where: { id: record.id },
+        data:
+          attempts >= EMAIL_OTP.MAX_ATTEMPTS
+            ? { attempts, consumedAt: new Date() }
+            : { attempts },
+      });
+      throw this.invalidOtp();
+    }
+    return record;
   }
 
   private buildAuthResponse(

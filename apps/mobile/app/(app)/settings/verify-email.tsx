@@ -5,6 +5,7 @@
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { EMAIL_OTP } from "@ordo/shared";
 import {
   SettingsForm,
   SettingsGroup,
@@ -32,12 +33,12 @@ export default function VerifyEmailChangeScreen() {
 
   const submit = async () => {
     setFormError("");
-    if (!token.trim()) {
+    if (token.length !== EMAIL_OTP.LENGTH) {
       setFormError("Enter your verification code.");
       return;
     }
     try {
-      await verify.mutateAsync(token.trim());
+      await verify.mutateAsync(token);
       haptics.success();
       toast.success("Email updated");
       router.replace("/settings");
@@ -68,10 +69,12 @@ export default function VerifyEmailChangeScreen() {
               <Input
                 label="Verification code"
                 value={token}
-                onChangeText={setToken}
-                placeholder="Enter code"
-                autoCapitalize="none"
-                autoCorrect={false}
+                onChangeText={(value) => setToken(value.replace(/\D/g, "").slice(0, EMAIL_OTP.LENGTH))}
+                placeholder="000000"
+                keyboardType="number-pad"
+                textContentType="oneTimeCode"
+                autoComplete="one-time-code"
+                maxLength={EMAIL_OTP.LENGTH}
                 helper={`Code sent to ${target}.`}
                 error={formError || undefined}
               />

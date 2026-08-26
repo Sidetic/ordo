@@ -86,6 +86,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         USER_ADDITIVE_COLUMNS,
         await this.$queryRaw<SqliteColumn[]>(Prisma.sql`PRAGMA table_info("User")`),
       );
+      if (tables.has("EmailVerificationToken")) {
+        await this.addMissingColumns(
+          "EmailVerificationToken",
+          EMAIL_TOKEN_ADDITIVE_COLUMNS,
+          await this.$queryRaw<SqliteColumn[]>(
+            Prisma.sql`PRAGMA table_info("EmailVerificationToken")`,
+          ),
+        );
+      }
 
       // --- 3. fold legacy default folders into unfiled bookmarks ---
       const folderColumns = await this.$queryRaw<SqliteColumn[]>(
@@ -203,6 +212,11 @@ const BOOKMARK_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: stri
 /** Reader-rework columns added to pre-existing User tables at runtime. */
 const USER_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: string]> = [
   ["preferences", "TEXT"],
+];
+
+/** OTP attempt counter added when verification codes became 6-digit OTPs. */
+const EMAIL_TOKEN_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: string]> = [
+  ["attempts", "INTEGER NOT NULL DEFAULT 0"],
 ];
 
 /** Identical to the previous generated DDL except folderId is now nullable. */

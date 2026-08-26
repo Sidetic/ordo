@@ -27,6 +27,13 @@ export const TOKEN_TTL = {
   FOLDER_MS: 10 * 60 * 1000, // 10 minutes
 } as const;
 
+/** Email verification OTPs (signup and email change). */
+export const EMAIL_OTP = {
+  LENGTH: 6,
+  TTL_MS: 10 * 60 * 1000, // 10 minutes
+  MAX_ATTEMPTS: 5,
+} as const;
+
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
 
