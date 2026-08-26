@@ -168,7 +168,11 @@ function ReaderPaneInner({
 
   const [controlsOpen, setControlsOpen] = useState(false);
   const [actionPanel, setActionPanel] = useState<"actions" | "contents" | null>(null);
-  const [articleHeadings, setArticleHeadings] = useState<readonly ArticleHeading[]>([]);
+  const [headingState, setHeadingState] = useState<{
+    bookmarkId: string;
+    headings: readonly ArticleHeading[];
+  }>({ bookmarkId: "", headings: [] });
+  const [contentsShortcutVisible, setContentsShortcutVisible] = useState(false);
   const [externalLaunchFailed, setExternalLaunchFailed] = useState(false);
   const [articleWidth, setArticleWidth] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -206,6 +210,14 @@ function ReaderPaneInner({
   const readerBodySize = READER_BODY_SIZE[preferences.fontSize];
   const readerFont = resolveReaderFont(preferences.fontFamily);
   const readerBoldFont = resolveReaderFont(preferences.fontFamily, "700");
+  const articleHeadings = headingState.bookmarkId === bookmark?.id ? headingState.headings : [];
+
+  const handleHeadingsChange = useCallback(
+    (headings: readonly ArticleHeading[]) => {
+      if (bookmark?.id) setHeadingState({ bookmarkId: bookmark.id, headings });
+    },
+    [bookmark?.id],
+  );
 
   const handleBack = () => {
     if (onBack) {
@@ -270,6 +282,8 @@ function ReaderPaneInner({
   const contentHeightRef = useRef(0);
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const headingRefs = useRef(new Map<string, View>());
+  const articleHeaderHeightRef = useRef(0);
+  const contentsShortcutVisibleRef = useRef(false);
 
   const handleHeadingRef = useCallback((id: string, view: View | null) => {
     if (view) headingRefs.current.set(id, view);
@@ -290,6 +304,21 @@ function ReaderPaneInner({
       });
     });
   }, []);
+
+  const syncContentsShortcut = useCallback(
+    (offset: number, headerHeight = articleHeaderHeightRef.current) => {
+      const visible =
+        hasHtml && articleHeadings.length >= 3 && offset >= headerHeight + spacing[16];
+      if (visible === contentsShortcutVisibleRef.current) return;
+      contentsShortcutVisibleRef.current = visible;
+      setContentsShortcutVisible(visible);
+    },
+    [articleHeadings.length, hasHtml],
+  );
+
+  useEffect(() => {
+    syncContentsShortcut(offsetRef.current);
+  }, [syncContentsShortcut]);
 
   const persistProgress = useCallback(
     (id: string, folderId: string | null, value: number) => {
@@ -362,8 +391,12 @@ function ReaderPaneInner({
     latestProgressRef.current = baseline;
     persistedProgressRef.current = baseline;
     restoredRef.current = false;
+    offsetRef.current = 0;
+    articleHeaderHeightRef.current = 0;
     setProgress(baseline);
     setExternalLaunchFailed(false);
+    contentsShortcutVisibleRef.current = false;
+    setContentsShortcutVisible(false);
     return () => {
       flushProgress();
     };
@@ -399,13 +432,14 @@ function ReaderPaneInner({
       offsetRef.current = contentOffset.y;
       viewHeightRef.current = layoutMeasurement.height;
       contentHeightRef.current = contentSize.height;
+      syncContentsShortcut(contentOffset.y);
       if (contentSize.height <= 0 || layoutMeasurement.height <= 0) return;
       const scrollable = contentSize.height - layoutMeasurement.height;
       handleFraction(
         scrollable <= 0 ? 1 : Math.min(1, Math.max(0, contentOffset.y / scrollable)),
       );
     },
-    [handleFraction],
+    [handleFraction, syncContentsShortcut],
   );
 
   // Recompute when content settles/grows (images loading, HTML rendering).
@@ -456,12 +490,16 @@ function ReaderPaneInner({
         hitSlop={8}
         onPress={() => {
           haptics.light();
-          setActionPanel("actions");
+          setActionPanel(contentsShortcutVisible ? "contents" : "actions");
         }}
         accessibilityRole="button"
-        accessibilityLabel="More article actions"
+        accessibilityLabel={contentsShortcutVisible ? "Table of contents" : "More article actions"}
       >
-        <Ionicons name="ellipsis-horizontal" size={22} color={palette.text} />
+        <Ionicons
+          name={contentsShortcutVisible ? "list-outline" : "ellipsis-horizontal"}
+          size={22}
+          color={palette.text}
+        />
       </PressableScale>
     </View>
   ) : undefined;
@@ -570,6 +608,7 @@ function ReaderPaneInner({
       ) : (
         <View ref={scrollViewportRef} style={styles.scrollViewport}>
           <ScrollView
+            key={bookmark.id}
             ref={scrollRef}
             style={styles.scrollViewport}
             onLayout={onScrollViewLayout}
@@ -587,7 +626,15 @@ function ReaderPaneInner({
                 style={styles.articleColumn}
                 onLayout={(e) => setArticleWidth(e.nativeEvent.layout.width)}
               >
-                {articleHead}
+                <View
+                  onLayout={(event) => {
+                    const height = event.nativeEvent.layout.height;
+                    articleHeaderHeightRef.current = height;
+                    syncContentsShortcut(offsetRef.current, height);
+                  }}
+                >
+                  {articleHead}
+                </View>
 
                 {hasHtml ? (
                 <View style={styles.content}>
@@ -595,7 +642,7 @@ function ReaderPaneInner({
                     html={detail.data?.contentHtml ?? ""}
                     preferences={preferences}
                     contentWidth={articleWidth || fallbackArticleWidth}
-                    onHeadingsChange={setArticleHeadings}
+                    onHeadingsChange={handleHeadingsChange}
                     onHeadingRef={handleHeadingRef}
                   />
                 </View>
@@ -713,7 +760,7 @@ function ReaderPaneInner({
               ))}
             </ScrollView>
             <Button
-              label="Back"
+              label="Article actions"
               variant="ghost"
               block
               onPress={() => setActionPanel("actions")}
@@ -723,7 +770,7 @@ function ReaderPaneInner({
         ) : (
           <>
             <Text variant="title3" style={styles.actionsTitle}>Article actions</Text>
-            {hasHtml && articleHeadings.length ? (
+            {hasHtml && articleHeadings.length >= 3 ? (
               <PressableScale
                 style={[styles.actionRow, { borderBottomColor: palette.border }]}
                 onPress={() => setActionPanel("contents")}
