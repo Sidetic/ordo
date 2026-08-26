@@ -2,6 +2,7 @@
  * Auth API endpoints. Types come from @ordo/shared's contract.
  */
 import { AuthRoutes, buildPath } from "@ordo/shared";
+import type { UpdateReaderPreferencesInput } from "@ordo/shared";
 import { api } from "./client";
 
 export const authApi = {
@@ -50,6 +51,12 @@ export const authApi = {
 
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
     api.post<typeof AuthRoutes.changePassword.response>(AuthRoutes.changePassword.path, body),
+
+  updatePreferences: (body: UpdateReaderPreferencesInput) =>
+    api.patch<typeof AuthRoutes.updatePreferences.response>(
+      AuthRoutes.updatePreferences.path,
+      body,
+    ),
 
   deleteAccount: (body: { currentPassword: string; confirmation: string }) =>
     api.delete<typeof AuthRoutes.deleteAccount.response>(AuthRoutes.deleteAccount.path, { body }),

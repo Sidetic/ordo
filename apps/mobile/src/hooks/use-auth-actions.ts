@@ -3,13 +3,18 @@
  * gate. Errors are surfaced via the returned rejection (screens handle UI).
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  normalizeReaderPreferences,
+  type SessionDto,
+  type UpdateReaderPreferencesInput,
+  type UserDto,
+} from "@ordo/shared";
 import { queryClient } from "../lib/query-client";
 import { authApi } from "../lib/api/auth";
 import { useAuthStore } from "../store/auth";
 import { useFolderTokenStore } from "../store/folder-tokens";
 import { qk } from "../lib/api/query-keys";
 import { cancelProactiveRefresh, scheduleProactiveRefresh } from "../lib/api/client";
-import type { SessionDto, UserDto } from "@ordo/shared";
 
 export function useLogin() {
   const setSession = useAuthStore((s) => s.setSession);
@@ -110,6 +115,35 @@ export function useRevokeSession() {
     },
     onError: (_e, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(qk.sessions, ctx.prev);
+    },
+  });
+}
+
+/**
+ * Account-synced reader preferences. Optimistically patched into the auth
+ * store (and the persisted local account) with rollback on error; the server
+ * response is canonical.
+ */
+export function useUpdateReaderPreferences() {
+  const setUser = useAuthStore((s) => s.setUser);
+  return useMutation({
+    mutationFn: (patch: UpdateReaderPreferencesInput) => authApi.updatePreferences(patch),
+    onMutate: (patch) => {
+      const prev = useAuthStore.getState().user;
+      if (prev) {
+        setUser({
+          ...prev,
+          preferences: { ...normalizeReaderPreferences(prev.preferences), ...patch },
+        });
+      }
+      return { prev };
+    },
+    onSuccess: (user) => {
+      setUser(user);
+      queryClient.setQueryData<UserDto>(qk.me, user);
+    },
+    onError: (_e, _patch, ctx) => {
+      if (ctx?.prev) setUser(ctx.prev);
     },
   });
 }

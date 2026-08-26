@@ -3,7 +3,7 @@
  * full refetches — this is what keeps the UI snappy and lists stable.
  */
 import type { QueryClient, InfiniteData } from "@tanstack/react-query";
-import type { BookmarkDto, CursorPage } from "@ordo/shared";
+import type { BookmarkDetailDto, BookmarkDto, CursorPage } from "@ordo/shared";
 
 type BookmarkData = InfiniteData<CursorPage<BookmarkDto>, string | null>;
 
@@ -68,6 +68,33 @@ export function prependBookmarkToPages(
 /** Re-key helper: all bookmark list caches for any folder (for global effects). */
 export function allBookmarkListMatcher() {
   return { predicate: (q: { queryKey: readonly unknown[] }) => q.queryKey[0] === "bookmarks" && q.queryKey[1] !== "search" };
+}
+
+/**
+ * Update a bookmark everywhere it is cached: every list (folders + search)
+ * plus the detail entry (which additionally carries contentHtml). Queries
+ * not containing this bookmark are returned unchanged.
+ */
+export function updateBookmarkEverywhere(
+  qc: QueryClient,
+  id: string,
+  updater: (b: BookmarkDto) => BookmarkDto,
+) {
+  qc.setQueriesData<unknown>({ queryKey: ["bookmarks"] }, (data: unknown) => {
+    if (!data || typeof data !== "object") return data;
+    if (Array.isArray((data as { pages?: unknown }).pages)) {
+      const paged = data as InfiniteData<CursorPage<BookmarkDto>>;
+      return {
+        ...paged,
+        pages: paged.pages.map((page) => ({
+          ...page,
+          items: page.items.map((b) => (b.id === id ? updater(b) : b)),
+        })),
+      };
+    }
+    const detail = data as BookmarkDetailDto;
+    return detail.id === id ? updater(detail) : data;
+  });
 }
 
 /**

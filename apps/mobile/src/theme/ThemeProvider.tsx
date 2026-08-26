@@ -44,3 +44,23 @@ export function useTheme(): ThemeContextValue {
   if (!ctx) throw new Error("useTheme must be used within <ThemeProvider>");
   return ctx;
 }
+
+/**
+ * Overrides the ambient palette for a subtree — e.g. the reader surface,
+ * which themes itself independently of the app theme. Every nested
+ * `useTheme()` consumer (Text, sheets, buttons…) picks up the override.
+ */
+export function ThemeOverrideProvider({
+  palette,
+  children,
+}: {
+  palette: Palette;
+  children: React.ReactNode;
+}) {
+  const value = useMemo<ThemeContextValue>(
+    () => ({ palette, shadows: resolveShadows(palette) }),
+    [palette],
+  );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
