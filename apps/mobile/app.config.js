@@ -75,6 +75,7 @@ module.exports = {
   owner: "imlucki",
   android: {
     package: "com.axolet.ordo",
+    permissions: ["android.permission.REQUEST_INSTALL_PACKAGES"],
     usesCleartextTraffic: true,
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon-foreground.png",

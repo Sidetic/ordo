@@ -72,4 +72,5 @@ export const StorageKeys = {
   AUTH: "ordo.auth",
   SETTINGS: "ordo.settings",
   FOLDER_TOKENS: "ordo.folderTokens",
+  NATIVE_UPDATE: "ordo.nativeUpdate",
 } as const;

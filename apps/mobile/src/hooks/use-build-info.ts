@@ -22,7 +22,7 @@ interface OrdoExtra {
 export function useBuildInfo(): BuildInfo {
   const extra = (Constants.expoConfig?.extra as { ordo?: OrdoExtra } | undefined)?.ordo;
   return {
-    version: Constants.expoConfig?.version ?? "—",
+    version: Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? "—",
     gitHash: extra?.gitHash ?? null,
     gitHashShort: extra?.gitHashShort ?? null,
     gitDirty: extra?.gitDirty ?? false,
