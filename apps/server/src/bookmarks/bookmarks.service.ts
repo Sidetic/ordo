@@ -248,16 +248,20 @@ export class BookmarksService implements OnApplicationBootstrap {
       // else (network, HTTP errors, parse crashes) is a plain failure.
       const unsupported = err instanceof UnsupportedContentError;
       const reason = unsupported ? err.reason : "fetch_error";
-      const definitivelyUnreadable =
-        unsupported &&
-        ["social_video_or_app", "js_required", "too_short", "not_an_article"].includes(reason);
       this.logger.warn(
         `Extraction ${unsupported ? "rejected" : "failed"} for bookmark ${bookmarkId} (${this.safeHostname(url)}): ${reason} — ${(err as Error).message}`,
       );
       const existing = await this.prisma.bookmark.findUnique({
         where: { id: bookmarkId },
-        select: { contentHtml: true },
+        select: { contentHtml: true, contentText: true },
       });
+      const storedContentIsShell = existing?.contentText
+        ? this.reader.classifyShellText(existing.contentText) !== null
+        : false;
+      const definitivelyUnreadable =
+        unsupported &&
+        (storedContentIsShell ||
+          ["social_video_or_app", "js_required", "too_short", "not_an_article"].includes(reason));
       await this.prisma.bookmark
         .updateMany({
           where: { id: bookmarkId },

@@ -6,6 +6,7 @@ import { isIP } from "node:net";
 import TurndownService from "turndown";
 import sanitizeHtml from "sanitize-html";
 import type { ExtractionReason } from "@ordo/shared";
+import unsupportedDomains from "./reader-unsupported-domains.json";
 
 /** Reasons the reader itself can reject a destination (excludes bookkeeping-only reasons). */
 export type ReaderRejectionReason = Exclude<ExtractionReason, "fetch_error" | "interrupted">;
@@ -60,25 +61,7 @@ const NON_HTML_EXTENSIONS = new Set([
   "css", "js", "mjs", "json", "xml", "rss", "atom", "csv", "tsv", "txt",
 ]);
 
-/** Hosts an article reader can never serve usefully (video/social/app shells). */
-const SOCIAL_VIDEO_APP_HOSTS = [
-  "youtube.com", "youtu.be", "vimeo.com", "dailymotion.com", "twitch.tv",
-  "netflix.com", "hulu.com", "primevideo.com", "disneyplus.com", "max.com",
-  "spotify.com", "soundcloud.com", "deezer.com", "tidal.com", "music.apple.com",
-  "x.com", "twitter.com", "instagram.com", "facebook.com", "fb.watch",
-  "tiktok.com", "threads.net", "threads.com", "snapchat.com", "pinterest.com",
-  "discord.com", "whatsapp.com",
-];
-
-/** Web-app hostnames (mail/docs/drive style) that are never article pages. */
-const APP_HOSTS = new Set([
-  "docs.google.com", "drive.google.com", "sheets.google.com", "slides.google.com",
-  "sites.google.com",
-  "accounts.google.com", "mail.google.com", "calendar.google.com", "web.whatsapp.com",
-]);
-
-/** Host prefixes that reliably indicate an application rather than content. */
-const APP_HOST_PREFIXES = ["app.", "mail.", "calendar.", "admin."];
+const APP_HOSTS = new Set(unsupportedDomains.appHosts);
 
 /** Pathnames that, combined with a query parameter, are search result pages. */
 const SEARCH_PATHS = new Set(["/search", "/results", "/search/", "/results/"]);
@@ -121,6 +104,7 @@ const CONSENT_WALL_PATTERNS: RegExp[] = [
   /accept (?:all )?cookies to (?:continue|proceed|read|view)/,
   /cookies? must be (?:enabled|accepted)/,
   /consent (?:is )?required/,
+  /this site uses cookies[\s\S]*by using this site,? you agree/,
 ];
 
 /** Semantic tags only; layout wrappers are unwrapped, interactive embeds dropped. */
@@ -226,7 +210,7 @@ export class ReaderService {
     if (!visibleText) {
       throw new UnsupportedContentError("too_short", "Page contains no readable text");
     }
-    const shell = this.detectShell(visibleText);
+    const shell = this.classifyShellText(visibleText);
     if (shell) {
       throw new UnsupportedContentError(shell, `Page looks like a ${shell.replace(/_/g, " ")} shell`);
     }
@@ -256,6 +240,13 @@ export class ReaderService {
 
     // Quality gates — reject link farms, app/home shells and stubs.
     const text = normalizeSpace(contentRoot.textContent ?? "");
+    const extractedShell = this.classifyShellText(text);
+    if (extractedShell) {
+      throw new UnsupportedContentError(
+        extractedShell,
+        `Extracted content is a ${extractedShell.replace(/_/g, " ")} shell`,
+      );
+    }
     if (wordCount(text) < MIN_WORDS) {
       throw new UnsupportedContentError("too_short", "Extracted content is too short to read");
     }
@@ -315,8 +306,10 @@ export class ReaderService {
     const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
     const knownShell =
       APP_HOSTS.has(host) ||
-      SOCIAL_VIDEO_APP_HOSTS.some((h) => host === h || host.endsWith(`.${h}`)) ||
-      APP_HOST_PREFIXES.some((p) => host.startsWith(p));
+      unsupportedDomains.socialVideoAppHosts.some(
+        (configuredHost) => host === configuredHost || host.endsWith(`.${configuredHost}`),
+      ) ||
+      unsupportedDomains.appHostPrefixes.some((prefix) => host.startsWith(prefix));
     if (knownShell) {
       throw new UnsupportedContentError("social_video_or_app", `${host} is not an article source`);
     }
@@ -330,7 +323,7 @@ export class ReaderService {
   }
 
   /** Detect obvious JS-only/error/interstitial shells by their telltale text. */
-  private detectShell(text: string): ReaderRejectionReason | null {
+  classifyShellText(text: string): ReaderRejectionReason | null {
     if (text.length > SHELL_TEXT_LIMIT) return null; // real articles have real text
     const t = text.toLowerCase();
     for (const pattern of BOT_CHALLENGE_PATTERNS) {

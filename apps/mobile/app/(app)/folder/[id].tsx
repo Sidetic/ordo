@@ -4,7 +4,7 @@
  * optimistic toggle/delete/move, mark-all-read, and folder actions.
  */
 import { useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Linking, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,6 +35,7 @@ import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
 import { errorMessage, isFolderProtected } from "../../../src/lib/error-message";
 import { flattenPages } from "../../../src/lib/api/query-keys";
+import { opensBookmarkExternally } from "../../../src/lib/bookmark-reader";
 import { layout, radius, spacing } from "../../../src/theme/tokens";
 import type { BookmarkDto } from "@ordo/shared";
 
@@ -69,6 +70,12 @@ export default function FolderDetailScreen() {
   const hasUnread = folder ? folder.unreadCount > 0 : items.some((b) => !b.isRead);
 
   const openReader = (b: BookmarkDto) => {
+    if (opensBookmarkExternally(b)) {
+      haptics.light();
+      if (!b.isRead) toggleRead.mutate({ id: b.id, isRead: true });
+      void Linking.openURL(b.url).catch(() => router.push(`/reader/${b.id}`));
+      return;
+    }
     if (hasDetailPane) {
       router.push({
         pathname: "/folder/[id]",

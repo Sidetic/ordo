@@ -1,6 +1,6 @@
 /** Bookmarks home: unfiled bookmarks first, with folders available above them. */
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Linking, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,6 +35,7 @@ import { haptics } from "../../src/lib/haptics";
 import { toast } from "../../src/components/ui/toast-store";
 import { errorMessage } from "../../src/lib/error-message";
 import { flattenPages } from "../../src/lib/api/query-keys";
+import { opensBookmarkExternally } from "../../src/lib/bookmark-reader";
 import {
   useSettingsStore,
   type CreateButtonAction,
@@ -94,6 +95,16 @@ export default function BookmarksScreen() {
     if (bookmarks.hasNextPage && !bookmarks.isFetchingNextPage) {
       void bookmarks.fetchNextPage();
     }
+  };
+
+  const openBookmark = (bookmark: BookmarkDto) => {
+    if (!opensBookmarkExternally(bookmark)) {
+      router.push(`/reader/${bookmark.id}`);
+      return;
+    }
+    haptics.light();
+    if (!bookmark.isRead) toggleRead.mutate({ id: bookmark.id, isRead: true });
+    void Linking.openURL(bookmark.url).catch(() => router.push(`/reader/${bookmark.id}`));
   };
 
   const runCreateAction = (action: CreateButtonHoldAction) => {
@@ -175,7 +186,7 @@ export default function BookmarksScreen() {
             renderItem={({ item }: { item: BookmarkDto }) => (
               <BookmarkRow
                 bookmark={item}
-                onPress={(bookmark) => router.push(`/reader/${bookmark.id}`)}
+                onPress={openBookmark}
                 onMore={setActionBookmark}
               />
             )}

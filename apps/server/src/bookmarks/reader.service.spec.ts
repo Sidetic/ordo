@@ -182,6 +182,16 @@ describe("ReaderService", () => {
       await expectUnsupported("https://example.com/js-off", "js_required");
     });
 
+    it("rejects the Google Sites cookie disclosure shown instead of an article", async () => {
+      mockFetch(`<html><body><main>
+        <h1>Home</h1>
+        <p>This site uses cookies from Google to deliver its services and to analyze traffic.
+        Information about your use of this site is shared with Google. By using this site,
+        you agree to its use of cookies.</p><a href="/learn-more">Learn more</a><p>Got it</p>
+      </main></body></html>`);
+      await expectUnsupported("https://liech.space/", "consent_wall");
+    });
+
     it("detects noscript warnings even when a large inline bundle is present", async () => {
       mockFetch(`<html><body>
         <script>${"const bundledCode = true;".repeat(200)}</script>

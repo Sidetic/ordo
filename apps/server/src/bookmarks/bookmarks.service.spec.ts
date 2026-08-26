@@ -1,18 +1,23 @@
 import { EXTRACTION_VERSION } from "@ordo/shared";
 import { BookmarksService } from "./bookmarks.service.js";
-import { UnsupportedContentError } from "./reader.service.js";
+import { ReaderService, UnsupportedContentError } from "./reader.service.js";
 
 describe("BookmarksService extraction refresh", () => {
-  function setup(error: Error, hasContent = true) {
+  function setup(error: Error, contentText: string | null = "Previously readable article") {
     const prisma = {
       bookmark: {
         findUnique: jest.fn().mockResolvedValue({
-          contentHtml: hasContent ? "<p>Previously readable article</p>" : null,
+          contentHtml: contentText ? `<p>${contentText}</p>` : null,
+          contentText,
         }),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
-    const reader = { extract: jest.fn().mockRejectedValue(error) };
+    const classifier = new ReaderService();
+    const reader = {
+      extract: jest.fn().mockRejectedValue(error),
+      classifyShellText: (text: string) => classifier.classifyShellText(text),
+    };
     const service = new BookmarksService(prisma as never, reader as never, {} as never);
 
     return { prisma, service };
@@ -72,6 +77,24 @@ describe("BookmarksService extraction refresh", () => {
         contentText: null,
         readingTimeMinutes: null,
       },
+    });
+  });
+
+  it("replaces a stored consent wall instead of preserving it", async () => {
+    const consent =
+      "This site uses cookies from Google to deliver its services. By using this site, you agree to its use of cookies.";
+    const { prisma, service } = setup(new UnsupportedContentError("consent_wall"), consent);
+
+    await enrich(service);
+
+    expect(prisma.bookmark.updateMany).toHaveBeenCalledWith({
+      where: { id: "bookmark-1" },
+      data: expect.objectContaining({
+        fetchStatus: "unsupported",
+        extractionReason: "consent_wall",
+        contentHtml: null,
+        contentText: null,
+      }),
     });
   });
 });

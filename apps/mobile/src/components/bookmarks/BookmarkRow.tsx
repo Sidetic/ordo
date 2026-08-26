@@ -10,6 +10,7 @@ import { PressableScale } from "../ui/PressableScale";
 import { Text } from "../ui/Text";
 import { useTheme } from "../../theme/ThemeProvider";
 import { domainFromUrl, relativeTime } from "../../lib/format";
+import { opensBookmarkExternally } from "../../lib/bookmark-reader";
 import { radius, spacing } from "../../theme/tokens";
 import type { BookmarkDto } from "@ordo/shared";
 
@@ -28,8 +29,7 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRow
   const createdLabel = relativeTime(bookmark.createdAt);
   const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
   const [failedFavicon, setFailedFavicon] = React.useState<string | null>(null);
-  const opensInBrowser =
-    bookmark.fetchStatus === "unsupported" || bookmark.fetchStatus === "failed";
+  const opensInBrowser = opensBookmarkExternally(bookmark);
   const isPending = bookmark.fetchStatus === "pending";
   const accessibilityLabel = [
     title,

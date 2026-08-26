@@ -16,6 +16,7 @@ import { qk } from "../lib/api/query-keys";
 import {
   prependBookmarkToPages,
   removeBookmarkFromPages,
+  updateBookmarkEverywhere,
   updateBookmarkInPages,
 } from "../lib/cache-helpers";
 import {
@@ -113,6 +114,19 @@ export function useToggleRead(folderId: string | null) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(qk.bookmarks(folderId), ctx.prev);
       if (ctx?.prevFolders) qc.setQueryData(qk.folders, ctx.prevFolders);
+    },
+  });
+}
+
+/** Mark a bookmark read when its folder is only known at tap time (search). */
+export function useMarkBookmarkRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, folderId }: { id: string; folderId: string | null }) =>
+      bookmarksApi.update(id, { isRead: true }, { folderId }),
+    onSuccess: (updated) => {
+      updateBookmarkEverywhere(qc, updated.id, (bookmark) => ({ ...bookmark, ...updated }));
+      void qc.invalidateQueries({ queryKey: qk.folders });
     },
   });
 }

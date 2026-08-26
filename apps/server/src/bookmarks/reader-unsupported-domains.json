@@ -1,0 +1,48 @@
+{
+  "socialVideoAppHosts": [
+    "youtube.com",
+    "youtu.be",
+    "vimeo.com",
+    "dailymotion.com",
+    "twitch.tv",
+    "netflix.com",
+    "hulu.com",
+    "primevideo.com",
+    "disneyplus.com",
+    "max.com",
+    "spotify.com",
+    "soundcloud.com",
+    "deezer.com",
+    "tidal.com",
+    "music.apple.com",
+    "x.com",
+    "twitter.com",
+    "instagram.com",
+    "facebook.com",
+    "fb.watch",
+    "tiktok.com",
+    "threads.net",
+    "threads.com",
+    "snapchat.com",
+    "pinterest.com",
+    "discord.com",
+    "whatsapp.com"
+  ],
+  "appHosts": [
+    "docs.google.com",
+    "drive.google.com",
+    "sheets.google.com",
+    "slides.google.com",
+    "sites.google.com",
+    "accounts.google.com",
+    "mail.google.com",
+    "calendar.google.com",
+    "web.whatsapp.com"
+  ],
+  "appHostPrefixes": [
+    "app.",
+    "mail.",
+    "calendar.",
+    "admin."
+  ]
+}
