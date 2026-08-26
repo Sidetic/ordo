@@ -159,7 +159,12 @@ export default function SearchScreen() {
             <View style={styles.listPane}>{listPane}</View>
             <View style={[styles.readerPane, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               {selectedBookmarkId ? (
-                <ReaderPane bookmarkId={selectedBookmarkId} embedded safeBottom={false} />
+                <ReaderPane
+                  bookmarkId={selectedBookmarkId}
+                  embedded
+                  safeBottom={false}
+                  onBack={() => router.setParams({ bookmark: undefined })}
+                />
               ) : (
                 <ReaderPanePlaceholder />
               )}

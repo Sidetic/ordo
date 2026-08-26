@@ -1,9 +1,11 @@
 /**
  * A single bookmark row. Tapping opens the reader; the trailing button reveals
- * row actions. Unread items are marked with an accent dot.
+ * row actions. Unread items are marked with an accent dot. Rows the reader
+ * can't render (unsupported/failed) carry a small browser icon; pending
+ * extraction shows a subtle activity indicator.
  */
 import React from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Image, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { PressableScale } from "../ui/PressableScale";
 import { Text } from "../ui/Text";
@@ -25,6 +27,9 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRow
   const domain = bookmark.domain || domainFromUrl(bookmark.url);
   const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
   const [failedFavicon, setFailedFavicon] = React.useState<string | null>(null);
+  const opensInBrowser =
+    bookmark.fetchStatus === "unsupported" || bookmark.fetchStatus === "failed";
+  const isPending = bookmark.fetchStatus === "pending";
 
   return (
     <View
@@ -61,6 +66,17 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRow
           </Text>
           <Text variant="monoSmall" color="tertiary">·</Text>
           <Text variant="monoSmall" color="tertiary" numberOfLines={1}>{relativeTime(bookmark.createdAt)}</Text>
+          {isPending ? (
+            <ActivityIndicator size="small" color={palette.textTertiary} style={styles.statusIcon} />
+          ) : opensInBrowser ? (
+            <Ionicons
+              name="open-outline"
+              size={12}
+              color={palette.textTertiary}
+              style={styles.statusIcon}
+              accessibilityLabel="Opens in browser"
+            />
+          ) : null}
         </View>
         <Text variant="title3" color={titleColor} numberOfLines={2} style={{ marginTop: spacing[4] }}>
           {bookmark.title || domainFromUrl(bookmark.url)}
@@ -95,5 +111,6 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3 },
   favicon: { width: 16, height: 16, borderRadius: 3 },
   domain: { flexShrink: 1 },
+  statusIcon: { marginLeft: spacing[2] },
   moreBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
 });
