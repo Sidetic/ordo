@@ -6,6 +6,7 @@ import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { Text } from "../../../src/components/ui/Text";
 import { Badge } from "../../../src/components/ui/Badge";
 import { OtaUpdateCard } from "../../../src/components/ui/OtaUpdater";
+import { Toggle } from "../../../src/components/ui/Toggle";
 import {
   SettingsGroup,
   SettingsPage,
@@ -13,6 +14,7 @@ import {
 } from "../../../src/components/settings/SettingsPage";
 import { useBuildInfo } from "../../../src/hooks/use-build-info";
 import { useOtaUpdate } from "../../../src/hooks/use-ota-update";
+import { useNativeUpdateStore } from "../../../src/store/native-update";
 import { useTheme } from "../../../src/theme/ThemeProvider";
 import { radius, spacing } from "../../../src/theme/tokens";
 
@@ -23,6 +25,7 @@ export default function AboutScreen() {
   const { palette } = useTheme();
   const build = useBuildInfo();
   const ota = useOtaUpdate();
+  const nativeUpdate = useNativeUpdateStore();
   const commit = build.gitHashShort ?? build.gitHash ?? "—";
   const published = ota.runningUpdateCreatedAt;
 
@@ -77,6 +80,19 @@ export default function AboutScreen() {
 
         <SettingsGroup label="Updates">
           <OtaUpdateCard />
+          <SettingRow
+            icon="flask-outline"
+            label="Early access updates"
+            description="Include preview app versions"
+            right={
+              <Toggle
+                value={nativeUpdate.includePrereleases}
+                disabled={nativeUpdate.status === "checking" || nativeUpdate.status === "downloading"}
+                onValueChange={(enabled) => void nativeUpdate.setIncludePrereleases(enabled)}
+              />
+            }
+            divider={false}
+          />
         </SettingsGroup>
 
         <SettingsGroup label="Links">

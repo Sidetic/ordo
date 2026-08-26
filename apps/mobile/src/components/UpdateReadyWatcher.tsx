@@ -1,8 +1,8 @@
 /**
- * Announces available and downloaded updates once per update id. Renderless.
+ * Announces the newest actionable update once per artifact. Renderless.
  */
 import { useEffect, useRef } from "react";
-import { useOtaUpdate } from "../hooks/use-ota-update";
+import { useAppUpdate } from "../hooks/use-app-update";
 import { restartForUpdate } from "../store/update-restart";
 import { toast } from "./ui/toast-store";
 import { haptics } from "../lib/haptics";
@@ -10,12 +10,31 @@ import { haptics } from "../lib/haptics";
 const UPDATE_TOAST_DURATION = 3000;
 
 export function UpdateReadyWatcher() {
-  const ota = useOtaUpdate();
+  const update = useAppUpdate();
+  const { ota, native } = update;
+  const lastNativeShown = useRef<string | null>(null);
   const lastAvailableShown = useRef<string | null>(null);
   const lastReadyShown = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!ota.enabled || ota.status !== "available") return;
+    if (update.kind !== "native" || !native.release) return;
+    if (native.release.tagName === lastNativeShown.current) return;
+    lastNativeShown.current = native.release.tagName;
+
+    haptics.light();
+    toast.show(`Ordo v${native.release.version} is available`, {
+      duration: 6000,
+      swipeable: true,
+      action: {
+        label: "Install",
+        onPress: () =>
+          native.downloadAndInstall().catch(() => toast.error("App update download failed")),
+      },
+    });
+  }, [native.downloadAndInstall, native.release, update.kind]);
+
+  useEffect(() => {
+    if (update.kind !== "ota" || !ota.enabled || ota.status !== "available") return;
     const key = ota.availableUpdateId ?? "__available";
     if (key === lastAvailableShown.current) return;
     lastAvailableShown.current = key;
@@ -29,10 +48,10 @@ export function UpdateReadyWatcher() {
         onPress: () => ota.download().catch(() => toast.error("Update download failed")),
       },
     });
-  }, [ota.availableUpdateId, ota.download, ota.enabled, ota.status]);
+  }, [ota.availableUpdateId, ota.download, ota.enabled, ota.status, update.kind]);
 
   useEffect(() => {
-    if (!ota.enabled || ota.status !== "ready") return;
+    if (update.kind !== "ota" || !ota.enabled || ota.status !== "ready") return;
     const key = ota.pendingUpdateId ?? "__pending";
     if (key === lastReadyShown.current) return;
     lastReadyShown.current = key;
@@ -49,7 +68,7 @@ export function UpdateReadyWatcher() {
         },
       },
     });
-  }, [ota.enabled, ota.status, ota.pendingUpdateId]);
+  }, [ota.enabled, ota.status, ota.pendingUpdateId, update.kind]);
 
   return null;
 }

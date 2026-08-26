@@ -6,7 +6,7 @@
  * state. expo-updates is disabled in dev builds, so everything guards on
  * `enabled` and surfaces a disabled state.
  */
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect } from "react";
 import { AppState } from "react-native";
 import * as Updates from "expo-updates";
 import { restartForUpdate } from "../store/update-restart";
@@ -37,8 +37,10 @@ export interface UseOtaUpdate {
   runningUpdateCreatedAt: Date | null;
   /** Update id of the most recently downloaded (pending) update, if any. */
   pendingUpdateId: string | null;
+  pendingUpdateCreatedAt: Date | null;
   /** Update id advertised by the latest check, before it is downloaded. */
   availableUpdateId: string | null;
+  availableUpdateCreatedAt: Date | null;
   /** When we last checked for an update this session. */
   lastChecked: Date | null;
   check: () => Promise<void>;
@@ -48,6 +50,7 @@ export interface UseOtaUpdate {
 
 /** Minimum gap between automatic foreground checks. */
 const FOREGROUND_RECHECK_MS = 60 * 60 * 1000;
+let lastForegroundCheck = 0;
 
 export function useOtaUpdate(): UseOtaUpdate {
   const enabled = Updates.isEnabled;
@@ -65,8 +68,6 @@ export function useOtaUpdate(): UseOtaUpdate {
     lastCheckForUpdateTimeSinceRestart,
   } = Updates.useUpdates();
 
-  const lastForegroundCheck = useRef(0);
-
   // Auto-check on first mount and when the app returns to the foreground
   // (throttled), so updates are picked up without a manual tap.
   useEffect(() => {
@@ -74,8 +75,8 @@ export function useOtaUpdate(): UseOtaUpdate {
 
     const runCheck = () => {
       const now = Date.now();
-      if (now - lastForegroundCheck.current < FOREGROUND_RECHECK_MS) return;
-      lastForegroundCheck.current = now;
+      if (now - lastForegroundCheck < FOREGROUND_RECHECK_MS) return;
+      lastForegroundCheck = now;
       Updates.checkForUpdateAsync().catch(() => {});
     };
 
@@ -129,7 +130,9 @@ export function useOtaUpdate(): UseOtaUpdate {
     runningUpdateId: currentlyRunning.updateId ?? null,
     runningUpdateCreatedAt: currentlyRunning.createdAt ?? null,
     pendingUpdateId: downloadedUpdate?.updateId ?? null,
+    pendingUpdateCreatedAt: downloadedUpdate?.createdAt ?? null,
     availableUpdateId: availableUpdate?.updateId ?? null,
+    availableUpdateCreatedAt: availableUpdate?.createdAt ?? null,
     lastChecked: lastCheckForUpdateTimeSinceRestart ?? null,
     check,
     download,

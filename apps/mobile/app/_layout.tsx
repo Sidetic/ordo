@@ -25,6 +25,7 @@ import { scheduleProactiveRefresh } from "../src/lib/api/client";
 import { ToastHost } from "../src/components/ui/ToastHost";
 import { Banner } from "../src/components/ui/Banner";
 import { UpdateReadyWatcher } from "../src/components/UpdateReadyWatcher";
+import { NativeUpdateProgress } from "../src/components/NativeUpdateProgress";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { LaunchSplash } from "../src/components/LaunchSplash";
 import { fontAssets } from "../src/theme/tokens";
@@ -126,6 +127,7 @@ function RootShell() {
         />
       ) : null}
       <UpdateReadyWatcher />
+      <NativeUpdateProgress />
       {(showSplash || restarting) && (
         <LaunchSplash
           transitionIn={restarting}

@@ -1,66 +1,62 @@
-/** Stable About-page update row; outcomes are surfaced by actionable toasts. */
+/** Unified About-page update row for OTA bundles and native app releases. */
 import React from "react";
 import { StyleSheet } from "react-native";
 import { Button } from "./Button";
 import { SettingRow } from "./SettingRow";
 import { toast } from "./toast-store";
-import { useOtaUpdate } from "../../hooks/use-ota-update";
-import { haptics } from "../../lib/haptics";
-
-function showDownloadPrompt(ota: ReturnType<typeof useOtaUpdate>) {
-  toast.show("A new update is available", {
-    duration: 6000,
-    swipeable: true,
-    action: {
-      label: "Download",
-      onPress: () => ota.download().catch(() => toast.error("Update download failed")),
-    },
-  });
-}
-
-function showRestartPrompt(ota: ReturnType<typeof useOtaUpdate>) {
-  toast.show("Update ready — restart to apply", {
-    duration: 6000,
-    swipeable: true,
-    action: {
-      label: "Restart",
-      onPress: () => ota.restart().catch(() => toast.error("Update restart failed")),
-    },
-  });
-}
+import { useAppUpdate } from "../../hooks/use-app-update";
 
 export function OtaUpdateCard() {
-  const ota = useOtaUpdate();
+  const update = useAppUpdate();
+  const { ota, native } = update;
   const manualCheck = React.useRef(false);
 
   React.useEffect(() => {
     if (!manualCheck.current) return;
 
-    if (ota.status === "up-to-date") {
+    if (!update.checking && !update.kind && !update.error) {
       manualCheck.current = false;
       toast.show("You’re up to date.", { tone: "success", duration: 3000 });
-    } else if (ota.status === "error") {
+    } else if (!update.checking && update.kind) {
       manualCheck.current = false;
-      toast.show(ota.message ?? "Update check failed", {
+    } else if (!update.checking && update.error) {
+      manualCheck.current = false;
+      toast.show(ota.message ?? native.error ?? "Update check failed", {
         tone: "danger",
         duration: 5000,
         action: {
           label: "Retry",
           onPress: () => {
             manualCheck.current = true;
-            void ota.check().catch(() => {});
+            void update.check().catch(() => {});
           },
         },
       });
-    } else if (ota.status !== "checking" && ota.status !== "idle") {
-      manualCheck.current = false;
     }
-  }, [ota]);
+  }, [native.error, ota.message, update]);
 
   const channel = ota.channel ?? "default";
-  const description = !ota.enabled
+  const description = !update.enabled
     ? "Automatic updates are available in production builds."
-    : `${channel.charAt(0).toUpperCase()}${channel.slice(1)} channel`;
+    : native.status === "downloading"
+      ? `Downloading Ordo v${native.release?.version ?? ""}`
+      : update.kind === "native" && native.release
+        ? `Version ${native.release.version} is ready to install`
+        : update.kind === "ota" && ota.status === "ready"
+          ? "Quick update downloaded; restart to apply"
+          : update.kind === "ota"
+            ? "Quick update available"
+            : `${channel.charAt(0).toUpperCase()}${channel.slice(1)} channel`;
+
+  const buttonLabel = update.checking
+    ? "Checking"
+    : update.kind === "native"
+      ? "Install"
+      : ota.status === "ready"
+        ? "Restart"
+        : ota.status === "available"
+          ? "Download"
+          : "Check";
 
   return (
     <SettingRow
@@ -69,27 +65,31 @@ export function OtaUpdateCard() {
       description={description}
       right={
         <Button
-          label={ota.status === "checking" ? "Checking" : "Check"}
+          label={buttonLabel}
           size="md"
-          loading={ota.status === "checking"}
-          disabled={!ota.enabled || ota.status === "downloading"}
+          loading={update.checking || native.status === "downloading"}
+          disabled={!update.enabled || ota.status === "downloading"}
           style={styles.checkButton}
           onPress={() => {
-            haptics.light();
-            if (ota.status === "available") {
-              showDownloadPrompt(ota);
+            if (update.kind === "native") {
+              void native
+                .downloadAndInstall()
+                .catch(() => toast.error("App update download failed"));
               return;
             }
-            if (ota.status === "ready") {
-              showRestartPrompt(ota);
+            if (update.kind === "ota" && ota.status === "available") {
+              void ota.download().catch(() => toast.error("Update download failed"));
+              return;
+            }
+            if (update.kind === "ota" && ota.status === "ready") {
+              void ota.restart().catch(() => toast.error("Update restart failed"));
               return;
             }
             manualCheck.current = true;
-            void ota.check().catch(() => {});
+            void update.check().catch(() => {});
           }}
         />
       }
-      divider={false}
     />
   );
 }
