@@ -155,6 +155,18 @@ describe("ReaderService", () => {
       expect(result.contentHtml.startsWith("<p>Paragraph 1")).toBe(true);
     });
 
+    it("keeps a longer lede that contains the metadata description", async () => {
+      const html = SAMPLE_HTML.replace(
+        "<p>A short summary of the article.</p>",
+        "<p>A short summary of the article. This additional context belongs to the article body.</p>",
+      );
+      mockFetch(html);
+
+      const result = await reader.extract("https://example.com/longer-lede");
+
+      expect(result.contentHtml).toContain("This additional context belongs to the article body.");
+    });
+
     it("removes a leading heading that repeats the extracted title (narrow fallback path)", async () => {
       mockFetch(SHORT_ARTICLE_HTML);
       const result = await reader.extract("https://example.com/short");
@@ -165,6 +177,58 @@ describe("ReaderService", () => {
       expect(result.contentHtml).not.toContain("Fallback Piece");
       expect(result.contentHtml).toContain("Intro line about reading very carefully");
       expect(result.contentText).toContain("Fifth short line");
+    });
+
+    it("removes duplicate metadata after linked lead media", async () => {
+      const html = SHORT_ARTICLE_HTML
+        .replace(
+          '<meta property="og:title" content="Fallback Piece">',
+          '<meta property="og:title" content="Fallback Piece"><meta name="description" content="A concise fallback summary.">',
+        )
+        .replace(
+          "<h1>Fallback Piece</h1>",
+          '<a href="https://example.com/art"><img src="https://example.com/art.png" style="float:left; height:120px; margin-right:20px"></a><h1>Fallback Piece</h1><p>A concise fallback summary.</p>',
+        );
+      mockFetch(html);
+
+      const result = await reader.extract("https://example.com/media-first");
+
+      expect(result.contentHtml).toContain('height="120"');
+      expect(result.contentHtml).not.toContain("style=");
+      expect(result.contentHtml).not.toContain("<h1");
+      expect(result.contentHtml).not.toContain("A concise fallback summary.");
+      expect(result.contentHtml).toContain("Intro line about reading very carefully");
+    });
+
+    it("keeps the opening body when the source has no heading", async () => {
+      mockFetch(
+        SHORT_ARTICLE_HTML.replace(
+          "<h1>Fallback Piece</h1>",
+          "<p>Opening body copy provides enough additional words for this heading-free article</p>",
+        ),
+      );
+
+      const result = await reader.extract("https://example.com/no-heading");
+
+      expect(result.title).toBe("Fallback Piece");
+      expect(result.contentHtml).toContain("Intro line about reading very carefully");
+    });
+  });
+
+  describe("image dimension hints", () => {
+    it("normalizes safe dimensions and falls back to bounded pixel styles", async () => {
+      const html = SHORT_ARTICLE_HTML.replace(
+        "<h1>Fallback Piece</h1>",
+        '<img src="https://example.com/art.png" width="0320" height="99999999" style="width:640px; height:120px; float:left"><h1>Fallback Piece</h1>',
+      );
+      mockFetch(html);
+
+      const result = await reader.extract("https://example.com/image-dimensions");
+
+      expect(result.contentHtml).toContain('width="320"');
+      expect(result.contentHtml).toContain('height="120"');
+      expect(result.contentHtml).not.toContain("99999999");
+      expect(result.contentHtml).not.toContain("style=");
     });
   });
 

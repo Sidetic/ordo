@@ -35,7 +35,7 @@ export const MAX_PAGE_SIZE = 100;
  * pipeline changes enough that stored content should be re-extracted; rows
  * with an older (or missing) version are refreshed in the background.
  */
-export const EXTRACTION_VERSION = 3;
+export const EXTRACTION_VERSION = 4;
 
 /** readProgress at or above this fraction marks a bookmark read/completed. */
 export const READ_COMPLETION_THRESHOLD = 0.98;

@@ -46,6 +46,7 @@ const MAX_LINK_DENSITY = 0.4;
 /** Shell phrases are only trusted on pages with very little text at all. */
 const SHELL_TEXT_LIMIT = 2_000;
 const WORDS_PER_MINUTE = 200;
+const MAX_IMAGE_DIMENSION = 10_000;
 
 /** File extensions that can never be HTML articles. */
 const NON_HTML_EXTENSIONS = new Set([
@@ -107,6 +108,39 @@ const CONSENT_WALL_PATTERNS: RegExp[] = [
   /this site uses cookies[\s\S]*by using this site,? you agree/,
 ];
 
+function pixelSizeFromStyle(
+  style: string | undefined,
+  property: "width" | "height",
+): string | undefined {
+  return new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*(\\d{1,5})\\s*px(?:\\s*(?:;|$))`, "i")
+    .exec(style ?? "")?.[1];
+}
+
+/** Preserve bounded image dimensions, but never retain arbitrary source CSS. */
+function normalizeImageAttributes(tagName: string, attributes: Record<string, string>) {
+  const next = { ...attributes };
+  delete next.style;
+
+  for (const dimension of ["width", "height"] as const) {
+    const attribute = next[dimension]?.trim();
+    const numericAttribute = attribute && /^\d{1,5}$/.test(attribute) ? Number(attribute) : 0;
+    if (numericAttribute >= 1 && numericAttribute <= MAX_IMAGE_DIMENSION) {
+      next[dimension] = String(numericAttribute);
+      continue;
+    }
+
+    const styleValue = pixelSizeFromStyle(attributes.style, dimension);
+    const numericStyle = styleValue ? Number(styleValue) : 0;
+    if (numericStyle >= 1 && numericStyle <= MAX_IMAGE_DIMENSION) {
+      next[dimension] = String(numericStyle);
+    } else {
+      delete next[dimension];
+    }
+  }
+
+  return { tagName, attribs: next };
+}
+
 /** Semantic tags only; layout wrappers are unwrapped, interactive embeds dropped. */
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: [
@@ -125,6 +159,7 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   },
   allowedSchemes: ["http", "https", "mailto"],
   allowedSchemesByTag: { img: ["http", "https"], source: ["http", "https"] },
+  transformTags: { img: normalizeImageAttributes },
   // drop images whose src was stripped (e.g. data: URLs) — an img without src is junk
   exclusiveFilter: (frame) => frame.tag === "img" && !frame.attribs.src,
   disallowedTagsMode: "discard",
@@ -160,16 +195,22 @@ function linkDensity(element: Element): number {
   return linkText / total;
 }
 
-/** True when two strings are the same text up to punctuation/spacing, or one
- *  contains the other (page titles are often suffixed with the site name). */
-function duplicatesText(a: string, b: string): boolean {
+function hasSameText(a: string, b: string): boolean {
+  const na = normalizeForCompare(a);
+  const nb = normalizeForCompare(b);
+  return !!na && na === nb;
+}
+
+/** Page titles may add a short site-name affix around the article heading. */
+function duplicatesTitle(a: string, b: string): boolean {
   const na = normalizeForCompare(a);
   const nb = normalizeForCompare(b);
   if (!na || !nb) return false;
   if (na === nb) return true;
   const shorter = na.length < nb.length ? na : nb;
-  if (shorter.length < 8) return false;
-  return na.includes(shorter) || nb.includes(shorter);
+  const longer = na.length < nb.length ? nb : na;
+  if (shorter.length < 8 || shorter.length / longer.length < 0.8) return false;
+  return longer.startsWith(shorter) || longer.endsWith(shorter);
 }
 
 function toIsoDate(value: string | null | undefined): string | null {
@@ -443,24 +484,25 @@ export class ReaderService {
     }
   }
 
-  /** Drop a leading H1/H2 that just repeats the extracted title. */
+  /** Drop an opening H1/H2 that repeats metadata, even when lead media comes first. */
   private removeDuplicateLeadingHeading(root: Element, title: string): void {
-    const first = this.firstElementChild(root);
+    const first = this.firstLeadingContentElement(root);
     if (!first) return;
     const tag = first.tagName.toLowerCase();
     if (tag !== "h1" && tag !== "h2") return;
-    if (duplicatesText(title, first.textContent ?? "")) first.remove();
+    if (duplicatesTitle(title, first.textContent ?? "")) first.remove();
   }
 
   /** Drop a leading paragraph that just repeats the description/excerpt. */
   private removeDuplicateLeadingParagraph(root: Element, description: string | null): void {
     if (!description) return;
-    const first = this.firstElementChild(root);
+    const first = this.firstLeadingContentElement(root);
     if (!first || first.tagName.toLowerCase() !== "p") return;
-    if (duplicatesText(description, first.textContent ?? "")) first.remove();
+    if (hasSameText(description, first.textContent ?? "")) first.remove();
   }
 
-  private firstElementChild(root: Element): Element | null {
+  /** Find the first textual content block while allowing media-only lead art. */
+  private firstLeadingContentElement(root: Element): Element | null {
     for (const node of Array.from(root.childNodes)) {
       if (node.nodeType === 3) {
         // skip whitespace between block elements; real text means no leading block
@@ -468,7 +510,24 @@ export class ReaderService {
         return null;
       }
       if (node.nodeType === 8) continue; // comments
-      return node.nodeType === 1 ? (node as Element) : null;
+      if (node.nodeType !== 1) return null;
+
+      const element = node as Element;
+      const tag = element.tagName.toLowerCase();
+      if (["figure", "picture", "img"].includes(tag)) continue;
+      if (
+        tag === "a" &&
+        !normalizeSpace(element.textContent ?? "") &&
+        element.querySelector("img, picture")
+      ) {
+        continue;
+      }
+      if (["article", "div", "header", "section"].includes(tag)) {
+        const nested = this.firstLeadingContentElement(element);
+        if (nested) return nested;
+        if (!normalizeSpace(element.textContent ?? "")) continue;
+      }
+      return element;
     }
     return null;
   }
