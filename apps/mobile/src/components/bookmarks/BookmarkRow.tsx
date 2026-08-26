@@ -92,7 +92,7 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRow
             {title}
           </Text>
           {bookmark.description ? (
-            <Text variant="footnote" color="secondary" numberOfLines={2} style={styles.description}>
+            <Text variant="footnote" color="secondary" numberOfLines={1} style={styles.description}>
               {bookmark.description}
             </Text>
           ) : null}
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: spacing[12],
     paddingVertical: spacing[14],
     paddingLeft: spacing[16],
