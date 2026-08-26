@@ -139,7 +139,7 @@ describe("Auth (e2e)", () => {
       const res = await agent.get("/api/auth/me").expect(200);
       expect(res.body.email).toBe("carol@ordo.app");
       expect(res.body.preferences).toEqual({
-        fontFamily: "sans",
+        fontFamily: "serif",
         fontSize: "medium",
         theme: "system",
         amoled: false,
@@ -422,7 +422,7 @@ describe("Auth (e2e)", () => {
           .send({ theme: "sepia" })
           .expect(200);
         expect(first.body.preferences).toEqual({
-          fontFamily: "sans",
+          fontFamily: "serif",
           fontSize: "medium",
           theme: "sepia",
           amoled: false,
@@ -472,7 +472,7 @@ describe("Auth (e2e)", () => {
 
         const after = await agent.get("/api/auth/me").expect(200);
         expect(after.body.preferences).toEqual({
-          fontFamily: "sans",
+          fontFamily: "serif",
           fontSize: "medium",
           theme: "system",
           amoled: false,
@@ -484,7 +484,7 @@ describe("Auth (e2e)", () => {
           .send({ theme: "dark" })
           .expect(200);
         expect(patched.body.preferences).toEqual({
-          fontFamily: "sans",
+          fontFamily: "serif",
           fontSize: "medium",
           theme: "dark",
           amoled: false,

@@ -138,6 +138,7 @@ import {
 import {
   JetBrainsMono_400Regular,
   JetBrainsMono_500Medium,
+  JetBrainsMono_600SemiBold,
   JetBrainsMono_700Bold,
 } from "@expo-google-fonts/jetbrains-mono";
 import {
@@ -157,6 +158,7 @@ export const fontAssets = {
   InterTight_700Bold,
   JetBrainsMono_400Regular,
   JetBrainsMono_500Medium,
+  JetBrainsMono_600SemiBold,
   JetBrainsMono_700Bold,
   PlayfairDisplay_400Regular,
   PlayfairDisplay_700Bold,

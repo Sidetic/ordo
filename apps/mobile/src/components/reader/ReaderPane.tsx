@@ -36,9 +36,10 @@ import { Button } from "../ui/Button";
 import { Skeleton } from "../ui/Skeleton";
 import { PressableScale } from "../ui/PressableScale";
 import { FloatingPanel } from "../ui/FloatingPanel";
-import { ArticleHtml } from "./ArticleHtml";
+import { ArticleHtml, type ArticleHeading } from "./ArticleHtml";
 import { Markdown } from "./Markdown";
 import { ReaderControlsSheet } from "./ReaderControlsSheet";
+import { READER_BODY_SIZE, resolveReaderFont } from "./reader-typography";
 import { ThemeOverrideProvider, useTheme } from "../../theme/ThemeProvider";
 import { resolveReaderPalette } from "../../theme/reader-theme";
 import { resolvePalette } from "../../theme/theme";
@@ -166,7 +167,8 @@ function ReaderPaneInner({
     !!detail.error;
 
   const [controlsOpen, setControlsOpen] = useState(false);
-  const [actionsOpen, setActionsOpen] = useState(false);
+  const [actionPanel, setActionPanel] = useState<"actions" | "contents" | null>(null);
+  const [articleHeadings, setArticleHeadings] = useState<readonly ArticleHeading[]>([]);
   const [externalLaunchFailed, setExternalLaunchFailed] = useState(false);
   const [articleWidth, setArticleWidth] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -187,6 +189,7 @@ function ReaderPaneInner({
   const displayTitle = bookmark
     ? normalizeTitle(bookmark.title) || domainFromUrl(bookmark.url)
     : "";
+  const description = bookmark ? normalizeTitle(bookmark.description) : "";
   const byline = bookmark
     ? [
         bookmark.author?.trim() || null,
@@ -200,6 +203,9 @@ function ReaderPaneInner({
       ? `${bookmark.readingTimeMinutes} min read`
       : undefined
     : undefined;
+  const readerBodySize = READER_BODY_SIZE[preferences.fontSize];
+  const readerFont = resolveReaderFont(preferences.fontFamily);
+  const readerBoldFont = resolveReaderFont(preferences.fontFamily, "700");
 
   const handleBack = () => {
     if (onBack) {
@@ -252,6 +258,7 @@ function ReaderPaneInner({
   /* ------------------------------ reading progress ----------------------------- */
 
   const scrollRef = useRef<ScrollView>(null);
+  const scrollViewportRef = useRef<View>(null);
   const trackProgressRef = useRef(false);
   const currentArticleRef = useRef<{ id: string; folderId: string | null } | null>(null);
   const initialProgressRef = useRef(0);
@@ -262,6 +269,27 @@ function ReaderPaneInner({
   const viewHeightRef = useRef(0);
   const contentHeightRef = useRef(0);
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const headingRefs = useRef(new Map<string, View>());
+
+  const handleHeadingRef = useCallback((id: string, view: View | null) => {
+    if (view) headingRefs.current.set(id, view);
+    else headingRefs.current.delete(id);
+  }, []);
+
+  const handleHeadingSelect = useCallback((id: string) => {
+    const heading = headingRefs.current.get(id);
+    setActionPanel(null);
+    if (!heading) return;
+    haptics.light();
+    requestAnimationFrame(() => {
+      heading.measureInWindow((_headingX, headingY) => {
+        scrollViewportRef.current?.measureInWindow((_scrollX, scrollY) => {
+          const y = offsetRef.current + headingY - scrollY - spacing[16];
+          scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true });
+        });
+      });
+    });
+  }, []);
 
   const persistProgress = useCallback(
     (id: string, folderId: string | null, value: number) => {
@@ -420,7 +448,7 @@ function ReaderPaneInner({
         accessibilityLabel="Reader settings"
         accessibilityHint="Adjust text size, typeface, and reading theme."
       >
-        <Ionicons name="text-outline" size={22} color={palette.text} />
+        <Ionicons name="options-outline" size={22} color={palette.text} />
       </PressableScale>
       <PressableScale
         style={styles.iconBtn}
@@ -428,7 +456,7 @@ function ReaderPaneInner({
         hitSlop={8}
         onPress={() => {
           haptics.light();
-          setActionsOpen(true);
+          setActionPanel("actions");
         }}
         accessibilityRole="button"
         accessibilityLabel="More article actions"
@@ -440,11 +468,46 @@ function ReaderPaneInner({
 
   const articleHead = (
     <>
-      <Text variant="title1" style={styles.title}>
+      <Text
+        variant="title1"
+        style={{
+          fontFamily: readerBoldFont,
+          fontSize: Math.round(readerBodySize * 1.7),
+          lineHeight: Math.round(readerBodySize * 2.05),
+          letterSpacing: 0,
+        }}
+      >
         {displayTitle}
       </Text>
+      {description ? (
+        <Text
+          variant="body"
+          color="secondary"
+          style={[
+            styles.description,
+            {
+              fontFamily: readerFont,
+              fontSize: readerBodySize,
+              lineHeight: Math.round(readerBodySize * 1.5),
+            },
+          ]}
+        >
+          {description}
+        </Text>
+      ) : null}
       {byline ? (
-        <Text variant="footnote" color="secondary" style={styles.byline}>
+        <Text
+          variant="footnote"
+          color="secondary"
+          style={[
+            styles.byline,
+            {
+              fontFamily: readerFont,
+              fontSize: Math.max(11, readerBodySize - 3),
+              lineHeight: Math.round(Math.max(11, readerBodySize - 3) * 1.45),
+            },
+          ]}
+        >
           {byline}
         </Text>
       ) : null}
@@ -505,31 +568,35 @@ function ReaderPaneInner({
           />
         </ScreenContent>
       ) : (
-        <ScrollView
-          ref={scrollRef}
-          onLayout={onScrollViewLayout}
-          onContentSizeChange={onContentSizeChange}
-          onScroll={onScroll}
-          scrollEventThrottle={64}
-          contentContainerStyle={{
-            paddingTop: spacing[16],
-            paddingBottom: spacing[16] + (safeBottom ? insets.bottom : 0),
-          }}
-          showsVerticalScrollIndicator={false}
-        >
-          <ScreenContent style={styles.body}>
-            <View
-              style={styles.articleColumn}
-              onLayout={(e) => setArticleWidth(e.nativeEvent.layout.width)}
-            >
-              {articleHead}
+        <View ref={scrollViewportRef} style={styles.scrollViewport}>
+          <ScrollView
+            ref={scrollRef}
+            style={styles.scrollViewport}
+            onLayout={onScrollViewLayout}
+            onContentSizeChange={onContentSizeChange}
+            onScroll={onScroll}
+            scrollEventThrottle={64}
+            contentContainerStyle={{
+              paddingTop: spacing[16],
+              paddingBottom: spacing[16] + (safeBottom ? insets.bottom : 0),
+            }}
+            showsVerticalScrollIndicator={false}
+          >
+            <ScreenContent style={styles.body}>
+              <View
+                style={styles.articleColumn}
+                onLayout={(e) => setArticleWidth(e.nativeEvent.layout.width)}
+              >
+                {articleHead}
 
-              {hasHtml ? (
+                {hasHtml ? (
                 <View style={styles.content}>
                   <ArticleHtml
                     html={detail.data?.contentHtml ?? ""}
                     preferences={preferences}
                     contentWidth={articleWidth || fallbackArticleWidth}
+                    onHeadingsChange={setArticleHeadings}
+                    onHeadingRef={handleHeadingRef}
                   />
                 </View>
               ) : legacyMarkdown ? (
@@ -605,10 +672,11 @@ function ReaderPaneInner({
                   <View style={{ height: spacing[16] }} />
                   <Button label="Open original" onPress={handleOpenOriginal} />
                 </View>
-              )}
-            </View>
-          </ScreenContent>
-        </ScrollView>
+                )}
+              </View>
+            </ScreenContent>
+          </ScrollView>
+        </View>
       )}
 
       <ReaderControlsSheet
@@ -618,41 +686,90 @@ function ReaderPaneInner({
         onUpdate={onUpdatePreferences}
         effectiveDark={effectiveDark}
       />
-      <FloatingPanel visible={actionsOpen} onDismiss={() => setActionsOpen(false)}>
-        <Text variant="title3" style={styles.actionsTitle}>Article actions</Text>
-        <PressableScale
-          style={[styles.actionRow, { borderBottomColor: palette.border }]}
-          onPress={() => {
-            setActionsOpen(false);
-            handleShare();
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={`Share ${displayTitle}`}
-        >
-          <Ionicons name="share-social-outline" size={20} color={palette.text} />
-          <Text variant="body" style={styles.actionLabel}>Share article</Text>
-          <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
-        </PressableScale>
-        <PressableScale
-          style={[styles.actionRow, { borderBottomColor: palette.border }]}
-          onPress={() => {
-            setActionsOpen(false);
-            handleOpenOriginal();
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Open original in browser"
-        >
-          <Ionicons name="globe-outline" size={20} color={palette.text} />
-          <Text variant="body" style={styles.actionLabel}>Open original in browser</Text>
-          <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
-        </PressableScale>
-        <Button
-          label="Cancel"
-          variant="ghost"
-          block
-          onPress={() => setActionsOpen(false)}
-          style={styles.actionsCancel}
-        />
+      <FloatingPanel visible={actionPanel !== null} onDismiss={() => setActionPanel(null)}>
+        {actionPanel === "contents" ? (
+          <>
+            <Text variant="title3" style={styles.actionsTitle}>Contents</Text>
+            <ScrollView style={styles.tocList} showsVerticalScrollIndicator={false}>
+              {articleHeadings.map((heading) => (
+                <PressableScale
+                  key={heading.id}
+                  style={[
+                    styles.tocRow,
+                    { paddingLeft: spacing[4] + (heading.level - 1) * spacing[16] },
+                  ]}
+                  onPress={() => handleHeadingSelect(heading.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Go to ${heading.text}`}
+                >
+                  <Text
+                    variant={heading.level === 1 ? "bodyStrong" : "body"}
+                    numberOfLines={2}
+                    style={styles.actionLabel}
+                  >
+                    {heading.text}
+                  </Text>
+                </PressableScale>
+              ))}
+            </ScrollView>
+            <Button
+              label="Back"
+              variant="ghost"
+              block
+              onPress={() => setActionPanel("actions")}
+              style={styles.actionsCancel}
+            />
+          </>
+        ) : (
+          <>
+            <Text variant="title3" style={styles.actionsTitle}>Article actions</Text>
+            {hasHtml && articleHeadings.length ? (
+              <PressableScale
+                style={[styles.actionRow, { borderBottomColor: palette.border }]}
+                onPress={() => setActionPanel("contents")}
+                accessibilityRole="button"
+                accessibilityLabel="Open table of contents"
+              >
+                <Ionicons name="list-outline" size={20} color={palette.text} />
+                <Text variant="body" style={styles.actionLabel}>Table of contents</Text>
+                <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
+              </PressableScale>
+            ) : null}
+            <PressableScale
+              style={[styles.actionRow, { borderBottomColor: palette.border }]}
+              onPress={() => {
+                setActionPanel(null);
+                handleShare();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Share ${displayTitle}`}
+            >
+              <Ionicons name="share-social-outline" size={20} color={palette.text} />
+              <Text variant="body" style={styles.actionLabel}>Share article</Text>
+              <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
+            </PressableScale>
+            <PressableScale
+              style={[styles.actionRow, { borderBottomColor: palette.border }]}
+              onPress={() => {
+                setActionPanel(null);
+                handleOpenOriginal();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Open original in browser"
+            >
+              <Ionicons name="globe-outline" size={20} color={palette.text} />
+              <Text variant="body" style={styles.actionLabel}>Open original in browser</Text>
+              <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
+            </PressableScale>
+            <Button
+              label="Cancel"
+              variant="ghost"
+              block
+              onPress={() => setActionPanel(null)}
+              style={styles.actionsCancel}
+            />
+          </>
+        )}
       </FloatingPanel>
     </View>
   );
@@ -683,9 +800,10 @@ export function ReaderPanePlaceholder() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  scrollViewport: { flex: 1 },
   body: { width: "100%" },
   articleColumn: { width: "100%" },
-  title: { lineHeight: 26 },
+  description: { marginTop: spacing[8] },
   byline: { marginTop: spacing[6] },
   content: { marginTop: spacing[24] },
   headerActions: { flexDirection: "row", alignItems: "center" },
@@ -701,6 +819,8 @@ const styles = StyleSheet.create({
   },
   actionLabel: { flex: 1 },
   actionsCancel: { marginTop: spacing[8] },
+  tocList: { maxHeight: 420 },
+  tocRow: { minHeight: 44, justifyContent: "center", paddingRight: spacing[4] },
   progressTrack: { height: 2, width: "100%", overflow: "hidden" },
   progressFill: { height: 2 },
   stateBody: {

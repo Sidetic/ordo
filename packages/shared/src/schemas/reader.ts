@@ -14,7 +14,7 @@ export const ReaderPreferencesSchema = z.object({
 export type ReaderPreferencesInput = z.infer<typeof ReaderPreferencesSchema>;
 
 export const DEFAULT_READER_PREFERENCES: ReaderPreferences = {
-  fontFamily: "sans",
+  fontFamily: "serif",
   fontSize: "medium",
   theme: "system",
   amoled: false,

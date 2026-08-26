@@ -8,32 +8,23 @@
  * is purely presentation: token-driven typography scaled by the reader
  * preferences, responsive images, select-to-share text, and external links.
  */
-import React, { useMemo } from "react";
-import { Linking, StyleSheet } from "react-native";
+import React, { useCallback, useMemo } from "react";
+import { Linking, StyleSheet, View, type View as ViewType } from "react-native";
 import RenderHTML, {
   defaultSystemFonts,
+  useRendererProps,
+  type CustomBlockRenderer,
   type MixedStyleRecord,
+  type RenderHTMLProps,
   type RenderersProps,
+  type TNode,
+  type TDocument,
 } from "react-native-render-html";
 import { useTheme } from "../../theme/ThemeProvider";
 import type { Palette } from "../../theme/theme";
 import { resolveFont, spacing, type FontFamily } from "../../theme/tokens";
-import type { ReaderFontFamily, ReaderPreferences } from "@ordo/shared";
-
-/** Body text size (px) per preference; headings scale relative to it. */
-const BODY_SIZE: Record<ReaderPreferences["fontSize"], number> = {
-  small: 15,
-  medium: 17,
-  large: 19,
-  xlarge: 21,
-};
-
-/** Reader font preference → loaded font family tokens. */
-const FAMILY: Record<ReaderFontFamily, FontFamily> = {
-  sans: "sans",
-  serif: "serif",
-  mono: "mono",
-};
+import type { ReaderPreferences } from "@ordo/shared";
+import { READER_BODY_SIZE, resolveReaderFontFamily } from "./reader-typography";
 
 /** Custom fonts loaded via useFonts must be registered to avoid warnings. */
 const SYSTEM_FONTS = [
@@ -119,8 +110,14 @@ function buildTagsStyles(
     h6: { ...heading(base * 0.95), fontFamily: bodyFont("600"), color: palette.textTertiary, marginTop: spacing[16], marginBottom: spacing[4] },
     strong: { fontFamily: bodyFont("700"), color: palette.text },
     b: { fontFamily: bodyFont("700"), color: palette.text },
-    em: { fontStyle: "italic" },
-    i: { fontStyle: "italic" },
+    em: {
+      fontFamily: family === "serif" ? resolveFont(family, "400", true) : undefined,
+      fontStyle: "italic",
+    },
+    i: {
+      fontFamily: family === "serif" ? resolveFont(family, "400", true) : undefined,
+      fontStyle: "italic",
+    },
     a: { color: palette.accent, textDecorationLine: "underline" },
     ul: { marginTop: spacing[12], marginBottom: spacing[8] },
     ol: { marginTop: spacing[12], marginBottom: spacing[8] },
@@ -197,16 +194,76 @@ export interface ArticleHtmlProps {
   preferences: ReaderPreferences;
   /** Measured width available to the article; drives responsive images. */
   contentWidth: number;
+  onHeadingsChange?: (headings: readonly ArticleHeading[]) => void;
+  onHeadingRef?: (id: string, view: ViewType | null) => void;
+}
+
+export interface ArticleHeading {
+  id: string;
+  level: 1 | 2 | 3;
+  text: string;
+}
+
+interface HeadingRendererProps {
+  onHeadingRef?: ArticleHtmlProps["onHeadingRef"];
+}
+
+const headingRenderer: CustomBlockRenderer = ({ tnode, TDefaultRenderer, ...props }) => {
+  const { onHeadingRef } = useRendererProps(tnode.tagName as "h1") as HeadingRendererProps;
+  const setRef = useCallback(
+    (view: ViewType | null) => {
+      if (tnode.id) onHeadingRef?.(tnode.id, view);
+    },
+    [onHeadingRef, tnode.id],
+  );
+
+  return (
+    <View ref={setRef} collapsable={false}>
+      <TDefaultRenderer tnode={tnode} {...props} />
+    </View>
+  );
+};
+
+const HEADING_RENDERERS = {
+  h1: headingRenderer,
+  h2: headingRenderer,
+  h3: headingRenderer,
+};
+
+function textFromNode(node: TNode): string {
+  if (node.type === "text") return node.data;
+  return node.children.map(textFromNode).join("");
+}
+
+function headingsFromTree(tree: TDocument): ArticleHeading[] {
+  const headings: ArticleHeading[] = [];
+  const visit = (node: TNode) => {
+    if (node.type !== "text" && /^h[1-3]$/.test(node.tagName ?? "") && node.id) {
+      const text = textFromNode(node).replace(/\s+/g, " ").trim();
+      if (text) {
+        headings.push({
+          id: node.id,
+          level: Number(node.tagName?.slice(1)) as ArticleHeading["level"],
+          text,
+        });
+      }
+    }
+    if (node.type !== "text") node.children.forEach(visit);
+  };
+  visit(tree);
+  return headings;
 }
 
 export const ArticleHtml = React.memo(function ArticleHtml({
   html,
   preferences,
   contentWidth,
+  onHeadingsChange,
+  onHeadingRef,
 }: ArticleHtmlProps) {
   const { palette } = useTheme();
-  const family = FAMILY[preferences.fontFamily];
-  const base = BODY_SIZE[preferences.fontSize];
+  const family = resolveReaderFontFamily(preferences.fontFamily);
+  const base = READER_BODY_SIZE[preferences.fontSize];
 
   const tagsStyles = useMemo(
     () => buildTagsStyles(palette, family, base),
@@ -231,8 +288,29 @@ export const ArticleHtml = React.memo(function ArticleHtml({
       },
       ul: { markerTextStyle },
       ol: { markerTextStyle },
+      h1: { onHeadingRef },
+      h2: { onHeadingRef },
+      h3: { onHeadingRef },
     }),
-    [markerTextStyle],
+    [markerTextStyle, onHeadingRef],
+  );
+  const domVisitors = useMemo<NonNullable<RenderHTMLProps["domVisitors"]>>(() => {
+    let headingIndex = 0;
+    return {
+      onDocument: () => {
+        headingIndex = 0;
+      },
+      onElement: (element) => {
+        if (/^h[1-3]$/.test(element.name) && !element.attribs.id) {
+          element.attribs.id = `ordo-heading-${headingIndex}`;
+          headingIndex += 1;
+        }
+      },
+    };
+  }, []);
+  const handleTreeChange = useCallback(
+    (tree: TDocument) => onHeadingsChange?.(headingsFromTree(tree)),
+    [onHeadingsChange],
   );
 
   if (contentWidth <= 0) return null;
@@ -243,6 +321,9 @@ export const ArticleHtml = React.memo(function ArticleHtml({
       contentWidth={contentWidth}
       tagsStyles={tagsStyles}
       renderersProps={renderersProps}
+      renderers={HEADING_RENDERERS}
+      domVisitors={domVisitors}
+      onTTreeChange={handleTreeChange}
       systemFonts={SYSTEM_FONTS}
       defaultTextProps={{ selectable: true }}
     />
