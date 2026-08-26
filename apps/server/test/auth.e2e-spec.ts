@@ -138,6 +138,12 @@ describe("Auth (e2e)", () => {
       const agent = await authedAgent(ctx.app, "carol@ordo.app");
       const res = await agent.get("/api/auth/me").expect(200);
       expect(res.body.email).toBe("carol@ordo.app");
+      expect(res.body.preferences).toEqual({
+        fontFamily: "sans",
+        fontSize: "medium",
+        theme: "system",
+        amoled: false,
+      });
     });
 
     it("lists active sessions and marks the current one", async () => {
@@ -404,6 +410,85 @@ describe("Auth (e2e)", () => {
           .get("/api/auth/me")
           .auth(changed.body.tokens.accessToken, { type: "bearer" })
           .expect(200);
+      });
+    });
+
+    describe("reader preferences", () => {
+      it("merges a partial patch into the stored preferences", async () => {
+        const agent = await authedAgent(pctx.app, "prefs@ordo.app");
+
+        const first = await agent
+          .patch("/api/auth/preferences")
+          .send({ theme: "sepia" })
+          .expect(200);
+        expect(first.body.preferences).toEqual({
+          fontFamily: "sans",
+          fontSize: "medium",
+          theme: "sepia",
+          amoled: false,
+        });
+
+        const second = await agent
+          .patch("/api/auth/preferences")
+          .send({ fontFamily: "serif", fontSize: "large", amoled: true })
+          .expect(200);
+        expect(second.body.preferences).toEqual({
+          fontFamily: "serif",
+          fontSize: "large",
+          theme: "sepia",
+          amoled: true,
+        });
+
+        // persisted — /auth/me reports the same synced preferences
+        const me = await agent.get("/api/auth/me").expect(200);
+        expect(me.body.preferences).toEqual(second.body.preferences);
+      });
+
+      it("validates preference values and requires a field", async () => {
+        const agent = await authedAgent(pctx.app, "prefs2@ordo.app");
+
+        const bad = await agent
+          .patch("/api/auth/preferences")
+          .send({ theme: "hotdog" })
+          .expect(400);
+        expect(bad.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+
+        const empty = await agent.patch("/api/auth/preferences").send({}).expect(400);
+        expect(empty.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+
+        await request(pctx.app.getHttpServer())
+          .patch("/api/auth/preferences")
+          .send({ theme: "dark" })
+          .expect(401);
+      });
+
+      it("falls back to defaults when stored preferences are malformed", async () => {
+        const agent = await authedAgent(pctx.app, "prefs3@ordo.app");
+        const me = await agent.get("/api/auth/me").expect(200);
+        await pctx.prisma.user.update({
+          where: { id: me.body.id },
+          data: { preferences: "{not json at all" },
+        });
+
+        const after = await agent.get("/api/auth/me").expect(200);
+        expect(after.body.preferences).toEqual({
+          fontFamily: "sans",
+          fontSize: "medium",
+          theme: "system",
+          amoled: false,
+        });
+
+        // a patch on top of malformed data still works
+        const patched = await agent
+          .patch("/api/auth/preferences")
+          .send({ theme: "dark" })
+          .expect(200);
+        expect(patched.body.preferences).toEqual({
+          fontFamily: "sans",
+          fontSize: "medium",
+          theme: "dark",
+          amoled: false,
+        });
       });
     });
 

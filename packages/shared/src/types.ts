@@ -6,7 +6,20 @@ export interface UserDto {
   username: string;
   email: string;
   emailVerified: boolean;
+  preferences: ReaderPreferences;
   createdAt: string;
+}
+
+export type ReaderFontFamily = "sans" | "serif" | "mono";
+export type ReaderFontSize = "small" | "medium" | "large" | "xlarge";
+export type ReaderTheme = "system" | "light" | "dark" | "sepia";
+
+/** Synced reader appearance preferences persisted on the user. */
+export interface ReaderPreferences {
+  fontFamily: ReaderFontFamily;
+  fontSize: ReaderFontSize;
+  theme: ReaderTheme;
+  amoled: boolean;
 }
 
 export interface SessionDto {
@@ -47,6 +60,24 @@ export interface FolderDto {
   updatedAt: string;
 }
 
+export type FetchStatus = "pending" | "ok" | "unsupported" | "failed";
+
+/**
+ * Machine-readable reason a bookmark's extraction ended in `unsupported` or
+ * `failed`. Stored alongside `fetchStatus` so clients can explain themselves.
+ */
+export type ExtractionReason =
+  | "non_html_content" // PDF/image/archive file or a non-HTML response
+  | "social_video_or_app" // social/video/app destination an article reader can't serve
+  | "js_required" // JavaScript-only shell ("please enable JavaScript", …)
+  | "login_or_paywall" // login/subscription wall hides the content
+  | "bot_challenge" // bot check / CAPTCHA interstitial
+  | "consent_wall" // cookie/consent interstitial hides the content
+  | "too_short" // extracted (or visible) content is empty or tiny
+  | "not_an_article" // link-heavy list/home/search shell with no article body
+  | "interrupted" // extraction was pending when the server stopped
+  | "fetch_error"; // network/HTTP failure while fetching
+
 export interface BookmarkDto {
   id: string;
   /** Owning folder, or null when the bookmark is unfiled. */
@@ -57,7 +88,17 @@ export interface BookmarkDto {
   domain: string;
   contentText: string | null;
   contentMarkdown: string | null;
-  fetchStatus: "pending" | "ok" | "failed";
+  fetchStatus: FetchStatus;
+  /** Why extraction ended in `unsupported`/`failed`; null when it succeeded. */
+  extractionReason: ExtractionReason | null;
+  /** Pipeline version that produced the stored content (null = pre-versioning). */
+  extractionVersion: number | null;
+  author: string | null;
+  publishedAt: string | null;
+  readingTimeMinutes: number | null;
+  /** Reading position within the article, 0..1. */
+  readProgress: number;
+  completedAt: string | null;
   isRead: boolean;
   createdAt: string;
   updatedAt: string;

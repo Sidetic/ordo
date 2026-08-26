@@ -30,6 +30,16 @@ export const TOKEN_TTL = {
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
 
+/**
+ * Version of the server's article-extraction pipeline. Bumped whenever the
+ * pipeline changes enough that stored content should be re-extracted; rows
+ * with an older (or missing) version are refreshed in the background.
+ */
+export const EXTRACTION_VERSION = 2;
+
+/** readProgress at or above this fraction marks a bookmark read/completed. */
+export const READ_COMPLETION_THRESHOLD = 0.98;
+
 /** Icon used when a folder is created without an explicit icon. */
 export const DEFAULT_FOLDER_ICON = "folder-outline";
 

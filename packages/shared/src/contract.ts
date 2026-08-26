@@ -14,7 +14,7 @@ import type {
   SessionDto,
   UserDto,
 } from "./types.js";
-import type { CreateFolderInput, UpdateFolderInput } from "./schemas/index.js";
+import type { CreateFolderInput, UpdateFolderInput, UpdateReaderPreferencesInput } from "./schemas/index.js";
 
 export const API_PREFIX = "/api";
 
@@ -144,6 +144,14 @@ export const AuthRoutes = {
     params: {} as Empty,
     response: {} as AuthResponse,
   },
+  updatePreferences: {
+    path: `${API_PREFIX}/auth/preferences`,
+    method: "PATCH",
+    body: {} as UpdateReaderPreferencesInput,
+    query: {} as Empty,
+    params: {} as Empty,
+    response: {} as UserDto,
+  },
   deleteAccount: {
     path: `${API_PREFIX}/auth/account`,
     method: "DELETE",
@@ -251,7 +259,7 @@ export const BookmarkRoutes = {
   update: {
     path: `${API_PREFIX}/bookmarks/:id`,
     method: "PATCH",
-    body: {} as { folderId?: string | null; isRead?: boolean },
+    body: {} as { folderId?: string | null; isRead?: boolean; readProgress?: number },
     query: {} as Empty,
     params: {} as { id: string },
     response: {} as BookmarkDto,

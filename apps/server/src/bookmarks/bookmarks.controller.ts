@@ -94,7 +94,11 @@ export class BookmarksController {
   async update(
     @CurrentUser() user: AuthContext,
     @Param("id") id: string,
-    @Body(new ZodValidationPipe(UpdateBookmarkSchema)) body: { folderId?: string | null; isRead?: boolean },
+    @Body(new ZodValidationPipe(UpdateBookmarkSchema)) body: {
+      folderId?: string | null;
+      isRead?: boolean;
+      readProgress?: number;
+    },
     @Req() req: Request,
   ): Promise<BookmarkDto> {
     return this.bookmarks.update(user.userId, id, body, getFolderToken(req));

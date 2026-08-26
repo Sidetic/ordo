@@ -74,7 +74,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         this.logger.log("Made Bookmark.folderId nullable (unfiled bookmarks are now supported)");
       }
 
-      // --- 2. fold legacy default folders into unfiled bookmarks ---
+      // --- 2. add missing reader-rework columns (purely additive) ---
+      // Runs after any table rebuild so rebuilt tables get the columns too.
+      await this.addMissingColumns(
+        "Bookmark",
+        BOOKMARK_ADDITIVE_COLUMNS,
+        await this.$queryRaw<SqliteColumn[]>(Prisma.sql`PRAGMA table_info("Bookmark")`),
+      );
+      await this.addMissingColumns(
+        "User",
+        USER_ADDITIVE_COLUMNS,
+        await this.$queryRaw<SqliteColumn[]>(Prisma.sql`PRAGMA table_info("User")`),
+      );
+
+      // --- 3. fold legacy default folders into unfiled bookmarks ---
       const folderColumns = await this.$queryRaw<SqliteColumn[]>(
         Prisma.sql`PRAGMA table_info("Folder")`,
       );
@@ -139,6 +152,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     );
   }
 
+  /** Add `ALTER TABLE … ADD COLUMN` statements for columns the on-disk table
+   *  lacks. Idempotent: existing columns are skipped. */
+  private async addMissingColumns(
+    table: string,
+    additions: ReadonlyArray<readonly [name: string, ddl: string]>,
+    columns: SqliteColumn[],
+  ): Promise<void> {
+    const existing = new Set(columns.map((c) => c.name));
+    for (const [name, ddl] of additions) {
+      if (existing.has(name)) continue;
+      await this.$executeRawUnsafe(`ALTER TABLE "${table}" ADD COLUMN "${name}" ${ddl}`);
+    }
+  }
+
   private mask(url: string): string {
     return url.startsWith("file:") ? `file:${url.slice(5).split("/").pop()}` : "postgres";
   }
@@ -160,6 +187,22 @@ const BOOKMARK_TABLE_COLUMNS: readonly string[] = [
   "isRead",
   "createdAt",
   "updatedAt",
+];
+
+/** Reader-rework columns added to pre-existing Bookmark tables at runtime. */
+const BOOKMARK_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: string]> = [
+  ["extractionReason", "TEXT"],
+  ["extractionVersion", "INTEGER"],
+  ["author", "TEXT"],
+  ["publishedAt", "DATETIME"],
+  ["readingTimeMinutes", "INTEGER"],
+  ["readProgress", "REAL NOT NULL DEFAULT 0"],
+  ["completedAt", "DATETIME"],
+];
+
+/** Reader-rework columns added to pre-existing User tables at runtime. */
+const USER_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: string]> = [
+  ["preferences", "TEXT"],
 ];
 
 /** Identical to the previous generated DDL except folderId is now nullable. */

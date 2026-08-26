@@ -114,6 +114,64 @@ function boot(path: string): Promise<PrismaService> {
   return service.onModuleInit().then(() => service);
 }
 
+/**
+ * The schema as it was between the unfiled-bookmarks rework and the reader
+ * rework: nullable Bookmark.folderId, no Folder.isDefault, none of the
+ * extraction/progress columns, no User.preferences.
+ */
+const PRE_READER_DDL = [
+  `CREATE TABLE "User" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "username" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "passwordHash" TEXT NOT NULL,
+    "emailVerifiedAt" DATETIME,
+    "pendingEmail" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "User_username_key" UNIQUE ("username"),
+    CONSTRAINT "User_email_key" UNIQUE ("email")
+  )`,
+  `CREATE TABLE "Folder" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "icon" TEXT NOT NULL DEFAULT 'folder-outline',
+    "pinned" BOOLEAN NOT NULL DEFAULT false,
+    "passwordHash" TEXT,
+    "position" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Folder_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+  )`,
+  `CREATE INDEX "Folder_userId_idx" ON "Folder"("userId")`,
+  `CREATE TABLE "Bookmark" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "folderId" TEXT,
+    "url" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "domain" TEXT NOT NULL,
+    "contentHtml" TEXT,
+    "contentMarkdown" TEXT,
+    "contentText" TEXT,
+    "fetchStatus" TEXT NOT NULL DEFAULT 'ok',
+    "isRead" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Bookmark_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Bookmark_folderId_fkey" FOREIGN KEY ("folderId") REFERENCES "Folder" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+  )`,
+  `CREATE INDEX "Bookmark_userId_idx" ON "Bookmark"("userId")`,
+  `CREATE INDEX "Bookmark_folderId_idx" ON "Bookmark"("folderId")`,
+  `CREATE INDEX "Bookmark_createdAt_idx" ON "Bookmark"("createdAt")`,
+  `INSERT INTO "User" ("id","username","email","passwordHash","createdAt","updatedAt")
+   VALUES ('u1','one','one@ordo.app','x',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`,
+  `INSERT INTO "Bookmark" ("id","userId","folderId","url","title","domain","createdAt","updatedAt")
+   VALUES ('b1','u1',NULL,'https://example.com/a','A','example.com',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`,
+];
+
 describe("PrismaService legacy schema migration", () => {
   afterEach(() => {
     for (const file of execSync(`ls /tmp/ordo-migration-${process.pid}-* 2>/dev/null || true`)
@@ -151,6 +209,27 @@ describe("PrismaService legacy schema migration", () => {
     )) as Array<{ name: string }>;
     expect(folderCols.some((c) => c.name === "isDefault")).toBe(true);
 
+    // reader-rework columns were added additively, with their defaults applied
+    for (const column of [
+      "extractionReason",
+      "extractionVersion",
+      "author",
+      "publishedAt",
+      "readingTimeMinutes",
+      "readProgress",
+      "completedAt",
+    ]) {
+      expect(bookmarkCols.some((c) => c.name === column)).toBe(true);
+    }
+    const progress = (await service.$queryRawUnsafe(
+      `SELECT "readProgress" FROM "Bookmark" WHERE "id" = 'b-kept'`,
+    )) as Array<{ readProgress: number | bigint }>;
+    expect(Number(progress[0]?.readProgress)).toBe(0);
+    const userCols = (await service.$queryRawUnsafe(
+      `PRAGMA table_info("User")`,
+    )) as Array<{ name: string }>;
+    expect(userCols.some((c) => c.name === "preferences")).toBe(true);
+
     // indexes and foreign keys survive the rebuild
     const indexes = (await service.$queryRawUnsafe(
       `SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'Bookmark'`,
@@ -176,6 +255,45 @@ describe("PrismaService legacy schema migration", () => {
     expect(await second.bookmark.count()).toBe(3);
     expect(await second.folder.count()).toBe(1);
     await second.onModuleDestroy();
+  });
+
+  it("adds the reader-rework columns to a post-unfiled, pre-reader database", async () => {
+    const path = tempDbPath();
+    const db = new PrismaClient({ datasources: { db: { url: `file:${path}` } } });
+    for (const statement of PRE_READER_DDL) {
+      await db.$executeRawUnsafe(statement);
+    }
+    await db.$disconnect();
+
+    const service = await boot(path);
+
+    // every missing column was added; existing rows got the declared defaults
+    const bookmark = await service.bookmark.findUniqueOrThrow({ where: { id: "b1" } });
+    expect(bookmark.readProgress).toBe(0);
+    expect(bookmark.extractionReason).toBeNull();
+    expect(bookmark.extractionVersion).toBeNull();
+    expect(bookmark.completedAt).toBeNull();
+    const user = await service.user.findUniqueOrThrow({ where: { id: "u1" } });
+    expect(user.preferences).toBeNull();
+
+    // the generated client round-trips reads and writes on the new columns
+    await service.bookmark.update({
+      where: { id: "b1" },
+      data: {
+        fetchStatus: "unsupported",
+        extractionReason: "js_required",
+        extractionVersion: 2,
+        readProgress: 0.5,
+      },
+    });
+    const updated = await service.bookmark.findUniqueOrThrow({ where: { id: "b1" } });
+    expect(updated).toMatchObject({
+      fetchStatus: "unsupported",
+      extractionReason: "js_required",
+      extractionVersion: 2,
+      readProgress: 0.5,
+    });
+    await service.onModuleDestroy();
   });
 
   it("leaves fresh (current-schema) databases untouched", async () => {

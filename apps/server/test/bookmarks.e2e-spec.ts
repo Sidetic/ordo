@@ -1,6 +1,6 @@
 import request from "supertest";
-import { DEFAULT_FOLDER_ICON, ErrorCode } from "@ordo/shared";
-import { ReaderService } from "../src/bookmarks/reader.service.js";
+import { DEFAULT_FOLDER_ICON, ErrorCode, EXTRACTION_VERSION } from "@ordo/shared";
+import { ReaderService, UnsupportedContentError } from "../src/bookmarks/reader.service.js";
 import {
   clearDb,
   createTestApp,
@@ -12,14 +12,24 @@ import {
 const FAKE_EXTRACTED = {
   title: "Sample Article",
   description: "A summary.",
+  author: "Jane Doe",
+  publishedAt: "2026-01-15T09:30:00.000Z",
   domain: "example.com",
+  readingTimeMinutes: 4,
   contentHtml: "<p>Hello world.</p>",
   contentMarkdown: "Hello world.",
   contentText: "Hello world.",
 };
 
 function fakeReader() {
-  return { extract: async () => ({ ...FAKE_EXTRACTED }) } as unknown as ReaderService;
+  return {
+    extract: async (url: string) => {
+      if (url.includes("/js-only")) {
+        throw new UnsupportedContentError("js_required", "JavaScript is not enabled");
+      }
+      return { ...FAKE_EXTRACTED };
+    },
+  } as unknown as ReaderService;
 }
 
 describe("Bookmarks & Folders (e2e)", () => {
@@ -242,6 +252,34 @@ describe("Bookmarks & Folders (e2e)", () => {
         title: "Sample Article",
         contentMarkdown: "Hello world.",
         fetchStatus: "ok",
+        extractionVersion: EXTRACTION_VERSION,
+        extractionReason: null,
+        author: "Jane Doe",
+        readingTimeMinutes: 4,
+        publishedAt: new Date("2026-01-15T09:30:00.000Z"),
+      });
+    });
+
+    it("stores typed unsupported rejections instead of junk content", async () => {
+      const { agent } = await setup();
+      const res = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/js-only/app" })
+        .expect(201);
+      expect(res.body.fetchStatus).toBe("pending");
+
+      let stored = await ctx.prisma.bookmark.findUnique({ where: { id: res.body.id } });
+      for (let attempt = 0; attempt < 20 && stored?.fetchStatus === "pending"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        stored = await ctx.prisma.bookmark.findUnique({ where: { id: res.body.id } });
+      }
+      expect(stored).toMatchObject({
+        fetchStatus: "unsupported",
+        extractionReason: "js_required",
+        extractionVersion: EXTRACTION_VERSION,
+        contentHtml: null,
+        contentMarkdown: null,
+        contentText: null,
       });
     });
 
@@ -512,6 +550,107 @@ describe("Bookmarks & Folders (e2e)", () => {
 
       const empty = await agent.patch(`/api/bookmarks/${created.body.id}`).send({}).expect(400);
       expect(empty.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+    });
+  });
+
+  describe("read progress", () => {
+    it("persists partial progress without completing the bookmark", async () => {
+      const { agent } = await setup();
+      const created = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/long-read" })
+        .expect(201);
+
+      const half = await agent
+        .patch(`/api/bookmarks/${created.body.id}`)
+        .send({ readProgress: 0.5 })
+        .expect(200);
+      expect(half.body.readProgress).toBe(0.5);
+      expect(half.body.isRead).toBe(false);
+      expect(half.body.completedAt).toBeNull();
+    });
+
+    it("completes the bookmark at >= 0.98 and clears completedAt when reduced", async () => {
+      const { agent } = await setup();
+      const created = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/long-read" })
+        .expect(201);
+
+      const done = await agent
+        .patch(`/api/bookmarks/${created.body.id}`)
+        .send({ readProgress: 1 })
+        .expect(200);
+      expect(done.body.readProgress).toBe(1);
+      expect(done.body.isRead).toBe(true);
+      expect(done.body.completedAt).toBeTruthy();
+
+      const reread = await agent
+        .patch(`/api/bookmarks/${created.body.id}`)
+        .send({ readProgress: 0.2 })
+        .expect(200);
+      expect(reread.body.readProgress).toBe(0.2);
+      expect(reread.body.completedAt).toBeNull();
+    });
+
+    it("rejects out-of-range progress with a validation error", async () => {
+      const { agent } = await setup();
+      const created = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/x" })
+        .expect(201);
+
+      const tooBig = await agent
+        .patch(`/api/bookmarks/${created.body.id}`)
+        .send({ readProgress: 1.5 })
+        .expect(400);
+      expect(tooBig.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+
+      const negative = await agent
+        .patch(`/api/bookmarks/${created.body.id}`)
+        .send({ readProgress: -0.1 })
+        .expect(400);
+      expect(negative.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+    });
+
+    it("does not regress progress from incidental mutations", async () => {
+      const { agent, userId } = await setup();
+      await ctx.prisma.bookmark.create({
+        data: {
+          userId,
+          folderId: null,
+          url: "https://example.com/in-progress",
+          title: "In progress",
+          domain: "example.com",
+          readProgress: 0.4,
+        },
+      });
+      const bookmark = (await agent.get("/api/bookmarks").expect(200)).body.items[0];
+
+      // mark-read-on-open keeps its old behavior: it must not touch progress
+      const marked = await agent
+        .patch(`/api/bookmarks/${bookmark.id}`)
+        .send({ isRead: true })
+        .expect(200);
+      expect(marked.body.readProgress).toBe(0.4);
+      expect(marked.body.completedAt).toBeNull();
+      expect(marked.body.isRead).toBe(true);
+
+      // moving folders is an incidental mutation, not a progress reset
+      const folder = await agent.post("/api/folders").send({ name: "Filed" }).expect(201);
+      const moved = await agent
+        .patch(`/api/bookmarks/${bookmark.id}`)
+        .send({ folderId: folder.body.id })
+        .expect(200);
+      expect(moved.body.readProgress).toBe(0.4);
+      expect(moved.body.isRead).toBe(true);
+
+      // metadata round-trips through list and detail
+      const detail = await agent.get(`/api/bookmarks/${bookmark.id}`).expect(200);
+      expect(detail.body.readProgress).toBe(0.4);
+      expect(detail.body.extractionVersion).toBeNull();
+      expect(detail.body.extractionReason).toBeNull();
+      expect(detail.body.fetchStatus).toBe("ok");
     });
   });
 

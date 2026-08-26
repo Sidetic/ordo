@@ -24,10 +24,19 @@ export const UpdateBookmarkSchema = z
     /** Passing `null` moves the bookmark to unfiled. */
     folderId: folderId.optional(),
     isRead: z.boolean().optional(),
+    /** Reading position within the article, 0..1 (>= 0.98 completes it). */
+    readProgress: z
+      .number()
+      .min(0, { message: "readProgress must be between 0 and 1" })
+      .max(1, { message: "readProgress must be between 0 and 1" })
+      .optional(),
   })
-  .refine((v) => v.folderId !== undefined || v.isRead !== undefined, {
-    message: "Provide at least one field to update",
-  });
+  .refine(
+    (v) => v.folderId !== undefined || v.isRead !== undefined || v.readProgress !== undefined,
+    {
+      message: "Provide at least one field to update",
+    },
+  );
 export type UpdateBookmarkInput = z.infer<typeof UpdateBookmarkSchema>;
 
 /** Without a `folderId` (or with `null`), only unfiled bookmarks are marked read. */

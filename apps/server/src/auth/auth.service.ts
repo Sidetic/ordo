@@ -1,11 +1,13 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import bcrypt from "bcryptjs";
-import type { Session } from "@prisma/client";
+import type { Session, User } from "@prisma/client";
 import {
   ErrorCode,
+  normalizeReaderPreferences,
   type AuthResponse,
   type SessionDeviceType,
   type SessionDto,
+  type UpdateReaderPreferencesInput,
   type UserDto,
 } from "@ordo/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -131,6 +133,21 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
     return toUserDto(user);
+  }
+
+  /** Merge a validated partial patch into the stored reader preferences. */
+  async updatePreferences(
+    userId: string,
+    patch: UpdateReaderPreferencesInput,
+  ): Promise<UserDto> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
+    const merged = { ...normalizeReaderPreferences(user.preferences), ...patch };
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { preferences: JSON.stringify(merged) },
+    });
+    return toUserDto(updated);
   }
 
   async listSessions(userId: string, currentSessionId: string): Promise<SessionDto[]> {
@@ -303,18 +320,12 @@ export class AuthService {
   }
 
   private buildAuthResponse(
-    user: { id: string; username: string; email: string; emailVerifiedAt: Date | null; createdAt: Date },
+    user: User,
     session: Session,
     tokens: { accessToken: string; refreshToken: string; expiresIn: number },
   ): AuthResponse {
     return {
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        emailVerified: user.emailVerifiedAt !== null,
-        createdAt: user.createdAt.toISOString(),
-      },
+      user: toUserDto(user),
       session: toSessionDto({ ...session, current: true }),
       tokens: {
         accessToken: tokens.accessToken,

@@ -1,18 +1,25 @@
 import type { Bookmark, Folder, Session, User } from "@prisma/client";
 import {
   normalizeFolderIcon,
+  normalizeReaderPreferences,
   type BookmarkDto,
+  type ExtractionReason,
+  type FetchStatus,
   type FolderDto,
   type SessionDto,
   type UserDto,
 } from "@ordo/shared";
 
-export function toUserDto(u: User): UserDto {
+export type UserDtoFields = Pick<User, "id" | "username" | "email" | "emailVerifiedAt" | "preferences" | "createdAt">;
+
+/** Map a user row (or a superset) to a DTO; preferences fall back to defaults when malformed. */
+export function toUserDto(u: UserDtoFields): UserDto {
   return {
     id: u.id,
     username: u.username,
     email: u.email,
     emailVerified: u.emailVerifiedAt !== null,
+    preferences: normalizeReaderPreferences(u.preferences),
     createdAt: u.createdAt.toISOString(),
   };
 }
@@ -62,6 +69,21 @@ export function toFolderDto(
   };
 }
 
+const FETCH_STATUSES: readonly FetchStatus[] = ["pending", "ok", "unsupported", "failed"];
+
+const EXTRACTION_REASONS: readonly ExtractionReason[] = [
+  "non_html_content",
+  "social_video_or_app",
+  "js_required",
+  "login_or_paywall",
+  "bot_challenge",
+  "consent_wall",
+  "too_short",
+  "not_an_article",
+  "interrupted",
+  "fetch_error",
+];
+
 export type BookmarkDtoFields = Pick<
   Bookmark,
   | "id"
@@ -73,6 +95,13 @@ export type BookmarkDtoFields = Pick<
   | "contentText"
   | "contentMarkdown"
   | "fetchStatus"
+  | "extractionReason"
+  | "extractionVersion"
+  | "author"
+  | "publishedAt"
+  | "readingTimeMinutes"
+  | "readProgress"
+  | "completedAt"
   | "isRead"
   | "createdAt"
   | "updatedAt"
@@ -88,8 +117,18 @@ export function toBookmarkDto(b: BookmarkDtoFields): BookmarkDto {
     domain: b.domain,
     contentText: b.contentText,
     contentMarkdown: b.contentMarkdown,
-    fetchStatus:
-      b.fetchStatus === "pending" || b.fetchStatus === "ok" ? b.fetchStatus : "failed",
+    fetchStatus: FETCH_STATUSES.includes(b.fetchStatus as FetchStatus)
+      ? (b.fetchStatus as FetchStatus)
+      : "failed",
+    extractionReason: EXTRACTION_REASONS.includes(b.extractionReason as ExtractionReason)
+      ? (b.extractionReason as ExtractionReason)
+      : null,
+    extractionVersion: b.extractionVersion,
+    author: b.author,
+    publishedAt: b.publishedAt?.toISOString() ?? null,
+    readingTimeMinutes: b.readingTimeMinutes,
+    readProgress: b.readProgress,
+    completedAt: b.completedAt?.toISOString() ?? null,
     isRead: b.isRead,
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),

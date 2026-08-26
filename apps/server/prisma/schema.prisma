@@ -17,6 +17,8 @@ model User {
   passwordHash    String
   emailVerifiedAt DateTime?
   pendingEmail    String?
+  /// JSON-encoded synced reader preferences (see ReaderPreferences in @ordo/shared).
+  preferences     String?
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
 
@@ -104,6 +106,15 @@ model Bookmark {
   contentMarkdown String?
   contentText     String?
   fetchStatus     String   @default("ok")
+  /** Why extraction ended in `unsupported`/`failed` (ExtractionReason in @ordo/shared). */
+  extractionReason String?
+  /** Pipeline version that produced the stored content; null = pre-versioning. */
+  extractionVersion Int?
+  author          String?
+  publishedAt     DateTime?
+  readingTimeMinutes Int?
+  readProgress    Float    @default(0)
+  completedAt     DateTime?
   isRead          Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

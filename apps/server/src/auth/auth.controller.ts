@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Req,
   Res,
@@ -18,10 +19,12 @@ import {
   DeleteAccountSchema,
   LoginSchema,
   RegisterSchema,
+  UpdateReaderPreferencesSchema,
   VerifyEmailChangeSchema,
   VerifyEmailSchema,
   type AuthResponse,
   type SessionDto,
+  type UpdateReaderPreferencesInput,
   type UserDto,
 } from "@ordo/shared";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe.js";
@@ -112,6 +115,18 @@ export class AuthController {
   @UseGuards(AuthGuard)
   async me(@CurrentUser() user: AuthContext): Promise<UserDto> {
     return this.auth.me(user.userId);
+  }
+
+  /** Merge a partial reader-preferences patch into the user's synced prefs. */
+  @Patch("preferences")
+  @UseGuards(AuthGuard)
+  @HttpCode(200)
+  async updatePreferences(
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(UpdateReaderPreferencesSchema))
+    body: UpdateReaderPreferencesInput,
+  ): Promise<UserDto> {
+    return this.auth.updatePreferences(user.userId, body);
   }
 
   @Get("sessions")

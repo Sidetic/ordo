@@ -3,13 +3,15 @@ import type { Folder, Prisma } from "@prisma/client";
 import {
   DEFAULT_PAGE_SIZE,
   ErrorCode,
+  EXTRACTION_VERSION,
   MAX_PAGE_SIZE,
+  READ_COMPLETION_THRESHOLD,
   type BookmarkDto,
   type CursorPage,
 } from "@ordo/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { AppError } from "../common/errors/app-error.js";
-import { ReaderService } from "./reader.service.js";
+import { ReaderService, UnsupportedContentError } from "./reader.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
 import { toBookmarkDto, toBookmarkDetailDto } from "../common/mappers.js";
 import {
@@ -29,12 +31,26 @@ const LIST_SELECT = {
   contentMarkdown: true,
   contentText: true,
   fetchStatus: true,
+  extractionReason: true,
+  extractionVersion: true,
+  author: true,
+  publishedAt: true,
+  readingTimeMinutes: true,
+  readProgress: true,
+  completedAt: true,
   isRead: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.BookmarkSelect;
 
 type ListItem = Prisma.BookmarkGetPayload<{ select: typeof LIST_SELECT }>;
+
+/** Background refresh tuning: low concurrency, small batches, finite spacing. */
+const REFRESH_BATCH_SIZE = 50;
+const REFRESH_CONCURRENCY = 2;
+const REFRESH_DELAY_MS = 250;
+/** Hard stop so a pathological database can never loop forever. */
+const REFRESH_MAX_BATCHES = 500;
 
 @Injectable()
 export class BookmarksService implements OnApplicationBootstrap {
@@ -47,13 +63,17 @@ export class BookmarksService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
+    // Extractions interrupted by a shutdown stay pending in the database; mark
+    // them failed without a version so the refresh below retries them once.
     const interrupted = await this.prisma.bookmark.updateMany({
       where: { fetchStatus: "pending" },
-      data: { fetchStatus: "failed" },
+      data: { fetchStatus: "failed", extractionReason: "interrupted" },
     });
     if (interrupted.count > 0) {
       this.logger.warn(`Marked ${interrupted.count} interrupted extractions as failed`);
     }
+    // Non-blocking: never delay startup on re-extraction work.
+    void this.refreshStaleExtractions();
   }
 
   /** Save immediately, then enrich the bookmark in the background. */
@@ -123,7 +143,7 @@ export class BookmarksService implements OnApplicationBootstrap {
   async update(
     userId: string,
     bookmarkId: string,
-    changes: { folderId?: string | null; isRead?: boolean },
+    changes: { folderId?: string | null; isRead?: boolean; readProgress?: number },
     folderToken: string | null,
   ): Promise<BookmarkDto> {
     const bookmark = await this.prisma.bookmark.findFirst({
@@ -136,8 +156,27 @@ export class BookmarksService implements OnApplicationBootstrap {
       await this.access.requireFolder(bookmark.folderId, userId, folderToken);
     }
 
-    const data: { folderId?: string | null; isRead?: boolean } = {};
-    if (changes.isRead !== undefined) data.isRead = changes.isRead;
+    const data: {
+      folderId?: string | null;
+      isRead?: boolean;
+      readProgress?: number;
+      completedAt?: Date | null;
+    } = {};
+    if (changes.isRead !== undefined) {
+      data.isRead = changes.isRead;
+      if (!changes.isRead) data.completedAt = null;
+    }
+    if (changes.readProgress !== undefined) {
+      // Clamp defensively even though the schema already bounds it to 0..1.
+      const progress = Math.min(1, Math.max(0, changes.readProgress));
+      data.readProgress = progress;
+      if (progress >= READ_COMPLETION_THRESHOLD) {
+        data.isRead = true;
+        data.completedAt = bookmark.completedAt ?? new Date();
+      } else {
+        data.completedAt = null;
+      }
+    }
     if (changes.folderId !== undefined) {
       if (changes.folderId === null) {
         // null explicitly moves the bookmark to unfiled.
@@ -186,29 +225,114 @@ export class BookmarksService implements OnApplicationBootstrap {
   private async enrichBookmark(bookmarkId: string, url: string): Promise<void> {
     try {
       const extracted = await this.reader.extract(url);
+      // updateMany: a row deleted mid-flight is a harmless no-op.
       await this.prisma.bookmark.updateMany({
         where: { id: bookmarkId },
         data: {
           title: extracted.title,
           description: extracted.description,
           domain: extracted.domain,
+          author: extracted.author,
+          publishedAt: extracted.publishedAt ? new Date(extracted.publishedAt) : null,
+          readingTimeMinutes: extracted.readingTimeMinutes,
           contentHtml: extracted.contentHtml,
           contentMarkdown: extracted.contentMarkdown,
           contentText: extracted.contentText,
           fetchStatus: "ok",
+          extractionReason: null,
+          extractionVersion: EXTRACTION_VERSION,
         },
       });
     } catch (err) {
+      // Typed rejections are stored as `unsupported` with the reason; anything
+      // else (network, HTTP errors, parse crashes) is a plain failure.
+      const unsupported = err instanceof UnsupportedContentError;
+      const reason = unsupported ? err.reason : "fetch_error";
+      const definitivelyUnreadable =
+        unsupported &&
+        ["social_video_or_app", "js_required", "too_short", "not_an_article"].includes(reason);
       this.logger.warn(
-        `Extraction failed for bookmark ${bookmarkId} (${this.safeHostname(url)}): ${(err as Error).message}`,
+        `Extraction ${unsupported ? "rejected" : "failed"} for bookmark ${bookmarkId} (${this.safeHostname(url)}): ${reason} — ${(err as Error).message}`,
       );
+      const existing = await this.prisma.bookmark.findUnique({
+        where: { id: bookmarkId },
+        select: { contentHtml: true },
+      });
       await this.prisma.bookmark
-        .updateMany({ where: { id: bookmarkId }, data: { fetchStatus: "failed" } })
+        .updateMany({
+          where: { id: bookmarkId },
+          data: definitivelyUnreadable || (unsupported && !existing?.contentHtml)
+            ? {
+                fetchStatus: "unsupported",
+                extractionReason: reason,
+                extractionVersion: EXTRACTION_VERSION,
+                contentHtml: null,
+                contentMarkdown: null,
+                contentText: null,
+                readingTimeMinutes: null,
+              }
+            : existing?.contentHtml
+              ? {
+                  // A transient fetch/interstitial failure must not destroy a
+                  // readable capture from the previous extraction version.
+                  fetchStatus: "ok",
+                  extractionReason: null,
+                  extractionVersion: EXTRACTION_VERSION,
+                }
+              : {
+                  fetchStatus: "failed",
+                  extractionReason: reason,
+                  extractionVersion: EXTRACTION_VERSION,
+                },
+        })
         .catch((updateError: unknown) => {
           this.logger.error(
             `Could not update extraction status for bookmark ${bookmarkId}: ${(updateError as Error).message}`,
           );
         });
+    }
+  }
+
+  /**
+   * Re-extract bookmarks whose content predates the current pipeline version
+   * (including rows left unversioned by an interrupted boot). Runs in small
+   * batches with low concurrency and a finite delay; because every outcome —
+   * ok, unsupported, or failed — stamps the current version, rows are retried
+   * at most once per version and never loop within a boot.
+   */
+  private async refreshStaleExtractions(): Promise<void> {
+    try {
+      for (let batch = 0; batch < REFRESH_MAX_BATCHES; batch += 1) {
+        const stale = await this.prisma.bookmark.findMany({
+          where: {
+            fetchStatus: { not: "pending" },
+            OR: [
+              { extractionVersion: null },
+              { extractionVersion: { lt: EXTRACTION_VERSION } },
+            ],
+          },
+          select: { id: true, url: true },
+          orderBy: { id: "asc" },
+          take: REFRESH_BATCH_SIZE,
+        });
+        if (stale.length === 0) return;
+
+        const workers = Array.from({ length: REFRESH_CONCURRENCY }, async (_, slot) => {
+          for (let i = slot; i < stale.length; i += REFRESH_CONCURRENCY) {
+            const { id, url } = stale[i];
+            await this.enrichBookmark(id, url);
+          }
+        });
+        await Promise.all(workers);
+
+        if (stale.length < REFRESH_BATCH_SIZE) return;
+        await new Promise((resolve) => setTimeout(resolve, REFRESH_DELAY_MS));
+      }
+      this.logger.warn(
+        `Stopped refreshing stale extractions after ${REFRESH_MAX_BATCHES} batches`,
+      );
+    } catch (err) {
+      this.logger.error(`Stale extraction refresh failed: ${(err as Error).message}`);
     }
   }
 
