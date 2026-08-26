@@ -36,6 +36,7 @@ import { Button } from "../ui/Button";
 import { Skeleton } from "../ui/Skeleton";
 import { PressableScale } from "../ui/PressableScale";
 import { FloatingPanel } from "../ui/FloatingPanel";
+import { FAB, FABLayer } from "../ui/FAB";
 import { ArticleHtml, type ArticleHeading } from "./ArticleHtml";
 import { Markdown } from "./Markdown";
 import { ReaderControlsSheet } from "./ReaderControlsSheet";
@@ -65,6 +66,7 @@ export interface ReaderPaneProps {
 const PROGRESS_DELTA = 0.08;
 /** Trailing idle window before a progress write is flushed. */
 const PROGRESS_DEBOUNCE_MS = 1_500;
+const CONTENTS_IDLE_DELAY_MS = 450;
 
 /** Collapse whitespace/newlines so stored titles render as one line-ish. */
 function normalizeTitle(raw: string | null | undefined): string {
@@ -270,7 +272,6 @@ function ReaderPaneInner({
   /* ------------------------------ reading progress ----------------------------- */
 
   const scrollRef = useRef<ScrollView>(null);
-  const scrollViewportRef = useRef<View>(null);
   const trackProgressRef = useRef(false);
   const currentArticleRef = useRef<{ id: string; folderId: string | null } | null>(null);
   const initialProgressRef = useRef(0);
@@ -284,6 +285,7 @@ function ReaderPaneInner({
   const headingRefs = useRef(new Map<string, View>());
   const articleHeaderHeightRef = useRef(0);
   const contentsShortcutVisibleRef = useRef(false);
+  const contentsShortcutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleHeadingRef = useCallback((id: string, view: View | null) => {
     if (view) headingRefs.current.set(id, view);
@@ -292,26 +294,45 @@ function ReaderPaneInner({
 
   const handleHeadingSelect = useCallback((id: string) => {
     const heading = headingRefs.current.get(id);
-    setActionPanel(null);
-    if (!heading) return;
-    haptics.light();
-    requestAnimationFrame(() => {
-      heading.measureInWindow((_headingX, headingY) => {
-        scrollViewportRef.current?.measureInWindow((_scrollX, scrollY) => {
-          const y = offsetRef.current + headingY - scrollY - spacing[16];
-          scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true });
-        });
-      });
-    });
+    const scrollContent = scrollRef.current?.getInnerViewNode();
+    if (!heading || !scrollContent) return;
+    heading.measureLayout(
+      scrollContent,
+      (_x, y) => {
+        haptics.light();
+        setActionPanel(null);
+        scrollRef.current?.scrollTo({ y: Math.max(0, y - spacing[16]), animated: true });
+      },
+      () => {},
+    );
   }, []);
 
   const syncContentsShortcut = useCallback(
-    (offset: number, headerHeight = articleHeaderHeightRef.current) => {
-      const visible =
+    (offset: number, headerHeight = articleHeaderHeightRef.current, defer = false) => {
+      if (contentsShortcutTimerRef.current) {
+        clearTimeout(contentsShortcutTimerRef.current);
+        contentsShortcutTimerRef.current = null;
+      }
+      const eligible =
         hasHtml && articleHeadings.length >= 3 && offset >= headerHeight + spacing[16];
-      if (visible === contentsShortcutVisibleRef.current) return;
-      contentsShortcutVisibleRef.current = visible;
-      setContentsShortcutVisible(visible);
+      const updateVisibility = (visible: boolean) => {
+        if (visible === contentsShortcutVisibleRef.current) return;
+        contentsShortcutVisibleRef.current = visible;
+        setContentsShortcutVisible(visible);
+      };
+      if (!eligible) {
+        updateVisibility(false);
+        return;
+      }
+      if (!defer) {
+        updateVisibility(true);
+        return;
+      }
+      updateVisibility(false);
+      contentsShortcutTimerRef.current = setTimeout(() => {
+        contentsShortcutTimerRef.current = null;
+        updateVisibility(true);
+      }, CONTENTS_IDLE_DELAY_MS);
     },
     [articleHeadings.length, hasHtml],
   );
@@ -319,6 +340,13 @@ function ReaderPaneInner({
   useEffect(() => {
     syncContentsShortcut(offsetRef.current);
   }, [syncContentsShortcut]);
+
+  useEffect(
+    () => () => {
+      if (contentsShortcutTimerRef.current) clearTimeout(contentsShortcutTimerRef.current);
+    },
+    [],
+  );
 
   const persistProgress = useCallback(
     (id: string, folderId: string | null, value: number) => {
@@ -395,6 +423,10 @@ function ReaderPaneInner({
     articleHeaderHeightRef.current = 0;
     setProgress(baseline);
     setExternalLaunchFailed(false);
+    if (contentsShortcutTimerRef.current) {
+      clearTimeout(contentsShortcutTimerRef.current);
+      contentsShortcutTimerRef.current = null;
+    }
     contentsShortcutVisibleRef.current = false;
     setContentsShortcutVisible(false);
     return () => {
@@ -416,8 +448,9 @@ function ReaderPaneInner({
       const y = target * scrollable;
       scrollRef.current?.scrollTo({ y, animated: false });
       offsetRef.current = y;
+      syncContentsShortcut(y);
     }
-  }, []);
+  }, [syncContentsShortcut]);
 
   // Start tracking once content exists; retry restore in case the native
   // layout events fired before tracking was armed.
@@ -432,7 +465,7 @@ function ReaderPaneInner({
       offsetRef.current = contentOffset.y;
       viewHeightRef.current = layoutMeasurement.height;
       contentHeightRef.current = contentSize.height;
-      syncContentsShortcut(contentOffset.y);
+      syncContentsShortcut(contentOffset.y, articleHeaderHeightRef.current, true);
       if (contentSize.height <= 0 || layoutMeasurement.height <= 0) return;
       const scrollable = contentSize.height - layoutMeasurement.height;
       handleFraction(
@@ -490,16 +523,12 @@ function ReaderPaneInner({
         hitSlop={8}
         onPress={() => {
           haptics.light();
-          setActionPanel(contentsShortcutVisible ? "contents" : "actions");
+          setActionPanel("actions");
         }}
         accessibilityRole="button"
-        accessibilityLabel={contentsShortcutVisible ? "Table of contents" : "More article actions"}
+        accessibilityLabel="More article actions"
       >
-        <Ionicons
-          name={contentsShortcutVisible ? "list-outline" : "ellipsis-horizontal"}
-          size={22}
-          color={palette.text}
-        />
+        <Ionicons name="ellipsis-horizontal" size={22} color={palette.text} />
       </PressableScale>
     </View>
   ) : undefined;
@@ -606,7 +635,7 @@ function ReaderPaneInner({
           />
         </ScreenContent>
       ) : (
-        <View ref={scrollViewportRef} style={styles.scrollViewport}>
+        <View style={styles.scrollViewport}>
           <ScrollView
             key={bookmark.id}
             ref={scrollRef}
@@ -725,6 +754,22 @@ function ReaderPaneInner({
           </ScrollView>
         </View>
       )}
+
+      {contentsShortcutVisible && actionPanel === null && !controlsOpen ? (
+        <FABLayer maxWidth={layout.maxLibraryWidth}>
+          <FAB
+            icon="list-outline"
+            accessibilityLabel="Table of contents"
+            accessibilityHint="Jump to a section in this article."
+            onPress={() => {
+              haptics.light();
+              setActionPanel("contents");
+            }}
+            right={spacing[20]}
+            bottom={spacing[20] + (safeBottom ? insets.bottom : 0)}
+          />
+        </FABLayer>
+      ) : null}
 
       <ReaderControlsSheet
         visible={controlsOpen}
