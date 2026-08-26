@@ -35,6 +35,7 @@ import { Text } from "../ui/Text";
 import { Button } from "../ui/Button";
 import { Skeleton } from "../ui/Skeleton";
 import { PressableScale } from "../ui/PressableScale";
+import { FloatingPanel } from "../ui/FloatingPanel";
 import { ArticleHtml } from "./ArticleHtml";
 import { Markdown } from "./Markdown";
 import { ReaderControlsSheet } from "./ReaderControlsSheet";
@@ -165,6 +166,7 @@ function ReaderPaneInner({
     !!detail.error;
 
   const [controlsOpen, setControlsOpen] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const [externalLaunchFailed, setExternalLaunchFailed] = useState(false);
   const [articleWidth, setArticleWidth] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -424,23 +426,14 @@ function ReaderPaneInner({
         style={styles.iconBtn}
         scaleTo={0.85}
         hitSlop={8}
-        onPress={handleShare}
+        onPress={() => {
+          haptics.light();
+          setActionsOpen(true);
+        }}
         accessibilityRole="button"
-        accessibilityLabel={`Share ${displayTitle}`}
-        accessibilityHint="Opens the system share sheet with the title and original link."
+        accessibilityLabel="More article actions"
       >
-        <Ionicons name="share-outline" size={22} color={palette.text} />
-      </PressableScale>
-      <PressableScale
-        style={styles.iconBtn}
-        scaleTo={0.85}
-        hitSlop={8}
-        onPress={handleOpenOriginal}
-        accessibilityRole="button"
-        accessibilityLabel="Open original in browser"
-        accessibilityHint="Opens the source page in your default browser."
-      >
-        <Ionicons name="open-outline" size={22} color={palette.text} />
+        <Ionicons name="ellipsis-horizontal" size={22} color={palette.text} />
       </PressableScale>
     </View>
   ) : undefined;
@@ -625,6 +618,42 @@ function ReaderPaneInner({
         onUpdate={onUpdatePreferences}
         effectiveDark={effectiveDark}
       />
+      <FloatingPanel visible={actionsOpen} onDismiss={() => setActionsOpen(false)}>
+        <Text variant="title3" style={styles.actionsTitle}>Article actions</Text>
+        <PressableScale
+          style={[styles.actionRow, { borderBottomColor: palette.border }]}
+          onPress={() => {
+            setActionsOpen(false);
+            handleShare();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Share ${displayTitle}`}
+        >
+          <Ionicons name="share-social-outline" size={20} color={palette.text} />
+          <Text variant="body" style={styles.actionLabel}>Share article</Text>
+          <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
+        </PressableScale>
+        <PressableScale
+          style={[styles.actionRow, { borderBottomColor: palette.border }]}
+          onPress={() => {
+            setActionsOpen(false);
+            handleOpenOriginal();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Open original in browser"
+        >
+          <Ionicons name="globe-outline" size={20} color={palette.text} />
+          <Text variant="body" style={styles.actionLabel}>Open original in browser</Text>
+          <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
+        </PressableScale>
+        <Button
+          label="Cancel"
+          variant="ghost"
+          block
+          onPress={() => setActionsOpen(false)}
+          style={styles.actionsCancel}
+        />
+      </FloatingPanel>
     </View>
   );
 }
@@ -661,6 +690,17 @@ const styles = StyleSheet.create({
   content: { marginTop: spacing[24] },
   headerActions: { flexDirection: "row", alignItems: "center" },
   iconBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  actionsTitle: { marginBottom: spacing[12] },
+  actionRow: {
+    minHeight: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[12],
+    paddingHorizontal: spacing[4],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  actionLabel: { flex: 1 },
+  actionsCancel: { marginTop: spacing[8] },
   progressTrack: { height: 2, width: "100%", overflow: "hidden" },
   progressFill: { height: 2 },
   stateBody: {

@@ -101,7 +101,7 @@ export function Header({
         { maxWidth, paddingTop: topInset + spacing[4], borderBottomColor: palette.border },
       ]}
     >
-      <View style={styles.compactRow}>
+      <View style={[styles.compactRow, subtitle && styles.compactRowWithSubtitle]}>
         {showBack ? (
           <PressableScale
             style={[styles.backBtn, styles.compactLeft]}
@@ -114,14 +114,14 @@ export function Header({
         ) : null}
         <View pointerEvents="none" style={styles.compactTitle}>
           <Text variant="header" align="center" numberOfLines={1}>{title}</Text>
+          {subtitle ? (
+            <Text variant="footnote" color="secondary" align="center" numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
         {right ? <View style={styles.compactRight}>{right}</View> : null}
       </View>
-      {subtitle ? (
-        <Text variant="footnote" color="secondary" align="center" numberOfLines={1} style={styles.compactSubtitle}>
-          {subtitle}
-        </Text>
-      ) : null}
     </View>
   );
 }
@@ -137,13 +137,13 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     paddingBottom: spacing[6],
   },
-  compactRow: { height: HEADER_LINE_HEIGHT, justifyContent: "center" },
+  compactRow: { height: 32, justifyContent: "center" },
+  compactRowWithSubtitle: { height: 40 },
   backBtn: { width: 36, height: 32, alignItems: "center", justifyContent: "center" },
-  compactLeft: { position: "absolute", left: 0, top: -spacing[6] },
-  compactRight: { position: "absolute", right: 0, top: -spacing[6], height: 32, justifyContent: "center" },
+  compactLeft: { position: "absolute", left: 0, top: "50%", marginTop: -16 },
+  compactRight: { position: "absolute", right: 0, top: "50%", marginTop: -16, height: 32, justifyContent: "center" },
   largeRight: { position: "absolute", height: 32, justifyContent: "center", zIndex: 1 },
   largeTitles: { alignItems: "center" },
   singleLineTitle: { height: HEADER_LINE_HEIGHT, justifyContent: "center" },
   compactTitle: { position: "absolute", top: 0, bottom: 0, left: 48, right: 48, alignItems: "center", justifyContent: "center" },
-  compactSubtitle: { marginTop: -spacing[4], paddingHorizontal: 48 },
 });
