@@ -5,7 +5,11 @@ import nodemailer, { type Transporter } from "nodemailer";
 import { EMAIL_OTP } from "@ordo/shared";
 import { APP_CONFIG } from "../config/config.module.js";
 import type { AppConfig } from "../config/config.module.js";
-import { VERIFICATION_LOGO_CID, verificationEmail } from "./mail.templates.js";
+import {
+  VERIFICATION_LOGO_CID,
+  passwordResetEmail,
+  verificationEmail,
+} from "./mail.templates.js";
 
 /** Resolved from both `src/auth` and compiled `dist/auth`. */
 function emailLogoPath(): string {
@@ -13,8 +17,8 @@ function emailLogoPath(): string {
 }
 
 /**
- * Email delivery. Uses SMTP when SMTP_URL is configured, otherwise logs to the
- * console (dev mode). Only invoked when email verification is enabled.
+ * Email delivery. Uses SMTP when SMTP_URL is configured, otherwise logs the
+ * one-time code to the console (dev / self-host without mail).
  */
 @Injectable()
 export class MailService {
@@ -46,6 +50,12 @@ export class MailService {
     await this.send({ to, subject, text, html });
   }
 
+  async sendPasswordReset(to: string, token: string): Promise<void> {
+    const minutes = Math.round(EMAIL_OTP.TTL_MS / 60_000);
+    const { subject, text, html } = passwordResetEmail(token, minutes);
+    await this.send({ to, subject, text, html });
+  }
+
   private async send(opts: {
     to: string;
     subject: string;
@@ -53,7 +63,14 @@ export class MailService {
     html: string;
   }): Promise<void> {
     if (!this.transporter) {
-      this.logger.log(`[console-mail] -> ${opts.to}\n${opts.subject}\n${opts.text}`);
+      this.logger.log(
+        [
+          "[console-mail] SMTP is not configured — printing the one-time code.",
+          `To: ${opts.to}`,
+          `Subject: ${opts.subject}`,
+          opts.text,
+        ].join("\n"),
+      );
       return;
     }
     await this.transporter.sendMail({

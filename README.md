@@ -68,4 +68,5 @@ This keeps the two concerns cleanly separated and avoids overloading either tool
 | `REGISTRATION_ENABLED` | `true` | Allow new sign-ups |
 | `CORS_ALLOWED_ORIGINS` | reflect origin | Comma-separated origins |
 | `EMAIL_VERIFICATION_REQUIRED` | `false` | Require email verification on signup |
-| `SMTP_URL` / `SMTP_HOST` | — | SMTP for verification emails (logged to stdout if unset) |
+| `SMTP_URL` | — | SMTP for verification, email-change, and password-reset codes. When unset, the one-time code is printed to the server console. Mailpit (or any fake SMTP) is optional. |
+| `SMTP_FROM` | `Ordo <noreply@ordo.local>` | From address used when SMTP is configured |

@@ -17,22 +17,49 @@ const CODE_WELL = "#F7F1DE";
 const LOGO_W = 64;
 const LOGO_H = 70;
 
-export function verificationEmail(otp: string, expiresMinutes: number): {
+export type OtpEmailKind = "verification" | "password_reset";
+
+const COPY: Record<
+  OtpEmailKind,
+  { subject: string; kicker: string; body: string; ignore: string; textHeading: string }
+> = {
+  verification: {
+    subject: "Your Ordo verification code",
+    kicker: "Verification",
+    body: "Enter this code in Ordo to continue.",
+    ignore: "If you didn't request this, you can ignore the email.",
+    textHeading: "Your verification code",
+  },
+  password_reset: {
+    subject: "Your Ordo password reset code",
+    kicker: "Password reset",
+    body: "Enter this code in Ordo to choose a new password.",
+    ignore: "If you didn't request a password reset, you can ignore this email.",
+    textHeading: "Your password reset code",
+  },
+};
+
+export function otpEmail(
+  kind: OtpEmailKind,
+  otp: string,
+  expiresMinutes: number,
+): {
   subject: string;
   text: string;
   html: string;
 } {
   const code = otp.replace(/\D/g, "");
-  const subject = "Your Ordo verification code";
+  const copy = COPY[kind];
+  const subject = copy.subject;
   const text = [
     "Ordo",
     "",
-    "Your verification code",
+    copy.textHeading,
     "",
     code,
     "",
     `Expires in ${expiresMinutes} minutes.`,
-    "If you didn't request this, you can ignore the email.",
+    copy.ignore,
   ].join("\n");
 
   const html = `<!DOCTYPE html>
@@ -44,7 +71,7 @@ export function verificationEmail(otp: string, expiresMinutes: number): {
 </head>
 <body style="margin:0;padding:0;background:${PAPER};">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
-    ${escapeHtml(code)} is your verification code. It expires in ${expiresMinutes} minutes.
+    ${escapeHtml(code)} is your ${kind === "password_reset" ? "password reset" : "verification"} code. It expires in ${expiresMinutes} minutes.
   </div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAPER};">
     <tr>
@@ -54,10 +81,10 @@ export function verificationEmail(otp: string, expiresMinutes: number): {
             <td align="center" style="background:${CARD};border:1px solid ${RULE};border-radius:24px;padding:36px 32px 32px;">
               <img src="cid:${VERIFICATION_LOGO_CID}" width="${LOGO_W}" height="${LOGO_H}" alt="Ordo" style="display:block;margin:0 auto 28px;border:0;outline:none;text-decoration:none;" />
               <p style="margin:0 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:${FAINT};">
-                Verification
+                ${escapeHtml(copy.kicker)}
               </p>
               <p style="margin:0 0 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.5;color:${MUTE};">
-                Enter this code in Ordo to continue.
+                ${escapeHtml(copy.body)}
               </p>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:0;">
                 <tr>
@@ -69,7 +96,7 @@ export function verificationEmail(otp: string, expiresMinutes: number): {
                 </tr>
               </table>
               <p style="margin:22px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;line-height:1.5;color:${FAINT};">
-                Expires in ${expiresMinutes} minutes. If you didn't request this, ignore the email.
+                Expires in ${expiresMinutes} minutes. ${escapeHtml(copy.ignore)}
               </p>
             </td>
           </tr>
@@ -81,6 +108,14 @@ export function verificationEmail(otp: string, expiresMinutes: number): {
 </html>`;
 
   return { subject, text, html };
+}
+
+export function verificationEmail(otp: string, expiresMinutes: number) {
+  return otpEmail("verification", otp, expiresMinutes);
+}
+
+export function passwordResetEmail(otp: string, expiresMinutes: number) {
+  return otpEmail("password_reset", otp, expiresMinutes);
 }
 
 function escapeHtml(value: string): string {
