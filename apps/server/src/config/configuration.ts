@@ -104,6 +104,22 @@ function sqliteFilePath(databaseUrl: string): string | null {
   return databaseUrl.slice("file:".length);
 }
 
+function isAbsoluteFilePath(path: string): boolean {
+  return path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path);
+}
+
+/**
+ * Prisma Client resolves relative `file:` URLs from cwd, while `prisma db push`
+ * resolves them from the schema directory. Normalize so `file:./ordo.db` (as
+ * documented in `.env.example`) always targets `prisma/ordo.db`.
+ */
+export function resolveDatabaseUrl(raw: string): string {
+  const pathPart = raw.startsWith("file:") ? raw.slice("file:".length) : raw;
+  if (!pathPart) return raw.startsWith("file:") ? raw : `file:${raw}`;
+  if (isAbsoluteFilePath(pathPart)) return `file:${pathPart}`;
+  return `file:${resolve(process.cwd(), "prisma", pathPart)}`;
+}
+
 /** Unique per database file so tests and instances don't share `/tmp/avatars`. */
 export function defaultAvatarDir(databaseUrl: string): string {
   const dbPath = sqliteFilePath(databaseUrl);
@@ -126,9 +142,7 @@ export function loadConfig(): AppConfig {
         .filter(Boolean)
     : [];
 
-  const databaseUrl = parsed.DATABASE_URL.startsWith("file:")
-    ? parsed.DATABASE_URL
-    : `file:${parsed.DATABASE_URL}`;
+  const databaseUrl = resolveDatabaseUrl(parsed.DATABASE_URL);
 
   const avatarDirRaw = parsed.AVATAR_DIR?.trim();
   const avatarDir = avatarDirRaw

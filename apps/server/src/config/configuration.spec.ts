@@ -1,4 +1,5 @@
-import { loadConfig } from "./configuration.js";
+import { resolve } from "node:path";
+import { loadConfig, resolveDatabaseUrl } from "./configuration.js";
 
 describe("loadConfig rate-limit flags", () => {
   const original = {
@@ -75,6 +76,16 @@ describe("loadConfig identity flags", () => {
     expect(cfg.avatarStorage).toBe("database");
     expect(cfg.avatarAllowAnimated).toBe(true);
     expect(cfg.profilePictureMaxBytes).toBe(512000);
+  });
+});
+
+describe("resolveDatabaseUrl", () => {
+  it("keeps absolute sqlite paths and resolves relative ones under prisma/", () => {
+    expect(resolveDatabaseUrl("file:/tmp/ordo.db")).toBe("file:/tmp/ordo.db");
+    expect(resolveDatabaseUrl("/tmp/ordo.db")).toBe("file:/tmp/ordo.db");
+    expect(resolveDatabaseUrl("file:./ordo.db")).toBe(
+      `file:${resolve(process.cwd(), "prisma", "./ordo.db")}`,
+    );
   });
 });
 
