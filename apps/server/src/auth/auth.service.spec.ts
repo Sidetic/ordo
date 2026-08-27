@@ -25,6 +25,8 @@ describe("AuthService account deletion", () => {
       {} as never,
       {} as never,
       { enabled: false, checkLogin() {}, recordLoginFailure() {}, clearLogin() {} } as never,
+      { assertStepUp: async () => undefined } as never,
+      { deleteStored: async () => undefined } as never,
     );
     return { service, deleteUser };
   };

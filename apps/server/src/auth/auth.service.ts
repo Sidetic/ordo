@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import bcrypt from "bcryptjs";
+import { randomUUID } from "node:crypto";
 import type { Session, User } from "@prisma/client";
 import {
   EMAIL_OTP,
@@ -8,6 +9,7 @@ import {
   normalizeReaderPreferences,
   type AuthResponse,
   type EmailOtpPurpose,
+  type LoginResponse,
   type SessionDeviceType,
   type SessionDto,
   type UpdateReaderPreferencesInput,
@@ -23,6 +25,8 @@ import { TokenService } from "./token.service.js";
 import { MailService } from "./mail.service.js";
 import { RateLimitService } from "../common/rate-limit/rate-limit.service.js";
 import { toUserDto, toSessionDto } from "../common/mappers.js";
+import { MfaService } from "./mfa.service.js";
+import { AvatarService } from "./avatar.service.js";
 
 const BCRYPT_COST = 12;
 
@@ -44,10 +48,12 @@ export class AuthService {
     private readonly mail: MailService,
     @Inject(APP_CONFIG) private readonly cfg: AppConfig,
     private readonly rateLimit: RateLimitService,
+    private readonly mfa: MfaService,
+    private readonly avatars: AvatarService,
   ) {}
 
   async register(
-    input: { username: string; email: string; password: string },
+    input: { displayName: string; email: string; password: string },
     meta: ClientMeta,
   ): Promise<AuthResponse> {
     if (!this.cfg.registrationEnabled) {
@@ -55,23 +61,18 @@ export class AuthService {
     }
 
     const email = input.email.toLowerCase().trim();
-    const username = input.username.trim();
-    const [existingEmail, existingUsername] = await Promise.all([
-      this.prisma.user.findUnique({ where: { email } }),
-      this.prisma.user.findUnique({ where: { username } }),
-    ]);
+    const displayName = input.displayName.trim();
+    const existingEmail = await this.prisma.user.findUnique({ where: { email } });
     if (existingEmail) {
       throw new AppError(ErrorCode.EMAIL_ALREADY_EXISTS, "An account with this email already exists");
-    }
-    if (existingUsername) {
-      throw new AppError(ErrorCode.CONFLICT, "This username is already taken");
     }
 
     const passwordHash = await bcrypt.hash(input.password, BCRYPT_COST);
 
     const user = await this.prisma.user.create({
       data: {
-        username,
+        id: randomUUID(),
+        displayName,
         email,
         passwordHash,
       },
@@ -88,16 +89,13 @@ export class AuthService {
   async login(
     input: { identifier: string; password: string },
     meta: ClientMeta,
-  ): Promise<AuthResponse> {
-    const identifier = input.identifier.trim();
-    const accountKey = identifier.includes("@") ? identifier.toLowerCase() : identifier;
-    const loginKeys = { accountKey, ip: meta.ip };
+  ): Promise<LoginResponse> {
+    const email = input.identifier.trim().toLowerCase();
+    const loginKeys = { accountKey: email, ip: meta.ip };
 
     this.rateLimit.checkLogin(loginKeys);
 
-    const user = identifier.includes("@")
-      ? await this.prisma.user.findUnique({ where: { email: identifier.toLowerCase() } })
-      : await this.prisma.user.findUnique({ where: { username: identifier } });
+    const user = await this.prisma.user.findUnique({ where: { email } });
 
     if (user) {
       this.rateLimit.checkLogin({ ...loginKeys, userId: user.id });
@@ -105,15 +103,15 @@ export class AuthService {
 
     if (!user) {
       this.rateLimit.recordLoginFailure(loginKeys);
-      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email, username, or password");
+      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email or password");
     }
     const ok = await bcrypt.compare(input.password, user.passwordHash);
     if (!ok) {
       this.rateLimit.recordLoginFailure({ ...loginKeys, userId: user.id });
-      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email, username, or password");
+      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email or password");
     }
 
-    this.rateLimit.clearLogin({ accountKey, userId: user.id });
+    this.rateLimit.clearLogin({ accountKey: email, userId: user.id });
 
     if (this.cfg.emailVerificationRequired && user.emailVerifiedAt === null) {
       throw new AppError(
@@ -122,6 +120,32 @@ export class AuthService {
       );
     }
 
+    if (this.mfa.isEnabled(user)) {
+      return this.mfa.createLoginChallenge(user);
+    }
+
+    const { session, tokens } = await this.sessions.create(user.id, meta);
+    return this.buildAuthResponse(user, session, tokens);
+  }
+
+  async completeMfaLogin(challengeToken: string, code: string, meta: ClientMeta): Promise<AuthResponse> {
+    const user = await this.mfa.consumeLoginCode(challengeToken, code);
+    this.rateLimit.clearLogin({ accountKey: user.email, userId: user.id });
+    const { session, tokens } = await this.sessions.create(user.id, meta);
+    return this.buildAuthResponse(user, session, tokens);
+  }
+
+  async requestMfaEmailRecovery(challengeToken: string): Promise<void> {
+    await this.mfa.requestEmailRecovery(challengeToken);
+  }
+
+  async completeMfaEmailRecovery(
+    challengeToken: string,
+    otp: string,
+    meta: ClientMeta,
+  ): Promise<AuthResponse> {
+    const user = await this.mfa.consumeEmailRecovery(challengeToken, otp);
+    this.rateLimit.clearLogin({ accountKey: user.email, userId: user.id });
     const { session, tokens } = await this.sessions.create(user.id, meta);
     return this.buildAuthResponse(user, session, tokens);
   }
@@ -204,15 +228,10 @@ export class AuthService {
     await this.createAndSendOtp(user.id, user.email, EMAIL_OTP_PURPOSE.VERIFY);
   }
 
-  async changeUsername(userId: string, newUsername: string): Promise<UserDto> {
-    const username = newUsername.trim();
-    const existing = await this.prisma.user.findUnique({ where: { username } });
-    if (existing && existing.id !== userId) {
-      throw new AppError(ErrorCode.CONFLICT, "This username is already taken");
-    }
+  async changeDisplayName(userId: string, displayName: string): Promise<UserDto> {
     const user = await this.prisma.user.update({
       where: { id: userId },
-      data: { username },
+      data: { displayName: displayName.trim() },
     });
     return toUserDto(user);
   }
@@ -221,6 +240,7 @@ export class AuthService {
     userId: string,
     currentPassword: string,
     newEmail: string,
+    mfaCode?: string,
   ): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
@@ -229,6 +249,7 @@ export class AuthService {
     if (!ok) {
       throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password");
     }
+    await this.mfa.assertStepUp(user, mfaCode);
 
     if (newEmail === user.email) {
       throw new AppError(ErrorCode.VALIDATION_ERROR, "New email must be different from your current email");
@@ -280,6 +301,7 @@ export class AuthService {
     currentPassword: string,
     newPassword: string,
     meta: ClientMeta,
+    mfaCode?: string,
   ): Promise<AuthResponse> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
@@ -287,6 +309,7 @@ export class AuthService {
     if (!ok) {
       throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password");
     }
+    await this.mfa.assertStepUp(user, mfaCode);
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
     const updated = await this.prisma.user.update({
       where: { id: userId },
@@ -298,13 +321,15 @@ export class AuthService {
     return this.buildAuthResponse(updated, session, tokens);
   }
 
-  async deleteAccount(userId: string, currentPassword: string): Promise<void> {
+  async deleteAccount(userId: string, currentPassword: string, mfaCode?: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
     const ok = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!ok) {
       throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password");
     }
+    await this.mfa.assertStepUp(user, mfaCode);
+    await this.avatars.deleteStored(userId);
     await this.prisma.user.deleteMany({ where: { id: userId } });
   }
 
@@ -350,7 +375,7 @@ export class AuthService {
     email: string,
     purpose: EmailOtpPurpose,
   ): Promise<void> {
-    await this.prisma.emailVerificationToken.deleteMany({ where: { userId } });
+    await this.prisma.emailVerificationToken.deleteMany({ where: { userId, purpose } });
     const token = this.tokens.generateVerificationToken();
     await this.prisma.emailVerificationToken.create({
       data: {

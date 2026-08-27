@@ -10,15 +10,28 @@ import {
   type UserDto,
 } from "@ordo/shared";
 
-export type UserDtoFields = Pick<User, "id" | "username" | "email" | "emailVerifiedAt" | "preferences" | "createdAt">;
+export type UserDtoFields = Pick<
+  User,
+  | "id"
+  | "displayName"
+  | "email"
+  | "emailVerifiedAt"
+  | "preferences"
+  | "totpEnabledAt"
+  | "avatarUpdatedAt"
+  | "createdAt"
+>;
 
 /** Map a user row (or a superset) to a DTO; preferences fall back to defaults when malformed. */
 export function toUserDto(u: UserDtoFields): UserDto {
   return {
     id: u.id,
-    username: u.username,
+    displayName: u.displayName,
     email: u.email,
     emailVerified: u.emailVerifiedAt !== null,
+    hasAvatar: u.avatarUpdatedAt !== null,
+    avatarUpdatedAt: u.avatarUpdatedAt?.toISOString() ?? null,
+    mfaEnabled: u.totpEnabledAt !== null,
     preferences: normalizeReaderPreferences(u.preferences),
     createdAt: u.createdAt.toISOString(),
   };
