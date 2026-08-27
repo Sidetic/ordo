@@ -35,21 +35,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   /**
-   * Idempotent runtime migration for databases created before unfiled
-   * bookmarks existed. Runs on every boot (raw SQL only, so it never depends
-   * on the generated Prisma client knowing retired columns) and does nothing
-   * once the on-disk schema is current:
-   *
-   *  1. Older schemas declared `Bookmark.folderId` as NOT NULL. SQLite cannot
-   *     relax that in place, so the table is rebuilt (same columns + FKs,
-   *     nullable folderId) inside one transaction, preserving all rows.
-   *  2. Legacy "All Bookmarks" default folders are folded away: their
-   *     bookmarks become unfiled (folderId = NULL — never deleted), their
-   *     unlock tokens are removed, the folders are deleted, and the retired
-   *     `Folder.isDefault` remains only as an idempotent migration marker.
-   *
-   * Keeping the retired marker makes migration safe whether schema sync or
-   * server startup happens first. Fresh databases never create a default row.
+   * Idempotent runtime migration for databases created against older schemas.
+   * Raw SQL only, so it never depends on the generated client knowing retired
+   * columns. Fresh databases (no Bookmark/Folder tables) are left untouched.
    */
   private async migrateLegacySchema(): Promise<void> {
     if (!this.cfg.databaseUrl.startsWith("file:")) return; // SQLite only
@@ -62,7 +50,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
           )
         ).map((t) => t.name),
       );
-      if (!tables.has("Bookmark") || !tables.has("Folder")) return; // fresh database
+      if (!tables.has("Bookmark") || !tables.has("Folder") || !tables.has("User")) return;
 
       // --- 1. make Bookmark.folderId nullable (table rebuild) ---
       const bookmarkColumns = await this.$queryRaw<SqliteColumn[]>(
@@ -75,18 +63,24 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       }
 
       // --- 2. add missing reader-rework columns (purely additive) ---
-      // Runs after any table rebuild so rebuilt tables get the columns too.
       await this.addMissingColumns(
         "Bookmark",
         BOOKMARK_ADDITIVE_COLUMNS,
         await this.$queryRaw<SqliteColumn[]>(Prisma.sql`PRAGMA table_info("Bookmark")`),
       );
+
+      // --- 3. username → displayName (drop uniqueness; keep values) ---
+      await this.migrateUsernameToDisplayName(
+        await this.$queryRaw<SqliteColumn[]>(Prisma.sql`PRAGMA table_info("User")`),
+      );
+
       await this.addMissingColumns(
         "User",
         USER_ADDITIVE_COLUMNS,
         await this.$queryRaw<SqliteColumn[]>(Prisma.sql`PRAGMA table_info("User")`),
       );
-      if (tables.has("EmailVerificationToken")) {
+
+      if (tables.has("EmailVerificationToken") || (await this.tableExists("EmailVerificationToken"))) {
         await this.addMissingColumns(
           "EmailVerificationToken",
           EMAIL_TOKEN_ADDITIVE_COLUMNS,
@@ -100,40 +94,109 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         );
       }
 
-      // --- 3. fold legacy default folders into unfiled bookmarks ---
+      await this.ensureMfaTables();
+
+      // --- 4. fold legacy default folders into unfiled bookmarks ---
       const folderColumns = await this.$queryRaw<SqliteColumn[]>(
         Prisma.sql`PRAGMA table_info("Folder")`,
       );
-      if (!folderColumns.some((c) => c.name === "isDefault")) return; // already migrated
-      const [legacyDefaults] = await this.$queryRaw<Array<{ count: number | bigint }>>(
-        Prisma.sql`SELECT COUNT(*) AS count FROM "Folder" WHERE "isDefault" = 1`,
-      );
-      if (!legacyDefaults || Number(legacyDefaults.count) === 0) return;
-
-      const hasFolderTokens = tables.has("FolderToken");
-      await this.$transaction(
-        async (tx) => {
-          // Move bookmarks out of default folders first — bookmarks are never lost.
-          await tx.$executeRawUnsafe(
-            `UPDATE "Bookmark" SET "folderId" = NULL
-             WHERE "folderId" IN (SELECT "id" FROM "Folder" WHERE "isDefault" = 1)`,
+      if (folderColumns.some((c) => c.name === "isDefault")) {
+        const [legacyDefaults] = await this.$queryRaw<Array<{ count: number | bigint }>>(
+          Prisma.sql`SELECT COUNT(*) AS count FROM "Folder" WHERE "isDefault" = 1`,
+        );
+        if (legacyDefaults && Number(legacyDefaults.count) > 0) {
+          const hasFolderTokens = await this.tableExists("FolderToken");
+          await this.$transaction(
+            async (tx) => {
+              await tx.$executeRawUnsafe(
+                `UPDATE "Bookmark" SET "folderId" = NULL
+                 WHERE "folderId" IN (SELECT "id" FROM "Folder" WHERE "isDefault" = 1)`,
+              );
+              if (hasFolderTokens) {
+                await tx.$executeRawUnsafe(
+                  `DELETE FROM "FolderToken"
+                   WHERE "folderId" IN (SELECT "id" FROM "Folder" WHERE "isDefault" = 1)`,
+                );
+              }
+              await tx.$executeRawUnsafe(`DELETE FROM "Folder" WHERE "isDefault" = 1`);
+            },
+            { timeout: 120_000, maxWait: 10_000 },
           );
-          if (hasFolderTokens) {
-            await tx.$executeRawUnsafe(
-              `DELETE FROM "FolderToken"
-               WHERE "folderId" IN (SELECT "id" FROM "Folder" WHERE "isDefault" = 1)`,
-            );
-          }
-          await tx.$executeRawUnsafe(`DELETE FROM "Folder" WHERE "isDefault" = 1`);
-        },
-        // copying rows + folding folders may take a while on large databases
-        { timeout: 120_000, maxWait: 10_000 },
-      );
-      this.logger.log("Migrated legacy default folders to unfiled bookmarks");
+          this.logger.log("Migrated legacy default folders to unfiled bookmarks");
+        }
+      }
     } catch (err) {
       this.logger.error(`Legacy schema migration failed: ${(err as Error).message}`);
       throw err;
     }
+  }
+
+  private async tableExists(name: string): Promise<boolean> {
+    const rows = await this.$queryRaw<Array<{ name: string }>>(
+      Prisma.sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ${name}`,
+    );
+    return rows.length > 0;
+  }
+
+  /**
+   * SQLite cannot drop a UNIQUE constraint in place. Rebuild User, copying
+   * `username` into `displayName` and omitting the unique index.
+   */
+  private async migrateUsernameToDisplayName(columns: SqliteColumn[]): Promise<void> {
+    const names = new Set(columns.map((c) => c.name));
+    if (!names.has("username")) return; // already on displayName
+    if (names.has("displayName")) {
+      await this.$executeRawUnsafe(
+        `UPDATE "User" SET "displayName" = "username" WHERE "displayName" IS NULL OR "displayName" = ''`,
+      );
+    }
+
+    await this.$executeRawUnsafe(`PRAGMA foreign_keys = OFF`);
+    try {
+      const select = (name: string, fallback = "NULL"): string =>
+        names.has(name) ? `"${name}"` : fallback;
+      const displayNameExpr = names.has("displayName")
+        ? `COALESCE(NULLIF("displayName", ''), "username")`
+        : `"username"`;
+
+      await this.$transaction(
+        async (tx) => {
+          await tx.$executeRawUnsafe(`DROP TABLE IF EXISTS "User_migration"`);
+          await tx.$executeRawUnsafe(USER_MIGRATION_DDL);
+          await tx.$executeRawUnsafe(
+            `INSERT INTO "User_migration" (
+              "id", "displayName", "email", "passwordHash", "emailVerifiedAt", "pendingEmail",
+              "preferences", "totpSecretEnc", "totpEnabledAt", "avatarMime", "avatarUpdatedAt",
+              "avatarBytes", "createdAt", "updatedAt"
+            )
+            SELECT
+              "id", ${displayNameExpr}, "email", "passwordHash",
+              ${select("emailVerifiedAt")}, ${select("pendingEmail")},
+              ${select("preferences")}, ${select("totpSecretEnc")}, ${select("totpEnabledAt")},
+              ${select("avatarMime")}, ${select("avatarUpdatedAt")}, ${select("avatarBytes")},
+              "createdAt", "updatedAt"
+            FROM "User"`,
+          );
+          await tx.$executeRawUnsafe(`DROP TABLE "User"`);
+          await tx.$executeRawUnsafe(`ALTER TABLE "User_migration" RENAME TO "User"`);
+        },
+        { timeout: 120_000, maxWait: 10_000 },
+      );
+      this.logger.log("Migrated User.username to non-unique displayName");
+    } finally {
+      await this.$executeRawUnsafe(`PRAGMA foreign_keys = ON`);
+    }
+  }
+
+  private async ensureMfaTables(): Promise<void> {
+    await this.$executeRawUnsafe(MFA_BACKUP_CODE_DDL);
+    await this.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "MfaBackupCode_userId_idx" ON "MfaBackupCode"("userId")`,
+    );
+    await this.$executeRawUnsafe(MFA_CHALLENGE_DDL);
+    await this.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "MfaChallenge_userId_idx" ON "MfaChallenge"("userId")`,
+    );
   }
 
   /**
@@ -160,7 +223,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         await tx.$executeRawUnsafe(`CREATE INDEX "Bookmark_folderId_idx" ON "Bookmark"("folderId")`);
         await tx.$executeRawUnsafe(`CREATE INDEX "Bookmark_createdAt_idx" ON "Bookmark"("createdAt")`);
       },
-      // the row copy must not be cut off by the default 5s transaction timeout
       { timeout: 120_000, maxWait: 10_000 },
     );
   }
@@ -213,9 +275,14 @@ const BOOKMARK_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: stri
   ["completedAt", "DATETIME"],
 ];
 
-/** Reader-rework columns added to pre-existing User tables at runtime. */
+/** Columns added to pre-existing User tables at runtime. */
 const USER_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: string]> = [
   ["preferences", "TEXT"],
+  ["totpSecretEnc", "TEXT"],
+  ["totpEnabledAt", "DATETIME"],
+  ["avatarMime", "TEXT"],
+  ["avatarUpdatedAt", "DATETIME"],
+  ["avatarBytes", "BLOB"],
 ];
 
 /** Columns added after EmailVerificationToken first shipped. */
@@ -243,4 +310,47 @@ CREATE TABLE "Bookmark_migration" (
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "Bookmark_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "Bookmark_folderId_fkey" FOREIGN KEY ("folderId") REFERENCES "Folder" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+)`;
+
+const USER_MIGRATION_DDL = `
+CREATE TABLE "User_migration" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "displayName" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "passwordHash" TEXT NOT NULL,
+    "emailVerifiedAt" DATETIME,
+    "pendingEmail" TEXT,
+    "preferences" TEXT,
+    "totpSecretEnc" TEXT,
+    "totpEnabledAt" DATETIME,
+    "avatarMime" TEXT,
+    "avatarUpdatedAt" DATETIME,
+    "avatarBytes" BLOB,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "User_email_key" UNIQUE ("email")
+)`;
+
+const MFA_BACKUP_CODE_DDL = `
+CREATE TABLE IF NOT EXISTS "MfaBackupCode" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "codeHash" TEXT NOT NULL,
+    "usedAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "MfaBackupCode_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+)`;
+
+const MFA_CHALLENGE_DDL = `
+CREATE TABLE IF NOT EXISTS "MfaChallenge" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "tokenHash" TEXT NOT NULL,
+    "purpose" TEXT NOT NULL,
+    "payload" TEXT,
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "expiresAt" DATETIME NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "MfaChallenge_tokenHash_key" UNIQUE ("tokenHash"),
+    CONSTRAINT "MfaChallenge_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 )`;

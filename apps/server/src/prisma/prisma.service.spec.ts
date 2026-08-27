@@ -229,6 +229,11 @@ describe("PrismaService legacy schema migration", () => {
       `PRAGMA table_info("User")`,
     )) as Array<{ name: string }>;
     expect(userCols.some((c) => c.name === "preferences")).toBe(true);
+    expect(userCols.some((c) => c.name === "displayName")).toBe(true);
+    expect(userCols.some((c) => c.name === "username")).toBe(false);
+    expect(userCols.some((c) => c.name === "totpSecretEnc")).toBe(true);
+    const migratedUser = await service.user.findUniqueOrThrow({ where: { id: "u1" } });
+    expect(migratedUser.displayName).toBe("one");
 
     // indexes and foreign keys survive the rebuild
     const indexes = (await service.$queryRawUnsafe(
@@ -275,6 +280,7 @@ describe("PrismaService legacy schema migration", () => {
     expect(bookmark.completedAt).toBeNull();
     const user = await service.user.findUniqueOrThrow({ where: { id: "u1" } });
     expect(user.preferences).toBeNull();
+    expect(user.displayName).toBe("one");
 
     // the generated client round-trips reads and writes on the new columns
     await service.bookmark.update({
@@ -352,7 +358,7 @@ describe("PrismaService legacy schema migration", () => {
 
     const service = await boot(path);
     await service.user.create({
-      data: { id: "u1", username: "one", email: "one@ordo.app", passwordHash: "x" },
+      data: { id: "u1", displayName: "one", email: "one@ordo.app", passwordHash: "x" },
     });
     // unfiled bookmarks work end-to-end on the current schema
     const created = await service.bookmark.create({

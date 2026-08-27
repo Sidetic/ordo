@@ -11,14 +11,20 @@ datasource db {
 }
 
 model User {
-  id              String                   @id @default(cuid())
-  username        String                   @unique
+  id              String                   @id @default(uuid())
+  displayName     String
   email           String                   @unique
   passwordHash    String
   emailVerifiedAt DateTime?
   pendingEmail    String?
   /// JSON-encoded synced reader preferences (see ReaderPreferences in @ordo/shared).
   preferences     String?
+  totpSecretEnc   String?
+  totpEnabledAt   DateTime?
+  avatarMime      String?
+  avatarUpdatedAt DateTime?
+  /// Used only when AVATAR_STORAGE=database.
+  avatarBytes     Bytes?
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
 
@@ -26,6 +32,8 @@ model User {
   folders     Folder[]
   bookmarks   Bookmark[]
   emailTokens EmailVerificationToken[]
+  backupCodes MfaBackupCode[]
+  mfaChallenges MfaChallenge[]
 }
 
 model EmailVerificationToken {
@@ -43,6 +51,35 @@ model EmailVerificationToken {
 
   @@index([userId])
   @@index([userId, purpose])
+}
+
+model MfaBackupCode {
+  id        String    @id @default(uuid())
+  userId    String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model MfaChallenge {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  /// login | enroll
+  purpose   String
+  /// Encrypted pending TOTP secret when purpose = enroll.
+  payload   String?
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Session {
