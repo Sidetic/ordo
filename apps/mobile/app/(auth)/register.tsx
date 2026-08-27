@@ -90,7 +90,9 @@ export default function RegisterScreen() {
             onChangeText={setUsername}
             placeholder="2–32 chars, letters, numbers, _ or -"
             textContentType="username"
+            autoComplete="username"
             autoCapitalize="none"
+            importantForAutofill="yes"
             error={formError || undefined}
           />
           <View style={{ height: spacing[16] }} />
@@ -110,6 +112,8 @@ export default function RegisterScreen() {
             placeholder="At least 8 characters"
             secureTextEntry={!showPwd}
             textContentType="newPassword"
+            autoComplete="new-password"
+            importantForAutofill="yes"
             rightAccessory={<EyeToggle visible={showPwd} onPress={() => setShowPwd((v) => !v)} />}
           />
           <View style={{ height: spacing[16] }} />
@@ -120,6 +124,8 @@ export default function RegisterScreen() {
             placeholder="Re-enter your password"
             secureTextEntry={!showPwd}
             textContentType="newPassword"
+            autoComplete="new-password"
+            importantForAutofill="yes"
           />
 
           <View style={{ height: spacing[24] }} />

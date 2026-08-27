@@ -65,6 +65,8 @@ export default function ChangePasswordScreen() {
                 placeholder="Enter your current password"
                 secureTextEntry={!showPwd}
                 textContentType="password"
+                autoComplete="current-password"
+                importantForAutofill="yes"
                 rightAccessory={
                   <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
                 }
@@ -76,6 +78,8 @@ export default function ChangePasswordScreen() {
                 placeholder="At least 8 characters"
                 secureTextEntry={!showPwd}
                 textContentType="newPassword"
+                autoComplete="new-password"
+                importantForAutofill="yes"
               />
               <Input
                 label="Confirm new password"
@@ -84,6 +88,8 @@ export default function ChangePasswordScreen() {
                 placeholder="Re-enter your new password"
                 secureTextEntry={!showPwd}
                 textContentType="newPassword"
+                autoComplete="new-password"
+                importantForAutofill="yes"
               />
 
               <Button

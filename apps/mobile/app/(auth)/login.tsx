@@ -3,7 +3,7 @@
  */
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthShell } from "../../src/components/auth/AuthShell";
 import { Input } from "../../src/components/ui/Input";
@@ -21,13 +21,25 @@ import { useTheme } from "../../src/theme/ThemeProvider";
 import { radius, spacing } from "../../src/theme/tokens";
 import { ErrorCode, LoginSchema } from "@ordo/shared";
 
+function routeParam(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
 export default function LoginScreen() {
+  const params = useLocalSearchParams<{ identifier?: string; nonce?: string }>();
+  const identifier = routeParam(params.identifier);
+  const nonce = routeParam(params.nonce);
+  return <LoginForm key={`${nonce}:${identifier}`} initialIdentifier={identifier} />;
+}
+
+function LoginForm({ initialIdentifier }: { initialIdentifier: string }) {
   const { palette } = useTheme();
   const router = useRouter();
   const serverUrl = useSettingsStore((s) => s.serverUrl);
   const login = useLogin();
 
-  const [identifier, setIdentifier] = useState("");
+  const [identifier, setIdentifier] = useState(initialIdentifier);
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [showServer, setShowServer] = useState(false);
@@ -87,6 +99,8 @@ export default function LoginScreen() {
           placeholder="••••••••"
           secureTextEntry={!showPwd}
           textContentType="password"
+          autoComplete="current-password"
+          importantForAutofill="yes"
           rightAccessory={<EyeToggle visible={showPwd} onPress={() => setShowPwd((v) => !v)} />}
         />
         <View style={styles.forgotRow}>

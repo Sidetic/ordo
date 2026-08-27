@@ -68,7 +68,10 @@ export default function ResetPasswordScreen() {
       haptics.success();
       toast.success("Password updated. Sign in with your new password.");
       await holdOtpSuccess();
-      router.replace("/(auth)/login");
+      router.replace({
+        pathname: "/(auth)/login",
+        params: { identifier: email, nonce: String(Date.now()) },
+      });
     } catch (e) {
       inFlight.current = false;
       setOtpStatus("error");
@@ -116,12 +119,27 @@ export default function ResetPasswordScreen() {
       />
       <View style={{ height: spacing[16] }} />
       <Input
+        label="Email"
+        value={email}
+        onChangeText={() => {}}
+        showSoftInputOnFocus={false}
+        caretHidden
+        keyboardType="email-address"
+        textContentType="username"
+        autoComplete="username"
+        importantForAutofill="yes"
+      />
+      <View style={{ height: spacing[16] }} />
+      <Input
         label="New password"
         value={newPassword}
         onChangeText={setNewPassword}
         placeholder="At least 8 characters"
         secureTextEntry={!showPwd}
         textContentType="newPassword"
+        autoComplete="new-password"
+        importantForAutofill="yes"
+        passwordRules="minlength: 8;"
         rightAccessory={<EyeToggle visible={showPwd} onPress={() => setShowPwd((v) => !v)} />}
       />
       <View style={{ height: spacing[16] }} />
@@ -132,6 +150,9 @@ export default function ResetPasswordScreen() {
         placeholder="Re-enter your new password"
         secureTextEntry={!showPwd}
         textContentType="newPassword"
+        autoComplete="new-password"
+        importantForAutofill="yes"
+        passwordRules="minlength: 8;"
         error={formError || undefined}
       />
       <View style={{ height: spacing[24] }} />

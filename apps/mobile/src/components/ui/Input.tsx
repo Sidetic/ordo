@@ -8,6 +8,8 @@ import {
   StyleSheet,
   TextInput,
   View,
+  type NativeSyntheticEvent,
+  type TextInputChangeEventData,
   type TextInputProps,
   type ViewStyle,
 } from "react-native";
@@ -36,6 +38,9 @@ export const Input = React.forwardRef<TextInput, InputProps>(function Input({
   containerStyle,
   onFocus,
   onBlur,
+  onChange,
+  onChangeText,
+  secureTextEntry,
   ...rest
 }, ref) {
   const { palette } = useTheme();
@@ -43,6 +48,19 @@ export const Input = React.forwardRef<TextInput, InputProps>(function Input({
 
   const borderColor = error ? palette.danger : focused ? palette.accent : palette.border;
   const borderWidth = error ? 1 : focused ? 1.5 : 1;
+  // iOS Password AutoFill silently ignores secure fields that use a custom
+  // font. Use the system face while the value is masked.
+  const fontFamily = secureTextEntry
+    ? undefined
+    : mono
+      ? resolveFont("mono", "400")
+      : resolveFont("sans", "400");
+
+  const handleChange = (event: NativeSyntheticEvent<TextInputChangeEventData>) => {
+    onChange?.(event);
+    const text = event.nativeEvent.text;
+    if (typeof text === "string") onChangeText?.(text);
+  };
 
   return (
     <View style={containerStyle}>
@@ -68,6 +86,8 @@ export const Input = React.forwardRef<TextInput, InputProps>(function Input({
           placeholderTextColor={palette.textFaint}
           autoCorrect={false}
           autoCapitalize="none"
+          secureTextEntry={secureTextEntry}
+          {...rest}
           onFocus={(e) => {
             setFocused(true);
             onFocus?.(e);
@@ -76,11 +96,12 @@ export const Input = React.forwardRef<TextInput, InputProps>(function Input({
             setFocused(false);
             onBlur?.(e);
           }}
+          onChange={handleChange}
+          onChangeText={onChangeText}
           style={[
             styles.input,
-            { color: palette.text, fontFamily: mono ? resolveFont("mono", "400") : resolveFont("sans", "400") },
+            { color: palette.text, fontFamily },
           ]}
-          {...rest}
         />
         {rightAccessory ? <View style={styles.right}>{rightAccessory}</View> : null}
       </View>
