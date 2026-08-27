@@ -47,3 +47,13 @@ export function errorMessage(err: unknown, fallback = "Something went wrong."): 
 export function isFolderProtected(err: unknown): boolean {
   return err instanceof ApiClientError && err.code === ErrorCode.FOLDER_PROTECTED;
 }
+
+/** Server asked for a TOTP/backup code after the rest of the action was accepted. */
+export function isMfaRequiredError(err: unknown): boolean {
+  return err instanceof ApiClientError && err.code === ErrorCode.MFA_REQUIRED;
+}
+
+/** Wrong or expired authenticator/backup code. */
+export function isMfaInvalidError(err: unknown): boolean {
+  return err instanceof ApiClientError && err.code === ErrorCode.MFA_INVALID;
+}

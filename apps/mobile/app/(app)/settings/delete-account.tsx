@@ -14,19 +14,35 @@ import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
 import { Text } from "../../../src/components/ui/Text";
 import { toast } from "../../../src/components/ui/toast-store";
+import { MfaStepUpPanel } from "../../../src/components/auth/MfaStepUpPanel";
 import { useDeleteAccount } from "../../../src/hooks/use-auth-actions";
-import { errorMessage } from "../../../src/lib/error-message";
+import { useAuthStore } from "../../../src/store/auth";
+import { errorMessage, isMfaRequiredError } from "../../../src/lib/error-message";
 import { haptics } from "../../../src/lib/haptics";
 import { spacing } from "../../../src/theme/tokens";
-import { MfaCodeField } from "../../../src/components/auth/MfaSetupPanel";
 
 export default function DeleteAccountScreen() {
   const deleteAccount = useDeleteAccount();
+  const mfaEnabled = useAuthStore((s) => s.user?.mfaEnabled);
   const [currentPassword, setCurrentPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [mfaCode, setMfaCode] = useState("");
   const [formError, setFormError] = useState("");
+  const [mfaOpen, setMfaOpen] = useState(false);
+
+  const commit = async (mfaCode?: string) => {
+    const parsed = DeleteAccountSchema.safeParse({
+      currentPassword,
+      confirmation,
+      mfaCode,
+    });
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues[0]?.message || "Please check your input.");
+    }
+    await deleteAccount.mutateAsync(parsed.data);
+    haptics.success();
+    toast.success("Account deleted");
+  };
 
   const submit = async () => {
     if (deleteAccount.isPending) return;
@@ -34,18 +50,23 @@ export default function DeleteAccountScreen() {
     const parsed = DeleteAccountSchema.safeParse({
       currentPassword,
       confirmation,
-      mfaCode: mfaCode.trim() || undefined,
     });
     if (!parsed.success) {
       setFormError(parsed.error.issues[0]?.message || "Please check your input.");
       return;
     }
+    if (mfaEnabled) {
+      setMfaOpen(true);
+      return;
+    }
 
     try {
-      await deleteAccount.mutateAsync(parsed.data);
-      haptics.success();
-      toast.success("Account deleted");
+      await commit();
     } catch (error) {
+      if (isMfaRequiredError(error)) {
+        setMfaOpen(true);
+        return;
+      }
       haptics.error();
       setFormError(errorMessage(error));
     }
@@ -95,13 +116,12 @@ export default function DeleteAccountScreen() {
                 mono
                 onSubmitEditing={submit}
               />
-              <MfaCodeField value={mfaCode} onChange={setMfaCode} />
               <Button
                 label="Delete account"
                 variant="danger"
                 block
                 size="lg"
-                loading={deleteAccount.isPending}
+                loading={deleteAccount.isPending && !mfaOpen}
                 disabled={!currentPassword || !confirmed}
                 onPress={submit}
               />
@@ -114,6 +134,20 @@ export default function DeleteAccountScreen() {
           </SettingsGroup>
         </SettingsScrollView>
       </KeyboardAvoidingView>
+
+      <MfaStepUpPanel
+        visible={mfaOpen}
+        onDismiss={() => setMfaOpen(false)}
+        title="Delete account?"
+        description="Enter a current authenticator or backup code to permanently delete your account."
+        confirmLabel="Delete account"
+        confirmVariant="danger"
+        onConfirm={commit}
+        onUnhandledError={(error) => {
+          haptics.error();
+          setFormError(errorMessage(error));
+        }}
+      />
     </SettingsPage>
   );
 }

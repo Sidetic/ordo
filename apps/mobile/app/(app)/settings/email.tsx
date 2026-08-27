@@ -21,14 +21,14 @@ import { Button } from "../../../src/components/ui/Button";
 import { useRequestEmailChange } from "../../../src/hooks/use-auth-actions";
 import { useAuthStore } from "../../../src/store/auth";
 import { useServerInfo } from "../../../src/hooks/queries";
-import { errorMessage } from "../../../src/lib/error-message";
+import { errorMessage, isMfaRequiredError } from "../../../src/lib/error-message";
 import { otpRequestFooter, otpSentToast } from "../../../src/lib/otp-copy";
 import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
 import { spacing } from "../../../src/theme/tokens";
 import { ChangeEmailSchema } from "@ordo/shared";
 import { OtpDeliveryHint } from "../../../src/components/auth/OtpDeliveryHint";
-import { MfaCodeField } from "../../../src/components/auth/MfaSetupPanel";
+import { MfaStepUpPanel } from "../../../src/components/auth/MfaStepUpPanel";
 
 export default function ChangeEmailScreen() {
   const email = useAuthStore((s) => s.user?.email ?? "");
@@ -45,34 +45,58 @@ function ChangeEmailForm() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [showPwd, setShowPwd] = useState(false);
-  const [mfaCode, setMfaCode] = useState("");
   const [formError, setFormError] = useState("");
+  const [mfaOpen, setMfaOpen] = useState(false);
+
+  const finish = (nextEmail: string) => {
+    haptics.success();
+    toast.success(otpSentToast(smtpConfigured, nextEmail));
+    setNewEmail("");
+    setCurrentPassword("");
+    setShowPwd(false);
+    setFormError("");
+    setMfaOpen(false);
+    requestEmailChange.reset();
+    router.replace({
+      pathname: "/settings/verify-email",
+      params: { email: nextEmail, nonce: String(Date.now()) },
+    });
+  };
+
+  const commit = async (mfaCode?: string) => {
+    const parsed = ChangeEmailSchema.safeParse({
+      currentPassword,
+      newEmail: newEmail.trim().toLowerCase(),
+      mfaCode,
+    });
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues[0]?.message || "Please check your input.");
+    }
+    await requestEmailChange.mutateAsync(parsed.data);
+    finish(parsed.data.newEmail);
+  };
 
   const submit = async () => {
     setFormError("");
     const parsed = ChangeEmailSchema.safeParse({
       currentPassword,
       newEmail: newEmail.trim().toLowerCase(),
-      mfaCode: mfaCode.trim() || undefined,
     });
     if (!parsed.success) {
       setFormError(parsed.error.issues[0]?.message || "Please check your input.");
       return;
     }
+    if (user?.mfaEnabled) {
+      setMfaOpen(true);
+      return;
+    }
     try {
-      await requestEmailChange.mutateAsync(parsed.data);
-      haptics.success();
-      toast.success(otpSentToast(smtpConfigured, parsed.data.newEmail));
-      setNewEmail("");
-      setCurrentPassword("");
-      setShowPwd(false);
-      setFormError("");
-      requestEmailChange.reset();
-      router.replace({
-        pathname: "/settings/verify-email",
-        params: { email: parsed.data.newEmail, nonce: String(Date.now()) },
-      });
+      await commit();
     } catch (e) {
+      if (isMfaRequiredError(e)) {
+        setMfaOpen(true);
+        return;
+      }
       haptics.error();
       setFormError(errorMessage(e));
     }
@@ -125,19 +149,31 @@ function ChangeEmailForm() {
                   <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
                 }
               />
-              <MfaCodeField value={mfaCode} onChange={setMfaCode} />
 
               <Button
                 label="Send verification code"
                 block
                 size="lg"
                 onPress={submit}
-                loading={requestEmailChange.isPending}
+                loading={requestEmailChange.isPending && !mfaOpen}
               />
             </SettingsForm>
           </SettingsGroup>
         </SettingsScrollView>
       </KeyboardAvoidingView>
+
+      <MfaStepUpPanel
+        visible={mfaOpen}
+        onDismiss={() => setMfaOpen(false)}
+        title="Change email"
+        description="Enter a current authenticator or backup code to change your email."
+        confirmLabel="Send verification code"
+        onConfirm={commit}
+        onUnhandledError={(e) => {
+          haptics.error();
+          setFormError(errorMessage(e));
+        }}
+      />
     </SettingsPage>
   );
 }
