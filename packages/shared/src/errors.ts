@@ -13,6 +13,15 @@ export const ErrorCode = {
   EMAIL_NOT_VERIFIED: "email_not_verified",
   INVALID_VERIFICATION_TOKEN: "invalid_verification_token",
   REGISTRATION_DISABLED: "registration_disabled",
+  MFA_REQUIRED: "mfa_required",
+  MFA_ENROLLMENT_REQUIRED: "mfa_enrollment_required",
+  MFA_INVALID: "mfa_invalid",
+
+  // avatars
+  AVATAR_TOO_LARGE: "avatar_too_large",
+  AVATAR_UNSUPPORTED_TYPE: "avatar_unsupported_type",
+  AVATAR_ANIMATED_DISABLED: "avatar_animated_disabled",
+  AVATAR_NOT_FOUND: "avatar_not_found",
 
   // folders
   FOLDER_NOT_FOUND: "folder_not_found",

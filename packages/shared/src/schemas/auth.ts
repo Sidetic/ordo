@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EMAIL_OTP } from "../constants.js";
+import { EMAIL_OTP, MFA } from "../constants.js";
 
 const email = z
   .string()
@@ -11,27 +11,40 @@ const password = z
   .string()
   .min(8, { message: "Password must be at least 8 characters" })
   .max(256);
-const username = z
+const displayName = z
   .string()
   .trim()
-  .min(2, { message: "Username must be at least 2 characters" })
-  .max(32, { message: "Username must be 32 characters or fewer" })
-  .regex(/^[a-zA-Z0-9_-]+$/, {
-    message: "Use only letters, numbers, underscores and hyphens",
+  .min(1, { message: "Enter a display name" })
+  .max(64, { message: "Display name must be 64 characters or fewer" });
+const optionalMfaCode = z
+  .string()
+  .trim()
+  .min(1, { message: "Enter your authenticator or backup code" })
+  .max(32)
+  .optional();
+const requiredMfaCode = z
+  .string()
+  .trim()
+  .min(1, { message: "Enter your authenticator or backup code" })
+  .max(32);
+const totpCode = z
+  .string()
+  .trim()
+  .regex(new RegExp(`^\\d{${MFA.TOTP_DIGITS}}$`), {
+    message: `Enter the ${MFA.TOTP_DIGITS}-digit code`,
   });
+const challengeToken = z.string().trim().min(1).max(256);
 
 export const RegisterSchema = z.object({
-  username,
+  displayName,
   email,
   password,
 });
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 
-const loginIdentifier = z.string().trim().min(1, { message: "Enter your email or username" }).max(254);
 export const LoginSchema = z
   .union([
-    z.object({ identifier: loginIdentifier, password }),
-    // Keep accepting the original payload while installed clients update.
+    z.object({ identifier: email, password }),
     z.object({ email, password }),
   ])
   .transform((input) => ({
@@ -58,21 +71,24 @@ export const VerifyEmailSchema = z.object({
 });
 export type VerifyEmailInput = z.infer<typeof VerifyEmailSchema>;
 
-export const ChangeUsernameSchema = z.object({
-  newUsername: username,
+export const ChangeDisplayNameSchema = z.object({
+  displayName,
 });
-export type ChangeUsernameInput = z.infer<typeof ChangeUsernameSchema>;
+export type ChangeDisplayNameInput = z.infer<typeof ChangeDisplayNameSchema>;
 
 export const ChangeEmailSchema = z.object({
   currentPassword: password,
   newEmail: email,
+  mfaCode: optionalMfaCode,
 });
 export type ChangeEmailInput = z.infer<typeof ChangeEmailSchema>;
 
-export const ChangePasswordSchema = z.object({
-  currentPassword: password,
-  newPassword: password,
-})
+export const ChangePasswordSchema = z
+  .object({
+    currentPassword: password,
+    newPassword: password,
+    mfaCode: optionalMfaCode,
+  })
   .refine((data) => data.currentPassword !== data.newPassword, {
     message: "New password must be different from your current password",
     path: ["newPassword"],
@@ -85,6 +101,7 @@ export const DeleteAccountSchema = z.object({
   confirmation: z.string().refine((value) => value === DELETE_ACCOUNT_CONFIRMATION, {
     message: `Type ${DELETE_ACCOUNT_CONFIRMATION} exactly`,
   }),
+  mfaCode: optionalMfaCode,
 });
 export type DeleteAccountInput = z.infer<typeof DeleteAccountSchema>;
 
@@ -104,3 +121,38 @@ export const ResetPasswordSchema = z.object({
   newPassword: password,
 });
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+
+export const LoginMfaSchema = z.object({
+  challengeToken,
+  code: z.string().trim().min(1).max(32),
+});
+export type LoginMfaInput = z.infer<typeof LoginMfaSchema>;
+
+export const LoginMfaEmailSchema = z.object({
+  challengeToken,
+});
+export type LoginMfaEmailInput = z.infer<typeof LoginMfaEmailSchema>;
+
+export const LoginMfaEmailVerifySchema = z.object({
+  challengeToken,
+  token: emailOtp,
+});
+export type LoginMfaEmailVerifyInput = z.infer<typeof LoginMfaEmailVerifySchema>;
+
+export const TotpBeginSchema = z.preprocess(
+  (value) => value ?? {},
+  z.object({
+    mfaCode: optionalMfaCode,
+  }),
+);
+export type TotpBeginInput = z.infer<typeof TotpBeginSchema>;
+
+export const TotpConfirmSchema = z.object({
+  code: totpCode,
+});
+export type TotpConfirmInput = z.infer<typeof TotpConfirmSchema>;
+
+export const MfaCodeBodySchema = z.object({
+  mfaCode: requiredMfaCode,
+});
+export type MfaCodeBodyInput = z.infer<typeof MfaCodeBodySchema>;

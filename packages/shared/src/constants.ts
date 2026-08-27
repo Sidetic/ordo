@@ -39,8 +39,36 @@ export const EMAIL_OTP_PURPOSE = {
   VERIFY: "verify",
   EMAIL_CHANGE: "email_change",
   PASSWORD_RESET: "password_reset",
+  MFA_RECOVERY: "mfa_recovery",
 } as const;
 export type EmailOtpPurpose = (typeof EMAIL_OTP_PURPOSE)[keyof typeof EMAIL_OTP_PURPOSE];
+
+/** TOTP + backup-code MFA. */
+export const MFA = {
+  ISSUER: "Ordo",
+  TOTP_DIGITS: 6,
+  TOTP_PERIOD_S: 30,
+  TOTP_WINDOW: 1,
+  CHALLENGE_TTL_MS: 5 * 60 * 1000,
+  CHALLENGE_MAX_ATTEMPTS: 5,
+  BACKUP_CODE_COUNT: 10,
+} as const;
+
+/** Stored on `MfaChallenge.purpose`. */
+export const MFA_CHALLENGE_PURPOSE = {
+  LOGIN: "login",
+  ENROLL: "enroll",
+} as const;
+export type MfaChallengePurpose = (typeof MFA_CHALLENGE_PURPOSE)[keyof typeof MFA_CHALLENGE_PURPOSE];
+
+/** Profile pictures. Pixel cap is an implementation detail, not a config knob. */
+export const AVATAR = {
+  DEFAULT_MAX_BYTES: 2 * 1024 * 1024,
+  MAX_PX: 512,
+  MIME: "image/webp",
+  ALLOWED_TYPES: ["image/jpeg", "image/png", "image/webp"] as const,
+} as const;
+export type AvatarMime = (typeof AVATAR.ALLOWED_TYPES)[number];
 
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;

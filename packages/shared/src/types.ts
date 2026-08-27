@@ -3,9 +3,12 @@ import type { FolderIcon } from "./constants.js";
 
 export interface UserDto {
   id: string;
-  username: string;
+  displayName: string;
   email: string;
   emailVerified: boolean;
+  hasAvatar: boolean;
+  avatarUpdatedAt: string | null;
+  mfaEnabled: boolean;
   preferences: ReaderPreferences;
   createdAt: string;
 }
@@ -46,6 +49,39 @@ export interface AuthResponse {
   user: UserDto;
   session: SessionDto;
   tokens: AuthTokens;
+}
+
+/** Password was accepted but TOTP (or a backup code) is still required. */
+export interface MfaRequiredResponse {
+  mfaRequired: true;
+  challengeToken: string;
+  methods: ["totp"];
+  emailRecoveryAvailable: boolean;
+}
+
+export type LoginResponse = AuthResponse | MfaRequiredResponse;
+
+export function isMfaRequiredResponse(value: LoginResponse): value is MfaRequiredResponse {
+  return "mfaRequired" in value && value.mfaRequired === true;
+}
+
+export interface MfaStatusDto {
+  totpEnabled: boolean;
+  backupCodesRemaining: number;
+}
+
+export interface TotpBeginDto {
+  secret: string;
+  otpauthUrl: string;
+}
+
+export interface TotpConfirmDto {
+  backupCodes: string[];
+  user: UserDto;
+}
+
+export interface BackupCodesDto {
+  backupCodes: string[];
 }
 
 export interface FolderDto {
@@ -122,6 +158,9 @@ export interface ServerInfoDto {
   emailVerificationRequired: boolean;
   /** True when the server has a working SMTP transport (codes are emailed). */
   smtpConfigured: boolean;
+  profilePictureMaxBytes: number;
+  avatarAllowAnimated: boolean;
+  mfaRequired: boolean;
 }
 
 export interface ApiError {
