@@ -296,6 +296,52 @@ describe("PrismaService legacy schema migration", () => {
     await service.onModuleDestroy();
   });
 
+  it("adds purpose to EmailVerificationToken tables created before password reset", async () => {
+    const path = tempDbPath();
+    const db = new PrismaClient({ datasources: { db: { url: `file:${path}` } } });
+    for (const statement of [
+      ...PRE_READER_DDL,
+      `CREATE TABLE "EmailVerificationToken" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "userId" TEXT NOT NULL,
+        "token" TEXT NOT NULL,
+        "expiresAt" DATETIME NOT NULL,
+        "consumedAt" DATETIME,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "EmailVerificationToken_token_key" UNIQUE ("token"),
+        CONSTRAINT "EmailVerificationToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )`,
+      `CREATE INDEX "EmailVerificationToken_userId_idx" ON "EmailVerificationToken"("userId")`,
+      `INSERT INTO "EmailVerificationToken" ("id","userId","token","expiresAt","createdAt")
+       VALUES ('t1','u1','old-hash',datetime('now','+10 minutes'),CURRENT_TIMESTAMP)`,
+    ]) {
+      await db.$executeRawUnsafe(statement);
+    }
+    await db.$disconnect();
+
+    const service = await boot(path);
+    const cols = (await service.$queryRawUnsafe(
+      `PRAGMA table_info("EmailVerificationToken")`,
+    )) as Array<{ name: string }>;
+    expect(cols.some((c) => c.name === "purpose")).toBe(true);
+    expect(cols.some((c) => c.name === "attempts")).toBe(true);
+
+    const existing = await service.emailVerificationToken.findUniqueOrThrow({ where: { id: "t1" } });
+    expect(existing.purpose).toBe("verify");
+    expect(existing.attempts).toBe(0);
+
+    const created = await service.emailVerificationToken.create({
+      data: {
+        userId: "u1",
+        token: "reset-hash",
+        purpose: "password_reset",
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+    expect(created.purpose).toBe("password_reset");
+    await service.onModuleDestroy();
+  });
+
   it("leaves fresh (current-schema) databases untouched", async () => {
     const path = tempDbPath();
     execSync(`npx prisma db push --skip-generate`, {

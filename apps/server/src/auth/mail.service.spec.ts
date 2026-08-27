@@ -22,7 +22,7 @@ describe("MailService", () => {
     expect(mail.isConfigured).toBe(false);
 
     await mail.sendVerification("dev@ordo.app", "482193");
-    expect(log).toHaveBeenCalledWith(expect.stringContaining("SMTP is not configured"));
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("Printing the one-time code"));
     expect(log).toHaveBeenCalledWith(expect.stringContaining("dev@ordo.app"));
     expect(log).toHaveBeenCalledWith(expect.stringContaining("482193"));
   });

@@ -94,6 +94,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
             Prisma.sql`PRAGMA table_info("EmailVerificationToken")`,
           ),
         );
+        await this.$executeRawUnsafe(
+          `CREATE INDEX IF NOT EXISTS "EmailVerificationToken_userId_purpose_idx"
+           ON "EmailVerificationToken"("userId", "purpose")`,
+        );
       }
 
       // --- 3. fold legacy default folders into unfiled bookmarks ---
@@ -214,9 +218,10 @@ const USER_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: string]>
   ["preferences", "TEXT"],
 ];
 
-/** OTP attempt counter added when verification codes became 6-digit OTPs. */
+/** Columns added after EmailVerificationToken first shipped. */
 const EMAIL_TOKEN_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: string]> = [
   ["attempts", "INTEGER NOT NULL DEFAULT 0"],
+  ["purpose", "TEXT NOT NULL DEFAULT 'verify'"],
 ];
 
 /** Identical to the previous generated DDL except folderId is now nullable. */

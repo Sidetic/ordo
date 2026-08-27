@@ -63,24 +63,35 @@ export class MailService {
     html: string;
   }): Promise<void> {
     if (!this.transporter) {
-      this.logger.log(
-        [
-          "[console-mail] SMTP is not configured — printing the one-time code.",
-          `To: ${opts.to}`,
-          `Subject: ${opts.subject}`,
-          opts.text,
-        ].join("\n"),
-      );
+      this.logConsole(opts);
       return;
     }
-    await this.transporter.sendMail({
-      from: this.from,
-      to: opts.to,
-      subject: opts.subject,
-      text: opts.text,
-      html: opts.html,
-      attachments: logoAttachment(),
-    });
+    try {
+      await this.transporter.sendMail({
+        from: this.from,
+        to: opts.to,
+        subject: opts.subject,
+        text: opts.text,
+        html: opts.html,
+        attachments: logoAttachment(),
+      });
+    } catch (err) {
+      this.logger.warn(
+        `SMTP send failed, printing the one-time code instead: ${(err as Error).message}`,
+      );
+      this.logConsole(opts);
+    }
+  }
+
+  private logConsole(opts: { to: string; subject: string; text: string }): void {
+    this.logger.log(
+      [
+        "[console-mail] Printing the one-time code.",
+        `To: ${opts.to}`,
+        `Subject: ${opts.subject}`,
+        opts.text,
+      ].join("\n"),
+    );
   }
 }
 
