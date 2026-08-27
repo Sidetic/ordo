@@ -109,19 +109,6 @@ export function MfaSetupPanel({
   );
 }
 
-export function BackupCodesList({ codes }: { codes: string[] }) {
-  const { palette } = useTheme();
-  return (
-    <View style={[styles.codes, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-      {codes.map((code) => (
-        <Text key={code} variant="mono" align="center">
-          {code}
-        </Text>
-      ))}
-    </View>
-  );
-}
-
 export function MfaCodeField({
   value,
   onChange,
@@ -155,10 +142,4 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   secret: { letterSpacing: 1 },
-  codes: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius.lg,
-    padding: spacing[16],
-    gap: spacing[8],
-  },
 });

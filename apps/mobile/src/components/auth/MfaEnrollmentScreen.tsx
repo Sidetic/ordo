@@ -3,8 +3,8 @@ import { View } from "react-native";
 import type { UserDto } from "@ordo/shared";
 import { Header } from "../ui/Header";
 import { Text } from "../ui/Text";
-import { BackupCodesList, MfaSetupPanel } from "./MfaSetupPanel";
-import { Button } from "../ui/Button";
+import { BackupCodesDialog } from "./BackupCodesDialog";
+import { MfaSetupPanel } from "./MfaSetupPanel";
 import { SettingsScrollView } from "../settings/SettingsPage";
 import { useAuthStore } from "../../store/auth";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -25,21 +25,21 @@ export function MfaEnrollmentScreen() {
             This server requires an authenticator app before you can continue.
           </Text>
           {pending ? (
-            <>
-              <Text variant="body">Save these backup codes. They will not be shown again.</Text>
-              <BackupCodesList codes={pending.codes} />
-              <Button
-                label="Continue"
-                block
-                size="lg"
-                onPress={() => setUser(pending.user)}
-              />
-            </>
+            <Text variant="body" color="secondary">
+              Authenticator is on. Save your backup codes to continue.
+            </Text>
           ) : (
             <MfaSetupPanel onEnabled={(user, backupCodes) => setPending({ user, codes: backupCodes })} />
           )}
         </View>
       </SettingsScrollView>
+      <BackupCodesDialog
+        codes={pending?.codes ?? null}
+        onClose={() => {
+          if (!pending) return;
+          setUser(pending.user);
+        }}
+      />
     </View>
   );
 }
