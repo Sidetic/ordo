@@ -4,6 +4,7 @@
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  isMfaRequiredResponse,
   normalizeReaderPreferences,
   type SessionDto,
   type UpdateReaderPreferencesInput,
@@ -21,6 +22,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: authApi.login,
     onSuccess: (data) => {
+      if (isMfaRequiredResponse(data)) return;
       setSession(data);
       scheduleProactiveRefresh(data.tokens.expiresIn);
     },
@@ -51,10 +53,10 @@ function useUpdateUser() {
   };
 }
 
-export function useChangeUsername() {
+export function useChangeDisplayName() {
   const updateUser = useUpdateUser();
   return useMutation({
-    mutationFn: authApi.changeUsername,
+    mutationFn: authApi.changeDisplayName,
     onSuccess: updateUser,
   });
 }
@@ -152,6 +154,28 @@ export function useUpdateReaderPreferences() {
     },
     onError: (_e, _patch, ctx) => {
       if (ctx?.prev) setUser(ctx.prev);
+    },
+  });
+}
+
+export function useLoginMfa() {
+  const setSession = useAuthStore((s) => s.setSession);
+  return useMutation({
+    mutationFn: authApi.loginMfa,
+    onSuccess: (data) => {
+      setSession(data);
+      scheduleProactiveRefresh(data.tokens.expiresIn);
+    },
+  });
+}
+
+export function useLoginMfaEmailVerify() {
+  const setSession = useAuthStore((s) => s.setSession);
+  return useMutation({
+    mutationFn: authApi.loginMfaEmailVerify,
+    onSuccess: (data) => {
+      setSession(data);
+      scheduleProactiveRefresh(data.tokens.expiresIn);
     },
   });
 }

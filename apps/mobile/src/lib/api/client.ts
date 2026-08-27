@@ -64,6 +64,10 @@ export class ApiClientError extends Error {
 export interface RequestOptions<B = unknown> {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: B;
+  /** Multipart body; do not JSON-stringify. */
+  formData?: FormData;
+  /** Return the raw Response (for binary downloads). */
+  raw?: boolean;
   query?: Record<string, string | number | boolean | null | undefined>;
   /** Attach the current access token (default: true). */
   auth?: boolean;
@@ -226,7 +230,9 @@ async function request<T>(
     if (folderToken) headers[FOLDER_TOKEN_HEADER] = folderToken;
   }
   const init: RequestInit = { method: options.method ?? "GET", headers, signal: options.signal };
-  if (options.body !== undefined) {
+  if (options.formData) {
+    init.body = options.formData;
+  } else if (options.body !== undefined) {
     init.headers = jsonHeaders(headers);
     init.body = JSON.stringify(options.body);
   }
@@ -235,6 +241,7 @@ async function request<T>(
 
   try {
     const res = await rawFetch(url, init);
+    if (options.raw) return res as T;
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
   } catch (e) {
@@ -256,7 +263,11 @@ export const api = {
   get: <T>(path: string, opts?: RequestOptions) => request<T>(path, { ...opts, method: "GET" }),
   post: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
     request<T>(path, { ...opts, method: "POST", body }),
+  postForm: <T>(path: string, formData: FormData, opts?: RequestOptions) =>
+    request<T>(path, { ...opts, method: "POST", formData }),
   patch: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
     request<T>(path, { ...opts, method: "PATCH", body }),
   delete: <T>(path: string, opts?: RequestOptions) => request<T>(path, { ...opts, method: "DELETE" }),
+  getBlob: (path: string, opts?: RequestOptions) =>
+    request<Response>(path, { ...opts, method: "GET", raw: true }),
 };

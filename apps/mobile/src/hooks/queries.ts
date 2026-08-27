@@ -41,7 +41,7 @@ export function useValidateSession() {
     staleTime: Infinity,
   });
 
-  // The server account is canonical (username, email, reader preferences…):
+  // The server account is canonical (display name, email, reader preferences…):
   // fold the fetched user back into the persisted local session.
   useEffect(() => {
     if (query.data) setUser(query.data);

@@ -5,7 +5,7 @@ import { ApiClientError } from "./api/client";
 import { ErrorCode } from "@ordo/shared";
 
 const FRIENDLY: Record<string, string> = {
-  [ErrorCode.INVALID_CREDENTIALS]: "Incorrect email, username or password",
+  [ErrorCode.INVALID_CREDENTIALS]: "Incorrect email or password",
   [ErrorCode.EMAIL_ALREADY_EXISTS]: "An account with this email already exists.",
   [ErrorCode.EMAIL_NOT_VERIFIED]: "Please verify your email before signing in.",
   [ErrorCode.INVALID_VERIFICATION_TOKEN]: "This verification code is invalid or has expired.",
@@ -13,6 +13,13 @@ const FRIENDLY: Record<string, string> = {
   [ErrorCode.SESSION_REVOKED]: "Your session has ended. Please sign in again.",
   [ErrorCode.TOKEN_EXPIRED]: "Your session has expired.",
   [ErrorCode.UNAUTHORIZED]: "You need to sign in to do that.",
+  [ErrorCode.MFA_REQUIRED]: "Enter your authenticator or backup code.",
+  [ErrorCode.MFA_ENROLLMENT_REQUIRED]: "Set up an authenticator app to continue.",
+  [ErrorCode.MFA_INVALID]: "That code is incorrect or has expired.",
+  [ErrorCode.AVATAR_TOO_LARGE]: "That image is too large.",
+  [ErrorCode.AVATAR_UNSUPPORTED_TYPE]: "Use a JPEG, PNG, or WebP image.",
+  [ErrorCode.AVATAR_ANIMATED_DISABLED]: "Animated images are disabled on this server.",
+  [ErrorCode.AVATAR_NOT_FOUND]: "No profile picture yet.",
   [ErrorCode.FOLDER_NOT_FOUND]: "This folder no longer exists.",
   [ErrorCode.FOLDER_PROTECTED]: "This folder is locked.",
   [ErrorCode.INVALID_FOLDER_PASSWORD]: "That password is incorrect.",

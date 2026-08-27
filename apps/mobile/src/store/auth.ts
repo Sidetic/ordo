@@ -7,8 +7,33 @@
  * fallback trigger.
  */
 import { create } from "zustand";
+import { normalizeReaderPreferences, type AuthTokens, type UserDto } from "@ordo/shared";
 import { secureGet, secureSet, secureDelete, StorageKeys } from "../lib/storage";
-import type { AuthTokens, UserDto } from "@ordo/shared";
+
+/** Accept current UserDto rows and older persisted sessions that still have `username`. */
+export function normalizePersistedUser(raw: unknown): UserDto | null {
+  if (!raw || typeof raw !== "object") return null;
+  const u = raw as Record<string, unknown>;
+  if (typeof u.id !== "string" || typeof u.email !== "string") return null;
+  const displayName =
+    typeof u.displayName === "string" && u.displayName.trim()
+      ? u.displayName
+      : typeof u.username === "string"
+        ? u.username
+        : "";
+  if (!displayName) return null;
+  return {
+    id: u.id,
+    displayName,
+    email: u.email,
+    emailVerified: Boolean(u.emailVerified),
+    hasAvatar: Boolean(u.hasAvatar),
+    avatarUpdatedAt: typeof u.avatarUpdatedAt === "string" ? u.avatarUpdatedAt : null,
+    mfaEnabled: Boolean(u.mfaEnabled),
+    preferences: normalizeReaderPreferences(u.preferences),
+    createdAt: typeof u.createdAt === "string" ? u.createdAt : new Date(0).toISOString(),
+  };
+}
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -38,8 +63,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   hydrate: async () => {
     const saved = await secureGet<PersistedAuth>(StorageKeys.AUTH);
-    if (saved?.user && saved?.tokens?.accessToken && saved?.tokens?.refreshToken) {
-      set({ user: saved.user, tokens: saved.tokens, status: "authenticated" });
+    const user = normalizePersistedUser(saved?.user);
+    if (user && saved?.tokens?.accessToken && saved?.tokens?.refreshToken) {
+      const session = { user, tokens: saved.tokens };
+      set({ ...session, status: "authenticated" });
+      void secureSet(StorageKeys.AUTH, session);
     } else {
       set({ user: null, tokens: null, status: "unauthenticated" });
     }
