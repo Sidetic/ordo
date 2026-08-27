@@ -21,6 +21,9 @@ export class ServerController {
       registrationEnabled: this.cfg.registrationEnabled,
       emailVerificationRequired: this.cfg.emailVerificationRequired,
       smtpConfigured: this.mail.isConfigured,
+      profilePictureMaxBytes: this.cfg.profilePictureMaxBytes,
+      avatarAllowAnimated: this.cfg.avatarAllowAnimated,
+      mfaRequired: this.cfg.mfaRequired,
     };
   }
 }

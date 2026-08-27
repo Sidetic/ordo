@@ -39,6 +39,45 @@ describe("loadConfig rate-limit flags", () => {
   });
 });
 
+describe("loadConfig identity flags", () => {
+  const keys = [
+    "MFA_REQUIRED",
+    "AVATAR_ALLOW_ANIMATED",
+    "AVATAR_STORAGE",
+    "PROFILE_PICTURE_MAX_BYTES",
+  ] as const;
+  const original: Record<string, string | undefined> = {};
+
+  beforeEach(() => {
+    for (const key of keys) original[key] = process.env[key];
+  });
+
+  afterEach(() => {
+    for (const key of keys) restore(key, original[key]);
+  });
+
+  it("defaults MFA off, filesystem avatars, 2 MB, animation off", () => {
+    for (const key of keys) delete process.env[key];
+    const cfg = loadConfig();
+    expect(cfg.mfaRequired).toBe(false);
+    expect(cfg.avatarStorage).toBe("filesystem");
+    expect(cfg.avatarAllowAnimated).toBe(false);
+    expect(cfg.profilePictureMaxBytes).toBe(2 * 1024 * 1024);
+  });
+
+  it("honors MFA_REQUIRED, AVATAR_STORAGE, and size", () => {
+    process.env.MFA_REQUIRED = "true";
+    process.env.AVATAR_STORAGE = "database";
+    process.env.AVATAR_ALLOW_ANIMATED = "1";
+    process.env.PROFILE_PICTURE_MAX_BYTES = "512000";
+    const cfg = loadConfig();
+    expect(cfg.mfaRequired).toBe(true);
+    expect(cfg.avatarStorage).toBe("database");
+    expect(cfg.avatarAllowAnimated).toBe(true);
+    expect(cfg.profilePictureMaxBytes).toBe(512000);
+  });
+});
+
 function restore(key: string, value: string | undefined): void {
   if (value === undefined) delete process.env[key];
   else process.env[key] = value;

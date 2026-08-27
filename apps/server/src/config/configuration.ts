@@ -2,6 +2,9 @@ import { z } from "zod";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
+import { AVATAR } from "@ordo/shared";
+
+export type AvatarStorage = "filesystem" | "database";
 
 /**
  * Resolved, typed application configuration.
@@ -29,6 +32,11 @@ export interface AppConfig {
    * Set to 1 behind a typical nginx / Caddy / Cloudflare tunnel.
    */
   trustProxy: number;
+  profilePictureMaxBytes: number;
+  avatarStorage: AvatarStorage;
+  avatarDir: string;
+  avatarAllowAnimated: boolean;
+  mfaRequired: boolean;
 }
 
 const EnvSchema = z.object({
@@ -50,6 +58,22 @@ const EnvSchema = z.object({
   SMTP_FROM: z.string().default("Ordo <noreply@ordo.local>"),
   RATE_LIMIT_ENABLED: z.string().optional(),
   TRUST_PROXY: z.coerce.number().int().min(0).max(32).default(0),
+  PROFILE_PICTURE_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(20 * 1024 * 1024)
+    .default(AVATAR.DEFAULT_MAX_BYTES),
+  AVATAR_STORAGE: z.enum(["filesystem", "database"]).default("filesystem"),
+  AVATAR_DIR: z.string().optional(),
+  AVATAR_ALLOW_ANIMATED: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .default("false"),
+  MFA_REQUIRED: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .default("false"),
 });
 
 function toBool(v: string): boolean {
@@ -75,6 +99,21 @@ function resolveSecret(): string {
   return generated;
 }
 
+function sqliteFilePath(databaseUrl: string): string | null {
+  if (!databaseUrl.startsWith("file:")) return null;
+  return databaseUrl.slice("file:".length);
+}
+
+/** Unique per database file so tests and instances don't share `/tmp/avatars`. */
+export function defaultAvatarDir(databaseUrl: string): string {
+  const dbPath = sqliteFilePath(databaseUrl);
+  if (dbPath) {
+    const base = dbPath.replace(/\.db$/i, "");
+    return `${base}-avatars`;
+  }
+  return resolve(process.cwd(), "data", "avatars");
+}
+
 export function loadConfig(): AppConfig {
   const parsed = EnvSchema.parse(process.env);
   const secret = resolveSecret();
@@ -87,11 +126,18 @@ export function loadConfig(): AppConfig {
         .filter(Boolean)
     : [];
 
+  const databaseUrl = parsed.DATABASE_URL.startsWith("file:")
+    ? parsed.DATABASE_URL
+    : `file:${parsed.DATABASE_URL}`;
+
+  const avatarDirRaw = parsed.AVATAR_DIR?.trim();
+  const avatarDir = avatarDirRaw
+    ? resolve(avatarDirRaw)
+    : defaultAvatarDir(databaseUrl);
+
   return {
     port: parsed.PORT,
-    databaseUrl: parsed.DATABASE_URL.startsWith("file:")
-      ? parsed.DATABASE_URL
-      : `file:${parsed.DATABASE_URL}`,
+    databaseUrl,
     jwtSecret: secret,
     registrationEnabled: toBool(parsed.REGISTRATION_ENABLED),
     emailVerificationRequired: toBool(parsed.EMAIL_VERIFICATION_REQUIRED),
@@ -100,6 +146,11 @@ export function loadConfig(): AppConfig {
     smtpFrom: parsed.SMTP_FROM,
     rateLimitEnabled: resolveRateLimitEnabled(parsed.RATE_LIMIT_ENABLED),
     trustProxy: parsed.TRUST_PROXY,
+    profilePictureMaxBytes: parsed.PROFILE_PICTURE_MAX_BYTES,
+    avatarStorage: parsed.AVATAR_STORAGE,
+    avatarDir,
+    avatarAllowAnimated: toBool(parsed.AVATAR_ALLOW_ANIMATED),
+    mfaRequired: toBool(parsed.MFA_REQUIRED),
   };
 }
 
