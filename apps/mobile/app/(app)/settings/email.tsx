@@ -2,6 +2,10 @@
  * Change email — step 1: confirm current password + enter the new email.
  * On success the server sends a verification code to the new address and we
  * navigate to the verify screen.
+ *
+ * Settings routes live in a tab navigator that keeps screens mounted. The form
+ * is keyed by the signed-in email so a completed change cannot leave the
+ * previous address and password sitting in the next visit.
  */
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform } from "react-native";
@@ -26,6 +30,11 @@ import { ChangeEmailSchema } from "@ordo/shared";
 import { OtpDeliveryHint } from "../../../src/components/auth/OtpDeliveryHint";
 
 export default function ChangeEmailScreen() {
+  const email = useAuthStore((s) => s.user?.email ?? "");
+  return <ChangeEmailForm key={email} />;
+}
+
+function ChangeEmailForm() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const requestEmailChange = useRequestEmailChange();
@@ -51,7 +60,15 @@ export default function ChangeEmailScreen() {
       await requestEmailChange.mutateAsync(parsed.data);
       haptics.success();
       toast.success(otpSentToast(smtpConfigured, parsed.data.newEmail));
-      router.replace({ pathname: "/settings/verify-email", params: { email: parsed.data.newEmail } });
+      setNewEmail("");
+      setCurrentPassword("");
+      setShowPwd(false);
+      setFormError("");
+      requestEmailChange.reset();
+      router.replace({
+        pathname: "/settings/verify-email",
+        params: { email: parsed.data.newEmail, nonce: String(Date.now()) },
+      });
     } catch (e) {
       haptics.error();
       setFormError(errorMessage(e));
@@ -77,6 +94,9 @@ export default function ChangeEmailScreen() {
                 value={user?.email ?? ""}
                 onChangeText={() => {}}
                 editable={false}
+                autoComplete="off"
+                textContentType="none"
+                importantForAutofill="no"
               />
               <Input
                 label="New email"
@@ -84,7 +104,9 @@ export default function ChangeEmailScreen() {
                 onChangeText={setNewEmail}
                 placeholder="you@example.com"
                 keyboardType="email-address"
-                textContentType="emailAddress"
+                autoComplete="off"
+                textContentType="none"
+                importantForAutofill="no"
                 autoCapitalize="none"
               />
               <Input
@@ -93,6 +115,7 @@ export default function ChangeEmailScreen() {
                 onChangeText={setCurrentPassword}
                 placeholder="Enter your current password"
                 secureTextEntry={!showPwd}
+                autoComplete="password"
                 textContentType="password"
                 error={formError || undefined}
                 rightAccessory={

@@ -78,6 +78,9 @@ export function OtpInput({
   const locked = !editable || status === "loading" || status === "success";
   const activeIndex = Math.min(digits.length, length - 1);
   const showCaret = focused && !locked && status === "idle" && digits.length < length;
+  // A kept-alive screen can remount this field already filled (previous OTP).
+  // Don't treat that restored value as a fresh user completion.
+  const skipRestoredComplete = useRef(digits.length === length);
 
   const shake = useSharedValue(0);
   const pulse = useSharedValue(1);
@@ -96,8 +99,10 @@ export function OtpInput({
   useEffect(() => {
     if (digits.length !== length) {
       completedRef.current = null;
+      skipRestoredComplete.current = false;
       return;
     }
+    if (skipRestoredComplete.current) return;
     if (completedRef.current === digits) return;
     if (status === "loading" || status === "success" || !onComplete) return;
     const t = setTimeout(() => {

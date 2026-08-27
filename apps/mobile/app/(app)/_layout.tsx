@@ -205,6 +205,13 @@ export default function AppLayout() {
         : { ...HIDDEN, tabBarStyle: { display: "none" as const } },
     [sideNavigation, tabBarStyle],
   );
+  // Detail routes are tabs, so they stay mounted after the first visit unless
+  // we opt out. Form screens that hold passwords or OTPs must remount or the
+  // previous values (and loading/success locks) come back on the next visit.
+  const formScreenOptions = React.useMemo(
+    () => ({ ...hiddenOptions, unmountOnBlur: true }),
+    [hiddenOptions],
+  );
   const activeSection = pathname.startsWith("/settings")
     ? "settings"
     : pathname.startsWith("/search")
@@ -309,11 +316,11 @@ export default function AppLayout() {
       <Tabs.Screen name="settings/appearance" options={hiddenOptions} />
       <Tabs.Screen name="settings/controls" options={hiddenOptions} />
       <Tabs.Screen name="settings/server" options={hiddenOptions} />
-      <Tabs.Screen name="settings/username" options={hiddenOptions} />
-      <Tabs.Screen name="settings/email" options={hiddenOptions} />
-      <Tabs.Screen name="settings/verify-email" options={hiddenOptions} />
-      <Tabs.Screen name="settings/password" options={hiddenOptions} />
-      <Tabs.Screen name="settings/delete-account" options={hiddenOptions} />
+      <Tabs.Screen name="settings/username" options={formScreenOptions} />
+      <Tabs.Screen name="settings/email" options={formScreenOptions} />
+      <Tabs.Screen name="settings/verify-email" options={formScreenOptions} />
+      <Tabs.Screen name="settings/password" options={formScreenOptions} />
+      <Tabs.Screen name="settings/delete-account" options={formScreenOptions} />
     </Tabs>
   );
 }

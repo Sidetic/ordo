@@ -1,8 +1,11 @@
 /**
  * Verify an email change — step 2: enter the code sent to the new address.
  * Reached after submitting a change-email request.
+ *
+ * A nonce in the route params remounts this form on every send so a previous
+ * OTP cannot come back in its loading/success lock.
  */
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { EMAIL_OTP } from "@ordo/shared";
@@ -23,9 +26,20 @@ import { toast } from "../../../src/components/ui/toast-store";
 import { spacing } from "../../../src/theme/tokens";
 import { OtpDeliveryHint } from "../../../src/components/auth/OtpDeliveryHint";
 
+function routeParam(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
 export default function VerifyEmailChangeScreen() {
+  const params = useLocalSearchParams<{ email?: string; nonce?: string }>();
+  const email = routeParam(params.email);
+  const nonce = routeParam(params.nonce);
+  return <VerifyEmailChangeForm key={`${email}:${nonce}`} email={email} />;
+}
+
+function VerifyEmailChangeForm({ email }: { email: string }) {
   const router = useRouter();
-  const params = useLocalSearchParams<{ email?: string }>();
   const verify = useVerifyEmailChange();
   const resend = useResendEmailChange();
   const { data: info } = useServerInfo();
@@ -36,7 +50,14 @@ export default function VerifyEmailChangeScreen() {
   const [otpStatus, setOtpStatus] = useState<OtpStatus>("idle");
   const inFlight = useRef(false);
 
-  const target = params.email ?? "your new address";
+  const resetOtp = useCallback(() => {
+    setToken("");
+    setOtpError("");
+    setOtpStatus("idle");
+    inFlight.current = false;
+  }, []);
+
+  const target = email || "your new address";
 
   const submit = async (code = token) => {
     if (inFlight.current || otpStatus === "success") return;
@@ -53,6 +74,8 @@ export default function VerifyEmailChangeScreen() {
       haptics.success();
       toast.success("Email updated");
       await holdOtpSuccess();
+      resetOtp();
+      verify.reset();
       router.replace("/settings");
     } catch (e) {
       inFlight.current = false;
@@ -65,6 +88,7 @@ export default function VerifyEmailChangeScreen() {
   const onResend = async () => {
     try {
       await resend.mutateAsync();
+      resetOtp();
       toast.success(otpSentToast(smtpConfigured, target));
     } catch (e) {
       toast.error(errorMessage(e));
@@ -81,7 +105,7 @@ export default function VerifyEmailChangeScreen() {
           <SettingsGroup
             label="Verification"
             compact
-            footer={otpEnterHelper(smtpConfigured, params.email)}
+            footer={otpEnterHelper(smtpConfigured, email || undefined)}
           >
             <SettingsForm style={styles.form}>
               <OtpDeliveryHint smtpConfigured={smtpConfigured} compact />
