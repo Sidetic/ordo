@@ -1,4 +1,4 @@
-import { passwordResetEmail, verificationEmail } from "./mail.templates.js";
+import { mfaRecoveryEmail, passwordResetEmail, verificationEmail } from "./mail.templates.js";
 
 describe("verificationEmail", () => {
   it("includes the code in subject-adjacent text and html", () => {
@@ -21,14 +21,13 @@ describe("verificationEmail", () => {
   });
 });
 
-describe("passwordResetEmail", () => {
-  it("uses reset copy and includes the code", () => {
-    const mail = passwordResetEmail("482193", 10);
-    expect(mail.subject).toBe("Your Ordo password reset code");
-    expect(mail.text).toContain("Your password reset code");
+describe("mfaRecoveryEmail", () => {
+  it("uses recovery copy and includes the code", () => {
+    const mail = mfaRecoveryEmail("482193", 10);
+    expect(mail.subject).toBe("Your Ordo authenticator recovery code");
+    expect(mail.text).toContain("Your authenticator recovery code");
     expect(mail.text).toContain("482193");
-    expect(mail.html).toContain("Password reset");
+    expect(mail.html).toContain("Authenticator recovery");
     expect(mail.html).toContain("482193");
-    expect(mail.html).toContain("choose a new password");
   });
 });

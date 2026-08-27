@@ -17,7 +17,7 @@ const CODE_WELL = "#F7F1DE";
 const LOGO_W = 64;
 const LOGO_H = 70;
 
-export type OtpEmailKind = "verification" | "password_reset";
+export type OtpEmailKind = "verification" | "password_reset" | "mfa_recovery";
 
 const COPY: Record<
   OtpEmailKind,
@@ -36,6 +36,13 @@ const COPY: Record<
     body: "Enter this code in Ordo to choose a new password.",
     ignore: "If you didn't request a password reset, you can ignore this email.",
     textHeading: "Your password reset code",
+  },
+  mfa_recovery: {
+    subject: "Your Ordo authenticator recovery code",
+    kicker: "Authenticator recovery",
+    body: "Enter this code in Ordo to turn off your authenticator app and sign in.",
+    ignore: "If you didn't request this, you can ignore the email. Your authenticator stays on.",
+    textHeading: "Your authenticator recovery code",
   },
 };
 
@@ -71,7 +78,7 @@ export function otpEmail(
 </head>
 <body style="margin:0;padding:0;background:${PAPER};">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
-    ${escapeHtml(code)} is your ${kind === "password_reset" ? "password reset" : "verification"} code. It expires in ${expiresMinutes} minutes.
+    ${escapeHtml(code)} is your ${previewKind(kind)} code. It expires in ${expiresMinutes} minutes.
   </div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAPER};">
     <tr>
@@ -116,6 +123,16 @@ export function verificationEmail(otp: string, expiresMinutes: number) {
 
 export function passwordResetEmail(otp: string, expiresMinutes: number) {
   return otpEmail("password_reset", otp, expiresMinutes);
+}
+
+export function mfaRecoveryEmail(otp: string, expiresMinutes: number) {
+  return otpEmail("mfa_recovery", otp, expiresMinutes);
+}
+
+function previewKind(kind: OtpEmailKind): string {
+  if (kind === "password_reset") return "password reset";
+  if (kind === "mfa_recovery") return "authenticator recovery";
+  return "verification";
 }
 
 function escapeHtml(value: string): string {
