@@ -7,7 +7,7 @@ const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789"; // no ambiguous 0/o/l/1
 export function generateBackupCodes(): string[] {
   const codes = new Set<string>();
   while (codes.size < MFA.BACKUP_CODE_COUNT) {
-    codes.add(formatBackupCode(randomChars(8)));
+    codes.add(formatBackupCode(randomChars(MFA.BACKUP_CODE_LENGTH)));
   }
   return [...codes];
 }

@@ -52,6 +52,7 @@ export const MFA = {
   CHALLENGE_TTL_MS: 5 * 60 * 1000,
   CHALLENGE_MAX_ATTEMPTS: 5,
   BACKUP_CODE_COUNT: 10,
+  BACKUP_CODE_LENGTH: 8,
 } as const;
 
 /** Stored on `MfaChallenge.purpose`. */
