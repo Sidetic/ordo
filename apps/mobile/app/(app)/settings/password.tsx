@@ -14,6 +14,7 @@ import { useChangePassword } from "../../../src/hooks/use-auth-actions";
 import { errorMessage } from "../../../src/lib/error-message";
 import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
+import { MfaCodeField } from "../../../src/components/auth/MfaSetupPanel";
 import { spacing } from "../../../src/theme/tokens";
 import { ChangePasswordSchema } from "@ordo/shared";
 
@@ -25,6 +26,7 @@ export default function ChangePasswordScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPwd, setShowPwd] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
   const [formError, setFormError] = useState("");
 
   const submit = async () => {
@@ -33,7 +35,11 @@ export default function ChangePasswordScreen() {
       setFormError("New passwords don't match.");
       return;
     }
-    const parsed = ChangePasswordSchema.safeParse({ currentPassword, newPassword });
+    const parsed = ChangePasswordSchema.safeParse({
+      currentPassword,
+      newPassword,
+      mfaCode: mfaCode.trim() || undefined,
+    });
     if (!parsed.success) {
       setFormError(parsed.error.issues[0]?.message || "Please check your input.");
       return;
@@ -91,6 +97,7 @@ export default function ChangePasswordScreen() {
                 autoComplete="new-password"
                 importantForAutofill="yes"
               />
+              <MfaCodeField value={mfaCode} onChange={setMfaCode} />
 
               <Button
                 label="Change password"

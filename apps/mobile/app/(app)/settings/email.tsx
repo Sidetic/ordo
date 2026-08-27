@@ -28,6 +28,7 @@ import { toast } from "../../../src/components/ui/toast-store";
 import { spacing } from "../../../src/theme/tokens";
 import { ChangeEmailSchema } from "@ordo/shared";
 import { OtpDeliveryHint } from "../../../src/components/auth/OtpDeliveryHint";
+import { MfaCodeField } from "../../../src/components/auth/MfaSetupPanel";
 
 export default function ChangeEmailScreen() {
   const email = useAuthStore((s) => s.user?.email ?? "");
@@ -44,6 +45,7 @@ function ChangeEmailForm() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [showPwd, setShowPwd] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
   const [formError, setFormError] = useState("");
 
   const submit = async () => {
@@ -51,6 +53,7 @@ function ChangeEmailForm() {
     const parsed = ChangeEmailSchema.safeParse({
       currentPassword,
       newEmail: newEmail.trim().toLowerCase(),
+      mfaCode: mfaCode.trim() || undefined,
     });
     if (!parsed.success) {
       setFormError(parsed.error.issues[0]?.message || "Please check your input.");
@@ -122,6 +125,7 @@ function ChangeEmailForm() {
                   <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
                 }
               />
+              <MfaCodeField value={mfaCode} onChange={setMfaCode} />
 
               <Button
                 label="Send verification code"

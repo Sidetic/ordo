@@ -125,8 +125,8 @@ export default function ResetPasswordScreen() {
         showSoftInputOnFocus={false}
         caretHidden
         keyboardType="email-address"
-        textContentType="username"
-        autoComplete="username"
+        textContentType="emailAddress"
+        autoComplete="email"
         importantForAutofill="yes"
       />
       <View style={{ height: spacing[16] }} />

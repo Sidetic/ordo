@@ -19,7 +19,7 @@ import { ApiClientError } from "../../src/lib/api/client";
 import { haptics } from "../../src/lib/haptics";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { radius, spacing } from "../../src/theme/tokens";
-import { ErrorCode, LoginSchema } from "@ordo/shared";
+import { ErrorCode, LoginSchema, isMfaRequiredResponse } from "@ordo/shared";
 
 function routeParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -53,15 +53,27 @@ function LoginForm({ initialIdentifier }: { initialIdentifier: string }) {
       return;
     }
     try {
-      await login.mutateAsync(parsed.data);
+      const result = await login.mutateAsync(parsed.data);
+      if (isMfaRequiredResponse(result)) {
+        haptics.light();
+        router.push({
+          pathname: "/(auth)/mfa",
+          params: {
+            challengeToken: result.challengeToken,
+            email: parsed.data.identifier,
+            emailRecovery: result.emailRecoveryAvailable ? "1" : "0",
+          },
+        });
+        return;
+      }
       haptics.success();
     } catch (e) {
       haptics.error();
       if (e instanceof ApiClientError && e.code === ErrorCode.EMAIL_NOT_VERIFIED) {
-        const email = parsed.data.identifier.includes("@")
-          ? parsed.data.identifier.trim().toLowerCase()
-          : "";
-        router.replace({ pathname: "/(auth)/verify-email", params: email ? { email } : {} });
+        router.replace({
+          pathname: "/(auth)/verify-email",
+          params: { email: parsed.data.identifier.trim().toLowerCase() },
+        });
         return;
       }
       setFormError(errorMessage(e));
@@ -82,12 +94,14 @@ function LoginForm({ initialIdentifier }: { initialIdentifier: string }) {
         }
       >
         <Input
-          label="Email or username"
+          label="Email"
           value={identifier}
           onChangeText={setIdentifier}
-          placeholder="Email or username"
-          textContentType="username"
-          autoComplete="username"
+          placeholder="you@example.com"
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          autoComplete="email"
+          autoCapitalize="none"
           importantForAutofill="yes"
           error={formError || undefined}
         />

@@ -22,7 +22,7 @@ export default function RegisterScreen() {
   const { data: info } = useServerInfo();
   const registrationEnabled = info?.registrationEnabled ?? true;
 
-  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -46,7 +46,7 @@ export default function RegisterScreen() {
       return;
     }
     const parsed = RegisterSchema.safeParse({
-      username: username.trim(),
+      displayName: displayName.trim(),
       email: email.trim().toLowerCase(),
       password,
     });
@@ -85,13 +85,13 @@ export default function RegisterScreen() {
       ) : (
         <>
           <Input
-            label="Username"
-            value={username}
-            onChangeText={setUsername}
-            placeholder="2–32 chars, letters, numbers, _ or -"
-            textContentType="username"
-            autoComplete="username"
-            autoCapitalize="none"
+            label="Display name"
+            value={displayName}
+            onChangeText={setDisplayName}
+            placeholder="How should we greet you?"
+            textContentType="name"
+            autoComplete="name"
+            autoCapitalize="words"
             importantForAutofill="yes"
             error={formError || undefined}
           />
@@ -103,6 +103,8 @@ export default function RegisterScreen() {
             placeholder="you@example.com"
             keyboardType="email-address"
             textContentType="emailAddress"
+            autoComplete="email"
+            autoCapitalize="none"
           />
           <View style={{ height: spacing[16] }} />
           <Input

@@ -18,18 +18,24 @@ import { useDeleteAccount } from "../../../src/hooks/use-auth-actions";
 import { errorMessage } from "../../../src/lib/error-message";
 import { haptics } from "../../../src/lib/haptics";
 import { spacing } from "../../../src/theme/tokens";
+import { MfaCodeField } from "../../../src/components/auth/MfaSetupPanel";
 
 export default function DeleteAccountScreen() {
   const deleteAccount = useDeleteAccount();
   const [currentPassword, setCurrentPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
   const [formError, setFormError] = useState("");
 
   const submit = async () => {
     if (deleteAccount.isPending) return;
     setFormError("");
-    const parsed = DeleteAccountSchema.safeParse({ currentPassword, confirmation });
+    const parsed = DeleteAccountSchema.safeParse({
+      currentPassword,
+      confirmation,
+      mfaCode: mfaCode.trim() || undefined,
+    });
     if (!parsed.success) {
       setFormError(parsed.error.issues[0]?.message || "Please check your input.");
       return;
@@ -89,6 +95,7 @@ export default function DeleteAccountScreen() {
                 mono
                 onSubmitEditing={submit}
               />
+              <MfaCodeField value={mfaCode} onChange={setMfaCode} />
               <Button
                 label="Delete account"
                 variant="danger"

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform } from "react-native";
 import { useRouter } from "expo-router";
-import { ChangeUsernameSchema } from "@ordo/shared";
+import { ChangeDisplayNameSchema } from "@ordo/shared";
 import {
   SettingsForm,
   SettingsGroup,
@@ -11,31 +11,31 @@ import {
 import { Button } from "../../../src/components/ui/Button";
 import { Input } from "../../../src/components/ui/Input";
 import { toast } from "../../../src/components/ui/toast-store";
-import { useChangeUsername } from "../../../src/hooks/use-auth-actions";
+import { useChangeDisplayName } from "../../../src/hooks/use-auth-actions";
 import { errorMessage } from "../../../src/lib/error-message";
 import { haptics } from "../../../src/lib/haptics";
 import { useAuthStore } from "../../../src/store/auth";
 import { spacing } from "../../../src/theme/tokens";
 
-export default function ChangeUsernameScreen() {
+export default function ChangeDisplayNameScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const changeUsername = useChangeUsername();
-  const [username, setUsername] = useState(user?.username ?? "");
+  const changeName = useChangeDisplayName();
+  const [displayName, setDisplayName] = useState(user?.displayName ?? "");
   const [formError, setFormError] = useState("");
 
   const submit = async () => {
     setFormError("");
-    const parsed = ChangeUsernameSchema.safeParse({ newUsername: username.trim() });
+    const parsed = ChangeDisplayNameSchema.safeParse({ displayName: displayName.trim() });
     if (!parsed.success) {
       setFormError(parsed.error.issues[0]?.message || "Please check your input.");
       return;
     }
 
     try {
-      await changeUsername.mutateAsync(parsed.data);
+      await changeName.mutateAsync(parsed.data);
       haptics.success();
-      toast.success("Username updated");
+      toast.success("Display name updated");
       router.back();
     } catch (error) {
       haptics.error();
@@ -43,38 +43,38 @@ export default function ChangeUsernameScreen() {
     }
   };
 
-  const unchanged = username.trim() === (user?.username ?? "");
+  const unchanged = displayName.trim() === (user?.displayName ?? "");
 
   return (
-    <SettingsPage title="Username">
+    <SettingsPage title="Display name">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           <SettingsGroup
-            label="Change username"
+            label="Change display name"
             compact
-            footer="Use 2-32 letters, numbers, underscores, or hyphens."
+            footer="This is shown on your account. It is not used to sign in, and it does not need to be unique."
           >
             <SettingsForm style={styles.form}>
               <Input
-                label="Username"
-                value={username}
-                onChangeText={setUsername}
-                placeholder="Enter a username"
-                autoCapitalize="none"
-                autoComplete="username-new"
-                textContentType="username"
+                label="Display name"
+                value={displayName}
+                onChangeText={setDisplayName}
+                placeholder="Your name"
+                autoCapitalize="words"
+                autoComplete="name"
+                textContentType="name"
                 error={formError || undefined}
               />
               <Button
-                label="Save username"
+                label="Save display name"
                 block
                 size="lg"
                 onPress={submit}
-                loading={changeUsername.isPending}
-                disabled={!username.trim() || unchanged}
+                loading={changeName.isPending}
+                disabled={!displayName.trim() || unchanged}
               />
             </SettingsForm>
           </SettingsGroup>

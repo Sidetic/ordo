@@ -33,7 +33,7 @@ export default function SettingsScreen() {
           <SettingRow
             icon="person-circle-outline"
             label="Account"
-            description="Profile, email, and password"
+            description="Profile, email, password, and authenticator"
             onPress={() => router.push("/settings/account")}
             showChevron
           />

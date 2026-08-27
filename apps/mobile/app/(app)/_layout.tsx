@@ -8,10 +8,11 @@ import { Tabs, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { layout, radius, spacing } from "../../src/theme/tokens";
-import { useValidateSession } from "../../src/hooks/queries";
+import { useServerInfo, useValidateSession } from "../../src/hooks/queries";
 import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metrics";
 import { useAuthStore } from "../../src/store/auth";
 import { useSettingsStore } from "../../src/store/settings";
+import { MfaEnrollmentScreen } from "../../src/components/auth/MfaEnrollmentScreen";
 import { ActivityIndicator, Text as NativeText, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -25,6 +26,8 @@ export default function AppLayout() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const pathname = usePathname();
   const status = useAuthStore((s) => s.status);
+  const user = useAuthStore((s) => s.user);
+  const { data: serverInfo, isPending: serverInfoPending } = useServerInfo();
   const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
   const {
     floating,
@@ -246,12 +249,16 @@ export default function AppLayout() {
   // Reconcile local session with the server once authenticated.
   useValidateSession();
 
-  if (status === "loading") {
+  if (status === "loading" || (status === "authenticated" && serverInfoPending && !serverInfo)) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: palette.background }}>
         <ActivityIndicator color={palette.accent} />
       </View>
     );
+  }
+
+  if (serverInfo?.mfaRequired && user && !user.mfaEnabled) {
+    return <MfaEnrollmentScreen />;
   }
 
   return (
@@ -316,7 +323,8 @@ export default function AppLayout() {
       <Tabs.Screen name="settings/appearance" options={hiddenOptions} />
       <Tabs.Screen name="settings/controls" options={hiddenOptions} />
       <Tabs.Screen name="settings/server" options={hiddenOptions} />
-      <Tabs.Screen name="settings/username" options={formScreenOptions} />
+      <Tabs.Screen name="settings/display-name" options={formScreenOptions} />
+      <Tabs.Screen name="settings/security" options={formScreenOptions} />
       <Tabs.Screen name="settings/email" options={formScreenOptions} />
       <Tabs.Screen name="settings/verify-email" options={formScreenOptions} />
       <Tabs.Screen name="settings/password" options={formScreenOptions} />
