@@ -62,7 +62,7 @@ describe("Rate limiting (e2e)", () => {
           .post("/api/auth/register")
           .set("x-client-type", "mobile")
           .send({
-            username: `user${i}`,
+            displayName: `user${i}`,
             email: `user${i}@ordo.app`,
             password: "supersecret",
           })
@@ -72,7 +72,7 @@ describe("Rate limiting (e2e)", () => {
         .post("/api/auth/register")
         .set("x-client-type", "mobile")
         .send({
-          username: "useroverflow",
+          displayName: "useroverflow",
           email: "useroverflow@ordo.app",
           password: "supersecret",
         });
@@ -86,7 +86,7 @@ describe("Rate limiting (e2e)", () => {
           .post("/api/auth/register")
           .set("x-client-type", "mobile")
           .send({
-            username: `spoof${i}`,
+            displayName: `spoof${i}`,
             email: `spoof${i}@ordo.app`,
             password: "supersecret",
           })
@@ -97,7 +97,7 @@ describe("Rate limiting (e2e)", () => {
         .set("x-client-type", "mobile")
         .set("x-forwarded-for", "203.0.113.99")
         .send({
-          username: "spoofbypass",
+          displayName: "spoofbypass",
           email: "spoofbypass@ordo.app",
           password: "supersecret",
         });
@@ -127,7 +127,7 @@ describe("Rate limiting (e2e)", () => {
       expect(blocked.body.error.details.retryAfterSeconds).toBe(LOGIN_ACCOUNT.lockMs[0] / 1000);
     });
 
-    it("shares the lock between email and username for the same account", async () => {
+    it("shares the lock between identifier and email fields for the same account", async () => {
       await registerUser(ctx.app, "shared@ordo.app", "supersecret", "sharedname");
       for (let i = 0; i < LOGIN_ACCOUNT.maxFailures; i++) {
         await request(ctx.app.getHttpServer())
@@ -139,7 +139,7 @@ describe("Rate limiting (e2e)", () => {
       const res = await request(ctx.app.getHttpServer())
         .post("/api/auth/login")
         .set("x-client-type", "mobile")
-        .send({ identifier: "sharedname", password: "wrongpassword" });
+        .send({ email: "shared@ordo.app", password: "wrongpassword" });
       expectRateLimited(res);
     });
 
@@ -243,7 +243,7 @@ describe("Rate limiting behind a trusted proxy (e2e)", () => {
         .set("x-client-type", "mobile")
         .set("x-forwarded-for", "203.0.113.10")
         .send({
-          username: `proxy${i}`,
+          displayName: `proxy${i}`,
           email: `proxy${i}@ordo.app`,
           password: "supersecret",
         })
@@ -254,7 +254,7 @@ describe("Rate limiting behind a trusted proxy (e2e)", () => {
       .set("x-client-type", "mobile")
       .set("x-forwarded-for", "203.0.113.10")
       .send({
-        username: "proxysame",
+        displayName: "proxysame",
         email: "proxysame@ordo.app",
         password: "supersecret",
       });
@@ -265,7 +265,7 @@ describe("Rate limiting behind a trusted proxy (e2e)", () => {
       .set("x-client-type", "mobile")
       .set("x-forwarded-for", "203.0.113.20")
       .send({
-        username: "proxyother",
+        displayName: "proxyother",
         email: "proxyother@ordo.app",
         password: "supersecret",
       })

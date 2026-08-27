@@ -66,6 +66,8 @@ export async function clearDb(prisma: PrismaService): Promise<void> {
   await prisma.bookmark.deleteMany();
   await prisma.folderToken.deleteMany();
   await prisma.emailVerificationToken.deleteMany();
+  await prisma.mfaBackupCode.deleteMany();
+  await prisma.mfaChallenge.deleteMany();
   await prisma.session.deleteMany();
   await prisma.folder.deleteMany();
   await prisma.user.deleteMany();
@@ -74,6 +76,11 @@ export async function clearDb(prisma: PrismaService): Promise<void> {
 export async function teardownApp(ctx: TestCtx): Promise<void> {
   await ctx.app.close();
   if (existsSync(ctx.dbPath)) unlinkSync(ctx.dbPath);
+  const avatarDir = `${ctx.dbPath.replace(/\.db$/i, "")}-avatars`;
+  if (existsSync(avatarDir)) {
+    const { rmSync } = await import("node:fs");
+    rmSync(avatarDir, { recursive: true, force: true });
+  }
 }
 
 /** Register a user via the API and return the mobile auth response (with tokens). */
@@ -81,19 +88,19 @@ export async function registerUser(
   app: INestApplication,
   email = "user@ordo.app",
   password = "password123",
-  username?: string,
+  displayName?: string,
 ): Promise<{
-  user: { id: string; username: string; email: string };
+  user: { id: string; displayName: string; email: string };
   tokens: { accessToken: string; refreshToken: string; expiresIn: number };
 }> {
   const supertest = (await import("supertest")).default;
-  let uname = email.split("@")[0].replace(/[^a-zA-Z0-9_-]/g, "");
-  if (username) uname = username;
-  if (!uname) uname = "user";
+  let name = email.split("@")[0] ?? "user";
+  if (displayName) name = displayName;
+  if (!name) name = "user";
   const res = await supertest(app.getHttpServer())
     .post("/api/auth/register")
     .set("x-client-type", "mobile")
-    .send({ username: uname, email, password });
+    .send({ displayName: name, email, password });
   return res.body;
 }
 

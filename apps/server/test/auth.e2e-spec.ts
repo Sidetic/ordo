@@ -30,11 +30,16 @@ describe("Auth (e2e)", () => {
       const res = await request(ctx.app.getHttpServer())
         .post("/api/auth/register")
         .set("x-client-type", "mobile")
-        .send({ username: "alice", email: "alice@ordo.app", password: "supersecret" })
+        .send({ displayName: "alice", email: "alice@ordo.app", password: "supersecret" })
         .expect(201);
 
       expect(res.body.user.email).toBe("alice@ordo.app");
-      expect(res.body.user.username).toBe("alice");
+      expect(res.body.user.displayName).toBe("alice");
+      expect(res.body.user.mfaEnabled).toBe(false);
+      expect(res.body.user.hasAvatar).toBe(false);
+      expect(res.body.user.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
       expect(res.body.tokens.accessToken).toBeTruthy();
       expect(res.body.tokens.refreshToken).toBeTruthy();
       expect(res.body.tokens.expiresIn).toBeGreaterThan(0);
@@ -49,7 +54,7 @@ describe("Auth (e2e)", () => {
     it("does not return tokens in the body for web clients (cookies instead)", async () => {
       const res = await request(ctx.app.getHttpServer())
         .post("/api/auth/register")
-        .send({ username: "webuser", email: "web@ordo.app", password: "supersecret" })
+        .send({ displayName: "webuser", email: "web@ordo.app", password: "supersecret" })
         .expect(201);
 
       expect(res.body.tokens.accessToken).toBe("");
@@ -63,19 +68,19 @@ describe("Auth (e2e)", () => {
       const res = await request(ctx.app.getHttpServer())
         .post("/api/auth/register")
         .set("x-client-type", "mobile")
-        .send({ username: "dupagain", email: "dup@ordo.app", password: "supersecret" })
+        .send({ displayName: "dupagain", email: "dup@ordo.app", password: "supersecret" })
         .expect(409);
       expect(res.body.error.code).toBe(ErrorCode.EMAIL_ALREADY_EXISTS);
     });
 
-    it("rejects duplicate usernames with 409", async () => {
+    it("allows duplicate display names", async () => {
       await registerUser(ctx.app, "first@ordo.app", "supersecret", "same-name");
       const res = await request(ctx.app.getHttpServer())
         .post("/api/auth/register")
         .set("x-client-type", "mobile")
-        .send({ username: "same-name", email: "second@ordo.app", password: "supersecret" })
-        .expect(409);
-      expect(res.body.error.code).toBe(ErrorCode.CONFLICT);
+        .send({ displayName: "same-name", email: "second@ordo.app", password: "supersecret" })
+        .expect(201);
+      expect(res.body.user.displayName).toBe("same-name");
     });
 
     it("validates the payload", async () => {
@@ -98,14 +103,14 @@ describe("Auth (e2e)", () => {
       expect(res.body.tokens.accessToken).toBeTruthy();
     });
 
-    it("logs in with a username", async () => {
+    it("rejects a username-shaped identifier with a validation error", async () => {
       await registerUser(ctx.app, "username-login@ordo.app", "supersecret", "login-name");
       const res = await request(ctx.app.getHttpServer())
         .post("/api/auth/login")
         .set("x-client-type", "mobile")
         .send({ identifier: "login-name", password: "supersecret" })
-        .expect(200);
-      expect(res.body.user.email).toBe("username-login@ordo.app");
+        .expect(400);
+      expect(res.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
     });
 
     it("rejects wrong password with 401", async () => {
@@ -136,7 +141,10 @@ describe("Auth (e2e)", () => {
         registrationEnabled: true,
         emailVerificationRequired: false,
         smtpConfigured: false,
+        mfaRequired: false,
+        avatarAllowAnimated: false,
       });
+      expect(res.body.profilePictureMaxBytes).toBe(2 * 1024 * 1024);
     });
   });
 
@@ -171,7 +179,7 @@ describe("Auth (e2e)", () => {
         .set("x-client-type", "mobile")
         .set("x-device-name", encodeURIComponent("Riley's Pixel"))
         .set("x-device-type", "phone")
-        .send({ username: "riley", email: "riley@ordo.app", password: "password123" })
+        .send({ displayName: "Riley", email: "riley@ordo.app", password: "password123" })
         .expect(201);
 
       expect(auth.body.session).toMatchObject({
@@ -276,6 +284,9 @@ describe("Auth (e2e)", () => {
               sendPasswordReset: async (to: string, token: string) => {
                 sent.push({ to, token });
               },
+              sendMfaRecovery: async (to: string, token: string) => {
+                sent.push({ to, token });
+              },
             }),
       });
     });
@@ -289,29 +300,29 @@ describe("Auth (e2e)", () => {
       sent.length = 0;
     });
 
-    describe("username", () => {
-      it("changes the username without a password", async () => {
+    describe("display name", () => {
+      it("changes the display name without a password", async () => {
         const agent = await authedAgent(pctx.app, "username@ordo.app");
         const res = await agent
-          .post("/api/auth/username")
-          .send({ newUsername: "newname" })
+          .post("/api/auth/display-name")
+          .send({ displayName: "New Name" })
           .expect(200);
-        expect(res.body.username).toBe("newname");
+        expect(res.body.displayName).toBe("New Name");
       });
 
-      it("validates the new username", async () => {
+      it("validates the new display name", async () => {
         const agent = await authedAgent(pctx.app, "username2@ordo.app");
         const res = await agent
-          .post("/api/auth/username")
-          .send({ newUsername: "a" })
+          .post("/api/auth/display-name")
+          .send({ displayName: "" })
           .expect(400);
         expect(res.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
       });
 
       it("requires authentication", async () => {
         await request(pctx.app.getHttpServer())
-          .post("/api/auth/username")
-          .send({ newUsername: "x" })
+          .post("/api/auth/display-name")
+          .send({ displayName: "x" })
           .expect(401);
       });
     });
@@ -712,7 +723,7 @@ describe("signup email verification (e2e)", () => {
     await request(vctx.app.getHttpServer())
       .post("/api/auth/register")
       .set("x-client-type", "mobile")
-      .send({ username: "verifyme", email: "verifyme@ordo.app", password: "supersecret" })
+        .send({ displayName: "verifyme", email: "verifyme@ordo.app", password: "supersecret" })
       .expect(201);
 
     expect(sent).toHaveLength(1);
@@ -742,7 +753,7 @@ describe("signup email verification (e2e)", () => {
     await request(vctx.app.getHttpServer())
       .post("/api/auth/register")
       .set("x-client-type", "mobile")
-      .send({ username: "noemail", email: "noemail@ordo.app", password: "supersecret" })
+        .send({ displayName: "noemail", email: "noemail@ordo.app", password: "supersecret" })
       .expect(201);
 
     const missingEmail = await request(vctx.app.getHttpServer())
