@@ -92,3 +92,15 @@ export const VerifyEmailChangeSchema = z.object({
   token: emailOtp,
 });
 export type VerifyEmailChangeInput = z.infer<typeof VerifyEmailChangeSchema>;
+
+export const ForgotPasswordSchema = z.object({
+  email,
+});
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
+
+export const ResetPasswordSchema = z.object({
+  email,
+  token: emailOtp,
+  newPassword: password,
+});
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;

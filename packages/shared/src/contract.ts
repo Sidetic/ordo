@@ -144,6 +144,22 @@ export const AuthRoutes = {
     params: {} as Empty,
     response: {} as AuthResponse,
   },
+  forgotPassword: {
+    path: `${API_PREFIX}/auth/forgot-password`,
+    method: "POST",
+    body: {} as { email: string },
+    query: {} as Empty,
+    params: {} as Empty,
+    response: {} as { success: true },
+  },
+  resetPassword: {
+    path: `${API_PREFIX}/auth/reset-password`,
+    method: "POST",
+    body: {} as { email: string; token: string; newPassword: string },
+    query: {} as Empty,
+    params: {} as Empty,
+    response: {} as { success: true },
+  },
   updatePreferences: {
     path: `${API_PREFIX}/auth/preferences`,
     method: "PATCH",

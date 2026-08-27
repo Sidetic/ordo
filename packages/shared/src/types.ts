@@ -120,6 +120,8 @@ export interface ServerInfoDto {
   version: string;
   registrationEnabled: boolean;
   emailVerificationRequired: boolean;
+  /** True when the server has a working SMTP transport (codes are emailed). */
+  smtpConfigured: boolean;
 }
 
 export interface ApiError {

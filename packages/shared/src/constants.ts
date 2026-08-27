@@ -27,12 +27,20 @@ export const TOKEN_TTL = {
   FOLDER_MS: 10 * 60 * 1000, // 10 minutes
 } as const;
 
-/** Email verification OTPs (signup and email change). */
+/** Email OTPs (signup verification, email change, password reset). */
 export const EMAIL_OTP = {
   LENGTH: 6,
   TTL_MS: 10 * 60 * 1000, // 10 minutes
   MAX_ATTEMPTS: 5,
 } as const;
+
+/** Stored on `EmailVerificationToken.purpose` so one flow cannot consume another. */
+export const EMAIL_OTP_PURPOSE = {
+  VERIFY: "verify",
+  EMAIL_CHANGE: "email_change",
+  PASSWORD_RESET: "password_reset",
+} as const;
+export type EmailOtpPurpose = (typeof EMAIL_OTP_PURPOSE)[keyof typeof EMAIL_OTP_PURPOSE];
 
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
