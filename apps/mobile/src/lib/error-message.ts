@@ -27,6 +27,9 @@ export function errorMessage(err: unknown, fallback = "Something went wrong."): 
     if (err.status === 0 || err.code === "network_error") {
       return "Couldn't reach the server. Check your connection.";
     }
+    if (err.code === ErrorCode.RATE_LIMITED && err.message) {
+      return err.message;
+    }
     return FRIENDLY[err.code] || err.message || fallback;
   }
   if (err instanceof Error && err.message) return err.message;
