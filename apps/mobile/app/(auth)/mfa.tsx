@@ -5,7 +5,6 @@ import React, { useState } from "react";
 import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { AuthShell } from "../../src/components/auth/AuthShell";
-import { Input } from "../../src/components/ui/Input";
 import { Button } from "../../src/components/ui/Button";
 import { Text } from "../../src/components/ui/Text";
 import { OtpInput, type OtpStatus } from "../../src/components/ui/OtpInput";
@@ -91,7 +90,11 @@ export default function LoginMfaScreen() {
         <>
           <OtpInput
             value={totp}
-            onChange={setTotp}
+            onChange={(next) => {
+              setTotp(next);
+              if (error) setError("");
+              if (otpStatus === "error") setOtpStatus("idle");
+            }}
             onComplete={submitCode}
             status={otpStatus}
             error={error || undefined}
@@ -103,6 +106,7 @@ export default function LoginMfaScreen() {
             variant="ghost"
             onPress={() => {
               setError("");
+              setOtpStatus("idle");
               setMode("backup");
             }}
           />
@@ -120,24 +124,29 @@ export default function LoginMfaScreen() {
 
       {mode === "backup" ? (
         <>
-          <Input
-            label="Backup code"
+          <OtpInput
+            kind="backup"
             value={backup}
-            onChangeText={setBackup}
-            placeholder="xxxx-xxxx"
-            autoCapitalize="none"
-            autoCorrect={false}
+            onChange={(next) => {
+              setBackup(next);
+              if (error) setError("");
+              if (otpStatus === "error") setOtpStatus("idle");
+            }}
+            onComplete={submitCode}
+            status={otpStatus}
             error={error || undefined}
+            label="Backup code"
           />
           <View style={{ height: spacing[16] }} />
           <Button
-            label="Continue"
-            block
-            size="lg"
-            loading={loginMfa.isPending}
-            onPress={() => submitCode(backup.trim())}
+            label="Use authenticator code"
+            variant="ghost"
+            onPress={() => {
+              setError("");
+              setOtpStatus("idle");
+              setMode("totp");
+            }}
           />
-          <Button label="Use authenticator code" variant="ghost" onPress={() => setMode("totp")} />
         </>
       ) : null}
 
@@ -156,7 +165,15 @@ export default function LoginMfaScreen() {
           <Text variant="footnote" color="secondary">
             This turns off your authenticator so you can set it up again.
           </Text>
-          <Button label="Use authenticator code" variant="ghost" onPress={() => setMode("totp")} />
+          <Button
+            label="Use authenticator code"
+            variant="ghost"
+            onPress={() => {
+              setError("");
+              setOtpStatus("idle");
+              setMode("totp");
+            }}
+          />
         </>
       ) : null}
     </AuthShell>

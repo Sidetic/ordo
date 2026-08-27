@@ -2,15 +2,13 @@ import React, { useState } from "react";
 import { Pressable, Share, StyleSheet, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
 import { Text } from "../ui/Text";
-import { OtpInput } from "../ui/OtpInput";
+import { OtpInput, type OtpStatus } from "../ui/OtpInput";
 import { authApi } from "../../lib/api/auth";
 import { errorMessage } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
 import { useTheme } from "../../theme/ThemeProvider";
 import { radius, spacing } from "../../theme/tokens";
-import { useAuthStore } from "../../store/auth";
 import type { UserDto } from "@ordo/shared";
 
 export function MfaSetupPanel({
@@ -95,16 +93,15 @@ export function MfaSetupPanel({
       </Pressable>
       <OtpInput
         value={code}
-        onChange={setCode}
+        onChange={(next) => {
+          setCode(next);
+          if (error) setError("");
+        }}
         onComplete={confirm}
         status={confirming ? "loading" : error ? "error" : "idle"}
+        error={error || undefined}
         label="Authenticator code"
       />
-      {error ? (
-        <Text variant="footnote" color="danger" align="center">
-          {error}
-        </Text>
-      ) : null}
     </View>
   );
 }
@@ -113,28 +110,52 @@ export function MfaCodeField({
   value,
   onChange,
   error,
+  autoFocus = false,
+  onComplete,
+  status,
 }: {
   value: string;
   onChange: (value: string) => void;
   error?: string;
+  autoFocus?: boolean;
+  onComplete?: (code: string) => void;
+  status?: OtpStatus;
 }) {
-  const enabled = useAuthStore((s) => s.user?.mfaEnabled);
-  if (!enabled) return null;
+  const [mode, setMode] = useState<"totp" | "backup">("totp");
+
   return (
-    <Input
-      label="Authenticator or backup code"
-      value={value}
-      onChangeText={onChange}
-      placeholder="123456 or xxxx-xxxx"
-      autoCapitalize="none"
-      autoCorrect={false}
-      error={error}
-    />
+    <View style={styles.codeField}>
+      <OtpInput
+        key={mode}
+        kind={mode === "backup" ? "backup" : "numeric"}
+        value={value}
+        onChange={onChange}
+        onComplete={onComplete}
+        autoFocus={autoFocus}
+        error={error}
+        status={status}
+        label={mode === "backup" ? "Backup code" : "Authenticator code"}
+      />
+      <Pressable
+        onPress={() => {
+          onChange("");
+          setMode((current) => (current === "totp" ? "backup" : "totp"));
+        }}
+        hitSlop={8}
+        style={styles.switcher}
+      >
+        <Text variant="footnote" color="accent">
+          {mode === "totp" ? "Use a backup code" : "Use authenticator code"}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   block: { gap: spacing[16] },
+  codeField: { gap: spacing[8] },
+  switcher: { alignSelf: "flex-start" },
   qr: {
     alignSelf: "center",
     padding: spacing[16],
