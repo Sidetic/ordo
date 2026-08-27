@@ -1,7 +1,7 @@
 /**
- * Compact Email / Server console tabs for OTP screens, plus a one-time
- * dismissible tip when codes land in the process console (no SMTP).
- * Mailpit is mentioned as an optional fake inbox — never required.
+ * One-time console-delivery hint. Shown only when the server has no SMTP
+ * (codes print in the process log). Hidden after dismiss, and never shown
+ * when mail is actually being sent.
  */
 import React from "react";
 import { StyleSheet, View } from "react-native";
@@ -15,149 +15,84 @@ import { haptics } from "../../lib/haptics";
 
 export function OtpDeliveryHint({
   smtpConfigured,
+  compact,
 }: {
   smtpConfigured: boolean | undefined;
+  /** Skip the trailing gap when the parent already spaces children. */
+  compact?: boolean;
 }) {
   const { palette } = useTheme();
   const dismissed = useSettingsStore((s) => s.consoleOtpTipDismissed);
   const dismiss = useSettingsStore((s) => s.dismissConsoleOtpTip);
-  const consoleMode = smtpConfigured === false;
 
-  if (smtpConfigured !== true && smtpConfigured !== false) return null;
+  if (smtpConfigured !== false || dismissed) return null;
 
-  return (
-    <View style={styles.wrap}>
-      <View
-        style={[
-          styles.tabs,
-          {
-            backgroundColor: palette.surfaceSecondary,
-            borderColor: palette.border,
-          },
-        ]}
-        accessibilityRole="text"
-        accessibilityLabel={
-          consoleMode
-            ? "One-time codes are printed in the server console"
-            : "One-time codes are sent by email"
-        }
-      >
-        <DeliveryTab
-          label="Email"
-          icon="mail-outline"
-          selected={!consoleMode}
-        />
-        <DeliveryTab
-          label="Server console"
-          icon="terminal-outline"
-          selected={consoleMode}
-        />
-      </View>
-
-      {consoleMode && !dismissed ? (
-        <View
-          style={[
-            styles.tip,
-            {
-              backgroundColor: palette.surface,
-              borderColor: palette.border,
-            },
-          ]}
-        >
-          <View style={styles.tipHeader}>
-            <Text variant="subhead" style={{ flex: 1 }}>
-              Codes print here
-            </Text>
-            <PressableScale
-              accessibilityRole="button"
-              accessibilityLabel="Dismiss console OTP tip"
-              hitSlop={8}
-              onPress={() => {
-                haptics.light();
-                dismiss();
-              }}
-              style={styles.dismiss}
-            >
-              <Text variant="label" color="accent">
-                Got it
-              </Text>
-            </PressableScale>
-          </View>
-          <Text variant="footnote" color="secondary">
-            SMTP isn't configured, so one-time codes are printed in the server
-            console. Point SMTP_URL at Mailpit (or any fake SMTP) if you'd rather
-            catch them in an inbox — that's optional.
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function DeliveryTab({
-  label,
-  icon,
-  selected,
-}: {
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  selected: boolean;
-}) {
-  const { palette } = useTheme();
   return (
     <View
       style={[
-        styles.tab,
-        selected && {
-          backgroundColor: palette.surfaceElevated,
-          borderColor: palette.borderStrong,
+        styles.tip,
+        !compact && styles.spaced,
+        {
+          backgroundColor: palette.surfaceSecondary,
+          borderColor: palette.border,
         },
       ]}
+      accessibilityRole="text"
+      accessibilityLabel="One-time codes are printed in the server console"
     >
-      <Ionicons
-        name={icon}
-        size={13}
-        color={selected ? palette.accent : palette.textTertiary}
-      />
-      <Text
-        variant="caption"
-        color={selected ? "primary" : "tertiary"}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
+      <View style={[styles.icon, { backgroundColor: palette.accentSoft }]}>
+        <Ionicons name="terminal-outline" size={15} color={palette.accent} />
+      </View>
+      <View style={styles.body}>
+        <View style={styles.header}>
+          <Text variant="subhead" style={{ flex: 1 }}>
+            Check the server console
+          </Text>
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss console OTP tip"
+            hitSlop={8}
+            onPress={() => {
+              haptics.light();
+              dismiss();
+            }}
+            style={styles.dismiss}
+          >
+            <Text variant="label" color="accent">
+              Got it
+            </Text>
+          </PressableScale>
+        </View>
+        <Text variant="footnote" color="secondary">
+          This server isn't sending mail, so the one-time code is printed in
+          the server process. Point SMTP_URL at Mailpit if you'd rather catch
+          it in an inbox — that's optional.
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: spacing[10] },
-  tabs: {
-    flexDirection: "row",
-    padding: 3,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    gap: 3,
-  },
-  tab: {
-    flex: 1,
-    minHeight: 32,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing[6],
-    paddingHorizontal: spacing[8],
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
   tip: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing[10],
     borderWidth: 1,
     borderRadius: radius.md,
     padding: spacing[12],
-    gap: spacing[6],
   },
-  tipHeader: {
+  spaced: { marginBottom: spacing[16] },
+  icon: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.xs,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  body: { flex: 1, gap: spacing[4] },
+  header: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing[8],

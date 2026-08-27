@@ -60,7 +60,6 @@ export default function ForgotPasswordScreen() {
       }
     >
       <OtpDeliveryHint smtpConfigured={smtpConfigured} />
-      <View style={{ height: spacing[16] }} />
       <Input
         label="Email"
         value={email}

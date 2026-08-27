@@ -69,7 +69,6 @@ export default function VerifyEmailScreen() {
       subtitle={otpVerifySubtitle(smtpConfigured)}
     >
       <OtpDeliveryHint smtpConfigured={smtpConfigured} />
-      <View style={{ height: spacing[16] }} />
       <Input
         label="Email"
         value={email}

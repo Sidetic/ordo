@@ -71,7 +71,7 @@ export default function ChangeEmailScreen() {
             footer={otpRequestFooter(smtpConfigured, "email-change")}
           >
             <SettingsForm style={styles.form}>
-              <OtpDeliveryHint smtpConfigured={smtpConfigured} />
+              <OtpDeliveryHint smtpConfigured={smtpConfigured} compact />
               <Input
                 label="Current email"
                 value={user?.email ?? ""}

@@ -84,7 +84,7 @@ export default function VerifyEmailChangeScreen() {
             footer={otpEnterHelper(smtpConfigured, params.email)}
           >
             <SettingsForm style={styles.form}>
-              <OtpDeliveryHint smtpConfigured={smtpConfigured} />
+              <OtpDeliveryHint smtpConfigured={smtpConfigured} compact />
               <OtpInput
                 label="Verification code"
                 value={token}

@@ -102,7 +102,6 @@ export default function ResetPasswordScreen() {
       }
     >
       <OtpDeliveryHint smtpConfigured={smtpConfigured} />
-      <View style={{ height: spacing[16] }} />
       <OtpInput
         label="Reset code"
         value={token}
