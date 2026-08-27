@@ -3,6 +3,8 @@ import {
   DELETE_ACCOUNT_CONFIRMATION,
   DeleteAccountSchema,
   ErrorCode,
+  ForgotPasswordSchema,
+  ResetPasswordSchema,
   VerifyEmailChangeSchema,
   VerifyEmailSchema,
 } from "@ordo/shared";
@@ -74,5 +76,23 @@ describe("email OTP schemas", () => {
   it("accepts a 6-digit code for email-change verification", () => {
     expect(VerifyEmailChangeSchema.safeParse({ token: "000000" }).success).toBe(true);
     expect(VerifyEmailChangeSchema.safeParse({ token: "12 3456" }).success).toBe(false);
+  });
+
+  it("accepts a forgot-password email and a reset payload", () => {
+    expect(ForgotPasswordSchema.safeParse({ email: "a@ordo.app" }).success).toBe(true);
+    expect(
+      ResetPasswordSchema.safeParse({
+        email: "a@ordo.app",
+        token: "123456",
+        newPassword: "newpassword",
+      }).success,
+    ).toBe(true);
+    expect(
+      ResetPasswordSchema.safeParse({
+        email: "a@ordo.app",
+        token: "12345",
+        newPassword: "newpassword",
+      }).success,
+    ).toBe(false);
   });
 });

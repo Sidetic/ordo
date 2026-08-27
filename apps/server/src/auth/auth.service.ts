@@ -3,9 +3,11 @@ import bcrypt from "bcryptjs";
 import type { Session, User } from "@prisma/client";
 import {
   EMAIL_OTP,
+  EMAIL_OTP_PURPOSE,
   ErrorCode,
   normalizeReaderPreferences,
   type AuthResponse,
+  type EmailOtpPurpose,
   type SessionDeviceType,
   type SessionDto,
   type UpdateReaderPreferencesInput,
@@ -74,7 +76,7 @@ export class AuthService {
     });
 
     if (this.cfg.emailVerificationRequired) {
-      await this.createAndSendVerification(user.id, email);
+      await this.createAndSendOtp(user.id, email, EMAIL_OTP_PURPOSE.VERIFY);
     }
 
     const { session, tokens } = await this.sessions.create(user.id, meta);
@@ -166,7 +168,7 @@ export class AuthService {
     if (!user) {
       throw this.invalidOtp();
     }
-    const record = await this.matchOtp(user.id, token);
+    const record = await this.matchOtp(user.id, token, EMAIL_OTP_PURPOSE.VERIFY);
     await this.prisma.$transaction([
       this.prisma.emailVerificationToken.update({
         where: { id: record.id },
@@ -182,7 +184,7 @@ export class AuthService {
   async resendVerification(email: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
     if (!user || user.emailVerifiedAt !== null) return; // no-op to avoid enumeration
-    await this.createAndSendVerification(user.id, user.email);
+    await this.createAndSendOtp(user.id, user.email, EMAIL_OTP_PURPOSE.VERIFY);
   }
 
   async changeUsername(userId: string, newUsername: string): Promise<UserDto> {
@@ -221,13 +223,13 @@ export class AuthService {
     }
 
     await this.prisma.user.update({ where: { id: userId }, data: { pendingEmail: newEmail } });
-    await this.createAndSendVerification(userId, newEmail);
+    await this.createAndSendOtp(userId, newEmail, EMAIL_OTP_PURPOSE.EMAIL_CHANGE);
   }
 
   async resendEmailChange(userId: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.pendingEmail) return;
-    await this.createAndSendVerification(userId, user.pendingEmail);
+    await this.createAndSendOtp(userId, user.pendingEmail, EMAIL_OTP_PURPOSE.EMAIL_CHANGE);
   }
 
   async verifyEmailChange(userId: string, token: string): Promise<UserDto> {
@@ -238,7 +240,7 @@ export class AuthService {
         "No pending email change to verify",
       );
     }
-    const record = await this.matchOtp(userId, token);
+    const record = await this.matchOtp(userId, token, EMAIL_OTP_PURPOSE.EMAIL_CHANGE);
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.emailVerificationToken.update({
         where: { id: record.id },
@@ -289,20 +291,66 @@ export class AuthService {
     await this.prisma.user.deleteMany({ where: { id: userId } });
   }
 
-  private async createAndSendVerification(userId: string, email: string): Promise<void> {
+  /**
+   * Always succeeds (no enumeration). If the address belongs to an account,
+   * a reset OTP is emailed — or printed to the console when SMTP is unset.
+   */
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+    if (!user) return;
+    await this.createAndSendOtp(user.id, user.email, EMAIL_OTP_PURPOSE.PASSWORD_RESET);
+  }
+
+  async resetPassword(email: string, token: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+    if (!user) {
+      throw this.invalidOtp();
+    }
+    const record = await this.matchOtp(user.id, token, EMAIL_OTP_PURPOSE.PASSWORD_RESET);
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
+    await this.prisma.$transaction([
+      this.prisma.emailVerificationToken.update({
+        where: { id: record.id },
+        data: { consumedAt: new Date() },
+      }),
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash,
+          emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
+        },
+      }),
+    ]);
+    await this.sessions.revokeAll(user.id);
+  }
+
+  private async createAndSendOtp(
+    userId: string,
+    email: string,
+    purpose: EmailOtpPurpose,
+  ): Promise<void> {
     await this.prisma.emailVerificationToken.deleteMany({ where: { userId } });
     const token = this.tokens.generateVerificationToken();
     await this.prisma.emailVerificationToken.create({
       data: {
         userId,
+        purpose,
         token: hashEmailOtp(userId, token, this.cfg.jwtSecret),
         expiresAt: new Date(Date.now() + EMAIL_OTP.TTL_MS),
       },
     });
     try {
-      await this.mail.sendVerification(email, token);
+      if (purpose === EMAIL_OTP_PURPOSE.PASSWORD_RESET) {
+        await this.mail.sendPasswordReset(email, token);
+      } else {
+        await this.mail.sendVerification(email, token);
+      }
     } catch (err) {
-      this.logger.error(`Failed to send verification email: ${(err as Error).message}`);
+      this.logger.error(`Failed to send ${purpose} email: ${(err as Error).message}`);
     }
   }
 
@@ -318,9 +366,9 @@ export class AuthService {
   }
 
   /** Validate a user-scoped OTP. Does not consume on success (caller does). */
-  private async matchOtp(userId: string, otp: string) {
+  private async matchOtp(userId: string, otp: string, purpose: EmailOtpPurpose) {
     const record = await this.prisma.emailVerificationToken.findFirst({
-      where: { userId, consumedAt: null },
+      where: { userId, purpose, consumedAt: null },
       orderBy: { createdAt: "desc" },
     });
     if (!record || record.expiresAt < new Date()) {

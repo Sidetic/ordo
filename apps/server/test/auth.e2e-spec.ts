@@ -128,6 +128,18 @@ describe("Auth (e2e)", () => {
     });
   });
 
+  describe("server info", () => {
+    it("reports smtpConfigured false when SMTP_URL is unset", async () => {
+      const res = await request(ctx.app.getHttpServer()).get("/api/server/info").expect(200);
+      expect(res.body).toMatchObject({
+        name: "Ordo",
+        registrationEnabled: true,
+        emailVerificationRequired: false,
+        smtpConfigured: false,
+      });
+    });
+  });
+
   describe("authenticated routes", () => {
     it("rejects requests without a token", async () => {
       const res = await request(ctx.app.getHttpServer()).get("/api/auth/me").expect(401);
@@ -261,6 +273,9 @@ describe("Auth (e2e)", () => {
               sendVerification: async (to: string, token: string) => {
                 sent.push({ to, token });
               },
+              sendPasswordReset: async (to: string, token: string) => {
+                sent.push({ to, token });
+              },
             }),
       });
     });
@@ -392,21 +407,89 @@ describe("Auth (e2e)", () => {
         expect(res.body.error.code).toBe(ErrorCode.INVALID_VERIFICATION_TOKEN);
       });
 
-      it("rejects a non-numeric code before lookup", async () => {
-        const agent = await authedAgent(pctx.app, "badshape@ordo.app");
-        await agent
-          .post("/api/auth/email/change")
-          .send({ currentPassword: "password123", newEmail: "badshape2@ordo.app" })
-          .expect(200);
-        const res = await agent
-          .post("/api/auth/email/verify-change")
-          .send({ token: "not-a-real-token" })
-          .expect(400);
-        expect(res.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
-      });
+    it("rejects a non-numeric code before lookup", async () => {
+      const agent = await authedAgent(pctx.app, "badshape@ordo.app");
+      await agent
+        .post("/api/auth/email/change")
+        .send({ currentPassword: "password123", newEmail: "badshape2@ordo.app" })
+        .expect(200);
+      const res = await agent
+        .post("/api/auth/email/verify-change")
+        .send({ token: "not-a-real-token" })
+        .expect(400);
+      expect(res.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+    });
+  });
+
+  describe("password reset", () => {
+    it("does not reveal whether the email exists", async () => {
+      const res = await request(pctx.app.getHttpServer())
+        .post("/api/auth/forgot-password")
+        .send({ email: "ghost-reset@ordo.app" })
+        .expect(200);
+      expect(res.body).toEqual({ success: true });
+      expect(sent).toHaveLength(0);
     });
 
-    describe("password change", () => {
+    it("resets the password with the emailed code and revokes sessions", async () => {
+      const auth = await registerUser(pctx.app, "resetme@ordo.app");
+      await request(pctx.app.getHttpServer())
+        .post("/api/auth/forgot-password")
+        .send({ email: "resetme@ordo.app" })
+        .expect(200);
+
+      const last = sent[sent.length - 1];
+      expect(last.to).toBe("resetme@ordo.app");
+      expect(last.token).toMatch(/^\d{6}$/);
+
+      await request(pctx.app.getHttpServer())
+        .post("/api/auth/reset-password")
+        .send({
+          email: "resetme@ordo.app",
+          token: last.token,
+          newPassword: "brandnewpass",
+        })
+        .expect(200);
+
+      await request(pctx.app.getHttpServer())
+        .get("/api/auth/me")
+        .auth(auth.tokens.accessToken, { type: "bearer" })
+        .expect(401);
+
+      await request(pctx.app.getHttpServer())
+        .post("/api/auth/login")
+        .set("x-client-type", "mobile")
+        .send({ identifier: "resetme@ordo.app", password: "brandnewpass" })
+        .expect(200);
+
+      await request(pctx.app.getHttpServer())
+        .post("/api/auth/login")
+        .set("x-client-type", "mobile")
+        .send({ identifier: "resetme@ordo.app", password: "password123" })
+        .expect(401);
+    });
+
+    it("rejects an email-change code on the reset endpoint", async () => {
+      const agent = await authedAgent(pctx.app, "cross@ordo.app");
+      await agent
+        .post("/api/auth/email/change")
+        .send({ currentPassword: "password123", newEmail: "cross2@ordo.app" })
+        .expect(200);
+      const changeCode = sent[sent.length - 1].token;
+
+      const res = await request(pctx.app.getHttpServer())
+        .post("/api/auth/reset-password")
+        .send({
+          email: "cross@ordo.app",
+          token: changeCode,
+          newPassword: "brandnewpass",
+        })
+        .expect(400);
+      expect(res.body.error.code).toBe(ErrorCode.INVALID_VERIFICATION_TOKEN);
+    });
+  });
+
+  describe("password change", () => {
       it("rejects a wrong current password", async () => {
         const agent = await authedAgent(pctx.app, "pwd1@ordo.app");
         const res = await agent

@@ -41,6 +41,7 @@ export async function createTestApp(
     databaseUrl: `file:${dbPath}`,
     registrationEnabled: true,
     emailVerificationRequired: false,
+    smtpUrl: null,
     ...(options.config ?? {}),
   };
 

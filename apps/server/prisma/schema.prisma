@@ -32,6 +32,8 @@ model EmailVerificationToken {
   id         String    @id @default(cuid())
   userId     String
   token      String    @unique
+  /// verify | email_change | password_reset
+  purpose    String    @default("verify")
   attempts   Int       @default(0)
   expiresAt  DateTime
   consumedAt DateTime?
@@ -40,6 +42,7 @@ model EmailVerificationToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, purpose])
 }
 
 model Session {

@@ -17,12 +17,16 @@ import {
   ChangePasswordSchema,
   ChangeUsernameSchema,
   DeleteAccountSchema,
+  ForgotPasswordSchema,
   LoginSchema,
   RegisterSchema,
+  ResetPasswordSchema,
   UpdateReaderPreferencesSchema,
   VerifyEmailChangeSchema,
   VerifyEmailSchema,
   type AuthResponse,
+  type ForgotPasswordInput,
+  type ResetPasswordInput,
   type SessionDto,
   type UpdateReaderPreferencesInput,
   type UserDto,
@@ -97,6 +101,24 @@ export class AuthController {
     const result = await this.auth.refresh(getRefreshToken(req), getDeviceMetadata(req));
     if (!mobile) setAuthCookies(res, result.tokens);
     return this.maybeStripTokens(result, mobile);
+  }
+
+  @Post("forgot-password")
+  @HttpCode(200)
+  async forgotPassword(
+    @Body(new ZodValidationPipe(ForgotPasswordSchema)) body: ForgotPasswordInput,
+  ): Promise<{ success: true }> {
+    await this.auth.requestPasswordReset(body.email);
+    return { success: true };
+  }
+
+  @Post("reset-password")
+  @HttpCode(200)
+  async resetPassword(
+    @Body(new ZodValidationPipe(ResetPasswordSchema)) body: ResetPasswordInput,
+  ): Promise<{ success: true }> {
+    await this.auth.resetPassword(body.email, body.token, body.newPassword);
+    return { success: true };
   }
 
   @Post("logout")

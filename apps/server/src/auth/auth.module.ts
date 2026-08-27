@@ -9,6 +9,6 @@ import { AuthGuard } from "./auth.guard.js";
 @Module({
   controllers: [AuthController],
   providers: [AuthService, SessionService, TokenService, MailService, AuthGuard],
-  exports: [AuthService, SessionService, TokenService, AuthGuard],
+  exports: [AuthService, SessionService, TokenService, MailService, AuthGuard],
 })
 export class AuthModule {}
