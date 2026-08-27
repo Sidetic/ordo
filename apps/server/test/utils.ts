@@ -42,6 +42,8 @@ export async function createTestApp(
     registrationEnabled: true,
     emailVerificationRequired: false,
     smtpUrl: null,
+    rateLimitEnabled: false,
+    trustProxy: 0,
     ...(options.config ?? {}),
   };
 

@@ -50,6 +50,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.warn(`${payload.code} ${status} at ${path}: ${payload.message}`);
     }
 
+    const retryAfter = retryAfterSecondsOf(payload.details);
+    if (status === HttpStatus.TOO_MANY_REQUESTS && retryAfter !== null) {
+      res.setHeader("Retry-After", String(retryAfter));
+    }
+
     res.status(status).json({ error: payload });
   }
 
@@ -83,4 +88,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message,
     };
   }
+}
+
+function retryAfterSecondsOf(details: unknown): number | null {
+  if (!details || typeof details !== "object") return null;
+  const n = (details as { retryAfterSeconds?: unknown }).retryAfterSeconds;
+  if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return null;
+  return Math.ceil(n);
 }

@@ -18,6 +18,12 @@ export interface AppConfig {
   smtpUrl: string | null;
   smtpFrom: string;
   /**
+   * When false, every rate-limit check is a no-op. Defaults on except in
+   * `NODE_ENV=test` (Jest), so local/prod are protected and existing tests
+   * keep their unlimited register/login loops. Override with RATE_LIMIT_ENABLED.
+   */
+  rateLimitEnabled: boolean;
+  /**
    * How many reverse-proxy hops to trust when reading `X-Forwarded-For`.
    * 0 (default) uses the socket address only — clients cannot spoof the IP.
    * Set to 1 behind a typical nginx / Caddy / Cloudflare tunnel.
@@ -42,6 +48,7 @@ const EnvSchema = z.object({
   CORS_ALLOWED_ORIGINS: z.string().default(""),
   SMTP_URL: z.string().optional(),
   SMTP_FROM: z.string().default("Ordo <noreply@ordo.local>"),
+  RATE_LIMIT_ENABLED: z.string().optional(),
   TRUST_PROXY: z.coerce.number().int().min(0).max(32).default(0),
 });
 
@@ -91,6 +98,12 @@ export function loadConfig(): AppConfig {
     corsAllowedOrigins,
     smtpUrl: parsed.SMTP_URL?.trim() || null,
     smtpFrom: parsed.SMTP_FROM,
+    rateLimitEnabled: resolveRateLimitEnabled(parsed.RATE_LIMIT_ENABLED),
     trustProxy: parsed.TRUST_PROXY,
   };
+}
+
+function resolveRateLimitEnabled(raw: string | undefined): boolean {
+  if (raw !== undefined && raw.trim() !== "") return toBool(raw);
+  return process.env.NODE_ENV !== "test";
 }
