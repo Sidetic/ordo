@@ -52,6 +52,20 @@ export const authApi = {
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
     api.post<typeof AuthRoutes.changePassword.response>(AuthRoutes.changePassword.path, body),
 
+  forgotPassword: (body: { email: string }) =>
+    api.post<typeof AuthRoutes.forgotPassword.response>(
+      AuthRoutes.forgotPassword.path,
+      body,
+      { auth: false },
+    ),
+
+  resetPassword: (body: { email: string; token: string; newPassword: string }) =>
+    api.post<typeof AuthRoutes.resetPassword.response>(
+      AuthRoutes.resetPassword.path,
+      body,
+      { auth: false },
+    ),
+
   updatePreferences: (body: UpdateReaderPreferencesInput) =>
     api.patch<typeof AuthRoutes.updatePreferences.response>(
       AuthRoutes.updatePreferences.path,

@@ -88,6 +88,14 @@ export function useChangePassword() {
   });
 }
 
+export function useForgotPassword() {
+  return useMutation({ mutationFn: authApi.forgotPassword });
+}
+
+export function useResetPassword() {
+  return useMutation({ mutationFn: authApi.resetPassword });
+}
+
 export function useDeleteAccount() {
   const clear = useAuthStore((s) => s.clear);
   return useMutation({

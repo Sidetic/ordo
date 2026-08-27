@@ -2,7 +2,7 @@
  * Verify an email change — step 2: enter the code sent to the new address.
  * Reached after submitting a change-email request.
  */
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { EMAIL_OTP } from "@ordo/shared";
@@ -12,46 +12,60 @@ import {
   SettingsPage,
   SettingsScrollView,
 } from "../../../src/components/settings/SettingsPage";
-import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
+import { OtpInput, holdOtpSuccess, type OtpStatus } from "../../../src/components/ui/OtpInput";
 import { useResendEmailChange, useVerifyEmailChange } from "../../../src/hooks/use-auth-actions";
+import { useServerInfo } from "../../../src/hooks/queries";
 import { errorMessage } from "../../../src/lib/error-message";
+import { otpEnterHelper, otpSentToast } from "../../../src/lib/otp-copy";
 import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
 import { spacing } from "../../../src/theme/tokens";
+import { OtpDeliveryHint } from "../../../src/components/auth/OtpDeliveryHint";
 
 export default function VerifyEmailChangeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ email?: string }>();
   const verify = useVerifyEmailChange();
   const resend = useResendEmailChange();
+  const { data: info } = useServerInfo();
+  const smtpConfigured = info?.smtpConfigured;
 
   const [token, setToken] = useState("");
-  const [formError, setFormError] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [otpStatus, setOtpStatus] = useState<OtpStatus>("idle");
+  const inFlight = useRef(false);
 
   const target = params.email ?? "your new address";
 
-  const submit = async () => {
-    setFormError("");
-    if (token.length !== EMAIL_OTP.LENGTH) {
-      setFormError("Enter your verification code.");
+  const submit = async (code = token) => {
+    if (inFlight.current || otpStatus === "success") return;
+    setOtpError("");
+    if (code.length !== EMAIL_OTP.LENGTH) {
+      setOtpError("Enter your verification code.");
       return;
     }
+    inFlight.current = true;
+    setOtpStatus("loading");
     try {
-      await verify.mutateAsync(token);
+      await verify.mutateAsync(code);
+      setOtpStatus("success");
       haptics.success();
       toast.success("Email updated");
+      await holdOtpSuccess();
       router.replace("/settings");
     } catch (e) {
+      inFlight.current = false;
+      setOtpStatus("error");
       haptics.error();
-      setFormError(errorMessage(e));
+      setOtpError(errorMessage(e));
     }
   };
 
   const onResend = async () => {
     try {
       await resend.mutateAsync();
-      toast.success(`New code sent to ${target}`);
+      toast.success(otpSentToast(smtpConfigured, target));
     } catch (e) {
       toast.error(errorMessage(e));
     }
@@ -64,27 +78,39 @@ export default function VerifyEmailChangeScreen() {
         style={{ flex: 1 }}
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-          <SettingsGroup label="Verification" compact footer={`Enter the code sent to ${target}.`}>
+          <SettingsGroup
+            label="Verification"
+            compact
+            footer={otpEnterHelper(smtpConfigured, params.email)}
+          >
             <SettingsForm style={styles.form}>
-              <Input
+              <OtpDeliveryHint smtpConfigured={smtpConfigured} />
+              <OtpInput
                 label="Verification code"
                 value={token}
-                onChangeText={(value) => setToken(value.replace(/\D/g, "").slice(0, EMAIL_OTP.LENGTH))}
-                placeholder="000000"
-                keyboardType="number-pad"
-                textContentType="oneTimeCode"
-                autoComplete="one-time-code"
-                maxLength={EMAIL_OTP.LENGTH}
-                helper={`Code sent to ${target}.`}
-                error={formError || undefined}
+                onChange={(value) => {
+                  setToken(value);
+                  setOtpError("");
+                  setOtpStatus((s) => (s === "error" ? "idle" : s));
+                }}
+                status={otpStatus}
+                error={otpError || undefined}
+                onComplete={(code) => void submit(code)}
               />
-              <Button label="Verify" block size="lg" onPress={submit} loading={verify.isPending} />
+              <Button
+                label="Verify"
+                block
+                size="lg"
+                onPress={() => void submit()}
+                loading={otpStatus === "loading" || otpStatus === "success"}
+              />
               <Button
                 label={resend.isPending ? "Sending…" : "Resend code"}
                 variant="ghost"
                 block
                 onPress={onResend}
                 loading={resend.isPending}
+                disabled={otpStatus === "loading" || otpStatus === "success"}
               />
             </SettingsForm>
           </SettingsGroup>
@@ -95,5 +121,5 @@ export default function VerifyEmailChangeScreen() {
 }
 
 const styles = {
-  form: { padding: spacing[16], gap: spacing[12] },
+  form: { padding: spacing[16], gap: spacing[16] },
 };

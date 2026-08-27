@@ -89,6 +89,11 @@ export default function LoginScreen() {
           textContentType="password"
           rightAccessory={<EyeToggle visible={showPwd} onPress={() => setShowPwd((v) => !v)} />}
         />
+        <View style={styles.forgotRow}>
+          <Link href="/(auth)/forgot-password" asChild>
+            <Text variant="footnote" color="accent" style={styles.link}>Forgot password?</Text>
+          </Link>
+        </View>
 
         <View style={{ height: spacing[24] }} />
         <Button label="Sign in" block size="lg" onPress={submit} loading={login.isPending} />
@@ -134,6 +139,7 @@ const styles = StyleSheet.create({
   link: { textDecorationLine: "underline" },
   serverSection: { marginTop: spacing[20] },
   serverLabel: { marginBottom: spacing[6] },
+  forgotRow: { marginTop: spacing[10], alignItems: "flex-end" },
   serverBox: {
     minHeight: 44,
     borderWidth: 1,

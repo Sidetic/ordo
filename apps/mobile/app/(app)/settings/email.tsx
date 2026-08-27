@@ -16,16 +16,21 @@ import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
 import { useRequestEmailChange } from "../../../src/hooks/use-auth-actions";
 import { useAuthStore } from "../../../src/store/auth";
+import { useServerInfo } from "../../../src/hooks/queries";
 import { errorMessage } from "../../../src/lib/error-message";
+import { otpRequestFooter, otpSentToast } from "../../../src/lib/otp-copy";
 import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
 import { spacing } from "../../../src/theme/tokens";
 import { ChangeEmailSchema } from "@ordo/shared";
+import { OtpDeliveryHint } from "../../../src/components/auth/OtpDeliveryHint";
 
 export default function ChangeEmailScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const requestEmailChange = useRequestEmailChange();
+  const { data: info } = useServerInfo();
+  const smtpConfigured = info?.smtpConfigured;
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newEmail, setNewEmail] = useState("");
@@ -45,7 +50,7 @@ export default function ChangeEmailScreen() {
     try {
       await requestEmailChange.mutateAsync(parsed.data);
       haptics.success();
-      toast.success(`Verification code sent to ${parsed.data.newEmail}`);
+      toast.success(otpSentToast(smtpConfigured, parsed.data.newEmail));
       router.replace({ pathname: "/settings/verify-email", params: { email: parsed.data.newEmail } });
     } catch (e) {
       haptics.error();
@@ -60,8 +65,13 @@ export default function ChangeEmailScreen() {
         style={{ flex: 1 }}
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-          <SettingsGroup label="Change email" compact footer="A verification code will be sent to your new address.">
+          <SettingsGroup
+            label="Change email"
+            compact
+            footer={otpRequestFooter(smtpConfigured, "email-change")}
+          >
             <SettingsForm style={styles.form}>
+              <OtpDeliveryHint smtpConfigured={smtpConfigured} />
               <Input
                 label="Current email"
                 value={user?.email ?? ""}
