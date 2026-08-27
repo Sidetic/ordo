@@ -1,7 +1,7 @@
 /**
- * Six-cell one-time-code field. A single hidden TextInput captures typing,
- * paste, and SMS autofill; the cells are the visual layer. Completing the
- * last digit fires `onComplete`. Success / error play a bounce or a shake.
+ * Segmented one-time-code field. A single hidden TextInput captures typing,
+ * paste, and OS autofill; the cells are the visual layer. Completing the
+ * last character fires `onComplete`. Success / error play a bounce or a shake.
  */
 import React, { useEffect, useRef } from "react";
 import {
@@ -27,7 +27,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { EMAIL_OTP } from "@ordo/shared";
+import { EMAIL_OTP, MFA } from "@ordo/shared";
 import { Text } from "./Text";
 import { useTheme } from "../../theme/ThemeProvider";
 import { fontSize, radius, resolveFont, spacing, springs } from "../../theme/tokens";
@@ -41,9 +41,12 @@ export function holdOtpSuccess(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, OTP_SUCCESS_HOLD_MS));
 }
 
+export type OtpKind = "numeric" | "backup";
+
 export interface OtpInputProps {
   value: string;
   onChange: (value: string) => void;
+  kind?: OtpKind;
   length?: number;
   label?: string;
   error?: string;
@@ -58,7 +61,8 @@ export interface OtpInputProps {
 export function OtpInput({
   value,
   onChange,
-  length = EMAIL_OTP.LENGTH,
+  kind = "numeric",
+  length = kind === "backup" ? MFA.BACKUP_CODE_LENGTH : EMAIL_OTP.LENGTH,
   label,
   error,
   helper,
@@ -74,13 +78,16 @@ export function OtpInput({
   const prevLen = useRef(0);
   const [focused, setFocused] = React.useState(false);
 
-  const digits = value.replace(/\D/g, "").slice(0, length);
+  const chars =
+    kind === "backup"
+      ? value.replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, length)
+      : value.replace(/\D/g, "").slice(0, length);
   const locked = !editable || status === "loading" || status === "success";
-  const activeIndex = Math.min(digits.length, length - 1);
-  const showCaret = focused && !locked && status === "idle" && digits.length < length;
+  const activeIndex = Math.min(chars.length, length - 1);
+  const showCaret = focused && !locked && status === "idle" && chars.length < length;
   // A kept-alive screen can remount this field already filled (previous OTP).
   // Don't treat that restored value as a fresh user completion.
-  const skipRestoredComplete = useRef(digits.length === length);
+  const skipRestoredComplete = useRef(chars.length === length);
 
   const shake = useSharedValue(0);
   const pulse = useSharedValue(1);
@@ -92,25 +99,25 @@ export function OtpInput({
   }, [autoFocus]);
 
   useEffect(() => {
-    if (digits.length > prevLen.current) haptics.selection();
-    prevLen.current = digits.length;
-  }, [digits.length]);
+    if (chars.length > prevLen.current) haptics.selection();
+    prevLen.current = chars.length;
+  }, [chars.length]);
 
   useEffect(() => {
-    if (digits.length !== length) {
+    if (chars.length !== length) {
       completedRef.current = null;
       skipRestoredComplete.current = false;
       return;
     }
     if (skipRestoredComplete.current) return;
-    if (completedRef.current === digits) return;
+    if (completedRef.current === chars) return;
     if (status === "loading" || status === "success" || !onComplete) return;
     const t = setTimeout(() => {
-      completedRef.current = digits;
-      onComplete(digits);
+      completedRef.current = chars;
+      onComplete(chars);
     }, 80);
     return () => clearTimeout(t);
-  }, [digits, length, onComplete, status]);
+  }, [chars, length, onComplete, status]);
 
   useEffect(() => {
     if (status !== "error") return;
@@ -148,11 +155,42 @@ export function OtpInput({
   }));
 
   const setCode = (raw: string) => {
-    onChange(raw.replace(/\D/g, "").slice(0, length));
+    const next =
+      kind === "backup"
+        ? raw.replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, length)
+        : raw.replace(/\D/g, "").slice(0, length);
+    onChange(next);
   };
 
   const message = error || helper;
   const messageDanger = Boolean(error);
+  const compact = kind === "backup";
+  const boxPalette = {
+    text: palette.text,
+    border: palette.border,
+    borderStrong: palette.borderStrong,
+    accent: palette.accent,
+    background: palette.background,
+    surface: palette.surfaceElevated,
+    danger: palette.danger,
+    dangerSoft: palette.dangerSoft,
+    success: palette.success,
+    successSoft: palette.mode === "dark" ? "rgba(138,170,90,0.16)" : "rgba(108,143,58,0.12)",
+  };
+
+  const renderBox = (i: number) => (
+    <DigitBox
+      key={i}
+      index={i}
+      digit={chars[i] ?? ""}
+      active={showCaret && i === (chars.length === length ? activeIndex : chars.length)}
+      filled={Boolean(chars[i])}
+      focused={focused && !locked && i === (chars.length < length ? chars.length : activeIndex)}
+      status={status}
+      compact={compact}
+      palette={boxPalette}
+    />
+  );
 
   return (
     <View style={style}>
@@ -170,35 +208,22 @@ export function OtpInput({
         style={styles.hit}
       >
         <Animated.View style={[styles.row, rowMotion]}>
-          {Array.from({ length }, (_, i) => (
-            <DigitBox
-              key={i}
-              index={i}
-              digit={digits[i] ?? ""}
-              active={showCaret && i === (digits.length === length ? activeIndex : digits.length)}
-              filled={Boolean(digits[i])}
-              focused={focused && !locked && i === (digits.length < length ? digits.length : activeIndex)}
-              status={status}
-              palette={{
-                text: palette.text,
-                border: palette.border,
-                borderStrong: palette.borderStrong,
-                accent: palette.accent,
-                background: palette.background,
-                surface: palette.surfaceElevated,
-                danger: palette.danger,
-                dangerSoft: palette.dangerSoft,
-                success: palette.success,
-                successSoft:
-                  palette.mode === "dark" ? "rgba(138,170,90,0.16)" : "rgba(108,143,58,0.12)",
-              }}
-            />
-          ))}
+          {compact && length === MFA.BACKUP_CODE_LENGTH ? (
+            <>
+              <View style={styles.group}>{Array.from({ length: 4 }, (_, i) => renderBox(i))}</View>
+              <Text variant="title3" color="tertiary" style={styles.hyphen}>
+                -
+              </Text>
+              <View style={styles.group}>{Array.from({ length: 4 }, (_, i) => renderBox(i + 4))}</View>
+            </>
+          ) : (
+            Array.from({ length }, (_, i) => renderBox(i))
+          )}
         </Animated.View>
 
         <TextInput
           ref={inputRef}
-          value={digits}
+          value={chars}
           onChangeText={setCode}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
@@ -208,15 +233,16 @@ export function OtpInput({
           contextMenuHidden={false}
           autoCorrect={false}
           autoCapitalize="none"
-          autoComplete="one-time-code"
-          textContentType="oneTimeCode"
-          importantForAutofill="yes"
-          keyboardType="number-pad"
-          inputMode="numeric"
+          spellCheck={false}
+          autoComplete={kind === "backup" ? "off" : "one-time-code"}
+          textContentType={kind === "numeric" ? "oneTimeCode" : "none"}
+          importantForAutofill={kind === "numeric" ? "yes" : "no"}
+          keyboardType={kind === "backup" ? "default" : "number-pad"}
+          inputMode={kind === "backup" ? "text" : "numeric"}
           keyboardAppearance={palette.mode === "dark" ? "dark" : "light"}
-          maxLength={length}
+          maxLength={kind === "backup" ? length * 2 : length}
           accessibilityLabel={label ?? "Verification code"}
-          accessibilityValue={{ text: digits }}
+          accessibilityValue={{ text: chars }}
           style={[
             styles.hiddenInput,
             Platform.OS === "web" ? ({ outlineWidth: 0, outlineStyle: "none" } as TextStyle) : null,
@@ -253,6 +279,7 @@ const DigitBox = React.memo(function DigitBox({
   filled,
   focused,
   status,
+  compact,
   palette,
 }: {
   index: number;
@@ -261,6 +288,7 @@ const DigitBox = React.memo(function DigitBox({
   filled: boolean;
   focused: boolean;
   status: OtpStatus;
+  compact?: boolean;
   palette: BoxPalette;
 }) {
   const mood = useSharedValue(status === "error" ? 1 : status === "success" ? 2 : 0);
@@ -368,7 +396,7 @@ const DigitBox = React.memo(function DigitBox({
   return (
     <Animated.View
       style={[
-        styles.box,
+        compact ? styles.boxCompact : styles.box,
         { borderRadius: radius.sm, zIndex: focused || status !== "idle" ? 2 : 1 },
         boxStyle,
       ]}
@@ -376,7 +404,7 @@ const DigitBox = React.memo(function DigitBox({
       {digit ? (
         <Animated.Text
           style={[
-            styles.digit,
+            compact ? styles.digitCompact : styles.digit,
             { fontFamily: resolveFont("mono", "600") },
             digitStyle,
           ]}
@@ -385,7 +413,11 @@ const DigitBox = React.memo(function DigitBox({
         </Animated.Text>
       ) : (
         <Animated.View
-          style={[styles.caret, { backgroundColor: palette.accent }, caretStyle]}
+          style={[
+            compact ? styles.caretCompact : styles.caret,
+            { backgroundColor: palette.accent },
+            caretStyle,
+          ]}
         />
       )}
     </Animated.View>
@@ -401,10 +433,24 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: spacing[8],
   },
+  group: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing[6],
+  },
+  hyphen: { marginHorizontal: spacing[2] },
   box: {
     flex: 1,
     maxWidth: 56,
     height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  boxCompact: {
+    flex: 1,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -415,10 +461,23 @@ const styles = StyleSheet.create({
     textAlign: "center",
     includeFontPadding: false,
   },
+  digitCompact: {
+    fontSize: fontSize["2xl"],
+    fontWeight: "600",
+    letterSpacing: 0,
+    textAlign: "center",
+    includeFontPadding: false,
+  },
   caret: {
     position: "absolute",
     width: 1.5,
     height: 22,
+    borderRadius: 1,
+  },
+  caretCompact: {
+    position: "absolute",
+    width: 1.5,
+    height: 16,
     borderRadius: 1,
   },
   hiddenInput: {
