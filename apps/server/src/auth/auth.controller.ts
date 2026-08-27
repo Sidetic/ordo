@@ -49,6 +49,7 @@ import {
 } from "../common/utils/request.js";
 import { clearAuthCookies, setAuthCookies } from "./cookies.js";
 import { AuthGuard } from "./auth.guard.js";
+import { RateLimit } from "../common/rate-limit/rate-limit.decorator.js";
 
 @Controller("api/auth")
 export class AuthController {
@@ -61,6 +62,7 @@ export class AuthController {
   }
 
   @Post("register")
+  @RateLimit("register")
   async register(
     @Body(new ZodValidationPipe(RegisterSchema)) body: { username: string; email: string; password: string },
     @Req() req: Request,
@@ -104,6 +106,7 @@ export class AuthController {
   }
 
   @Post("forgot-password")
+  @RateLimit("forgot-password")
   @HttpCode(200)
   async forgotPassword(
     @Body(new ZodValidationPipe(ForgotPasswordSchema)) body: ForgotPasswordInput,
@@ -113,6 +116,7 @@ export class AuthController {
   }
 
   @Post("reset-password")
+  @RateLimit("reset-password")
   @HttpCode(200)
   async resetPassword(
     @Body(new ZodValidationPipe(ResetPasswordSchema)) body: ResetPasswordInput,

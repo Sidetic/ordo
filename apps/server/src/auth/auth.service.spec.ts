@@ -24,6 +24,7 @@ describe("AuthService account deletion", () => {
       {} as never,
       {} as never,
       {} as never,
+      { enabled: false, checkLogin() {}, recordLoginFailure() {}, clearLogin() {} } as never,
     );
     return { service, deleteUser };
   };

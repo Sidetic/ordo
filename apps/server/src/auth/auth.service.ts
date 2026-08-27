@@ -21,6 +21,7 @@ import type { AppConfig } from "../config/config.module.js";
 import { SessionService } from "./session.service.js";
 import { TokenService } from "./token.service.js";
 import { MailService } from "./mail.service.js";
+import { RateLimitService } from "../common/rate-limit/rate-limit.service.js";
 import { toUserDto, toSessionDto } from "../common/mappers.js";
 
 const BCRYPT_COST = 12;
@@ -42,6 +43,7 @@ export class AuthService {
     private readonly tokens: TokenService,
     private readonly mail: MailService,
     @Inject(APP_CONFIG) private readonly cfg: AppConfig,
+    private readonly rateLimit: RateLimitService,
   ) {}
 
   async register(
@@ -88,16 +90,31 @@ export class AuthService {
     meta: ClientMeta,
   ): Promise<AuthResponse> {
     const identifier = input.identifier.trim();
+    const accountKey = identifier.includes("@") ? identifier.toLowerCase() : identifier;
+    const loginKeys = { accountKey, ip: meta.ip };
+
+    this.rateLimit.checkLogin(loginKeys);
+
     const user = identifier.includes("@")
       ? await this.prisma.user.findUnique({ where: { email: identifier.toLowerCase() } })
       : await this.prisma.user.findUnique({ where: { username: identifier } });
+
+    if (user) {
+      this.rateLimit.checkLogin({ ...loginKeys, userId: user.id });
+    }
+
     if (!user) {
+      this.rateLimit.recordLoginFailure(loginKeys);
       throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email, username, or password");
     }
     const ok = await bcrypt.compare(input.password, user.passwordHash);
     if (!ok) {
+      this.rateLimit.recordLoginFailure({ ...loginKeys, userId: user.id });
       throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email, username, or password");
     }
+
+    this.rateLimit.clearLogin({ accountKey, userId: user.id });
+
     if (this.cfg.emailVerificationRequired && user.emailVerifiedAt === null) {
       throw new AppError(
         ErrorCode.EMAIL_NOT_VERIFIED,
