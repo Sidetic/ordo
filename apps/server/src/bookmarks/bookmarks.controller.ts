@@ -28,6 +28,7 @@ import {
 import { getFolderToken } from "../common/utils/request.js";
 import { BookmarksService } from "./bookmarks.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
+import { RateLimit } from "../common/rate-limit/rate-limit.decorator.js";
 
 @UseGuards(AuthGuard)
 @Controller("api/bookmarks")
@@ -38,6 +39,7 @@ export class BookmarksController {
   ) {}
 
   @Post()
+  @RateLimit("bookmark-create")
   async create(
     @CurrentUser() user: AuthContext,
     @Body(new ZodValidationPipe(CreateBookmarkSchema)) body: { url: string; folderId?: string | null },
