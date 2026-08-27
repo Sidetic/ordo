@@ -40,6 +40,12 @@ module.exports = {
   plugins: [
     "expo-asset",
     [
+      "expo-image-picker",
+      {
+        photosPermission: "Allow Ordo to access your photos to set a profile picture.",
+      },
+    ],
+    [
       "expo-share-intent",
       {
         disableIOS: true,
