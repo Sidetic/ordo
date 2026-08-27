@@ -23,6 +23,8 @@ export interface SettingsState {
   showNavigationLabels: boolean;
   createButtonTapAction: CreateButtonAction;
   createButtonHoldAction: CreateButtonHoldAction;
+  /** One-time tip: OTP is printed to the server console when SMTP is unset. */
+  consoleOtpTipDismissed: boolean;
   hydrated: boolean;
 
   hydrate: () => Promise<void>;
@@ -33,6 +35,7 @@ export interface SettingsState {
   setShowNavigationLabels: (show: boolean) => void;
   setCreateButtonTapAction: (action: CreateButtonAction) => void;
   setCreateButtonHoldAction: (action: CreateButtonHoldAction) => void;
+  dismissConsoleOtpTip: () => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -43,6 +46,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   showNavigationLabels: true,
   createButtonTapAction: "menu",
   createButtonHoldAction: "bookmark",
+  consoleOtpTipDismissed: false,
   hydrated: false,
 
   hydrate: async () => {
@@ -63,6 +67,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         saved?.createButtonHoldAction === "none" || isCreateButtonAction(saved?.createButtonHoldAction)
           ? saved.createButtonHoldAction
           : "bookmark",
+      consoleOtpTipDismissed: saved?.consoleOtpTipDismissed === true,
       hydrated: true,
     });
   },
@@ -94,5 +99,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setCreateButtonHoldAction: (createButtonHoldAction) => {
     set({ createButtonHoldAction });
     void prefsSet(StorageKeys.SETTINGS, { ...get(), createButtonHoldAction });
+  },
+  dismissConsoleOtpTip: () => {
+    set({ consoleOtpTipDismissed: true });
+    void prefsSet(StorageKeys.SETTINGS, { ...get(), consoleOtpTipDismissed: true });
   },
 }));
