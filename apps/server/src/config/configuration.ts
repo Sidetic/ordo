@@ -17,6 +17,12 @@ export interface AppConfig {
   corsAllowedOrigins: string[]; // [] => reflect request origin
   smtpUrl: string | null;
   smtpFrom: string;
+  /**
+   * How many reverse-proxy hops to trust when reading `X-Forwarded-For`.
+   * 0 (default) uses the socket address only — clients cannot spoof the IP.
+   * Set to 1 behind a typical nginx / Caddy / Cloudflare tunnel.
+   */
+  trustProxy: number;
 }
 
 const EnvSchema = z.object({
@@ -36,6 +42,7 @@ const EnvSchema = z.object({
   CORS_ALLOWED_ORIGINS: z.string().default(""),
   SMTP_URL: z.string().optional(),
   SMTP_FROM: z.string().default("Ordo <noreply@ordo.local>"),
+  TRUST_PROXY: z.coerce.number().int().min(0).max(32).default(0),
 });
 
 function toBool(v: string): boolean {
@@ -84,5 +91,6 @@ export function loadConfig(): AppConfig {
     corsAllowedOrigins,
     smtpUrl: parsed.SMTP_URL?.trim() || null,
     smtpFrom: parsed.SMTP_FROM,
+    trustProxy: parsed.TRUST_PROXY,
   };
 }

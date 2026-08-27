@@ -92,9 +92,54 @@ export function getDeviceMetadata(req: Request): {
   return { deviceInfo, deviceName, deviceType };
 }
 
-/** Best-effort client IP, respecting the standard forwarded header. */
-export function getClientIp(req: Request): string {
+const CLIENT_IP = Symbol.for("ordo.clientIp");
+
+type RequestWithClientIp = Request & { [CLIENT_IP]?: string };
+
+/** Strip IPv6-mapped IPv4 and brackets so bucket keys stay stable. */
+export function normalizeIp(raw: string): string {
+  let ip = raw.trim();
+  if (ip.startsWith("[") && ip.endsWith("]")) ip = ip.slice(1, -1);
+  if (ip.toLowerCase().startsWith("::ffff:")) ip = ip.slice(7);
+  return ip.slice(0, 64) || "unknown";
+}
+
+/**
+ * Client IP from the socket plus `X-Forwarded-For`, trusting `trustProxyHops`
+ * proxies (counting from the right). Hop count 0 ignores forwarded headers so
+ * clients cannot spoof the IP used for rate limits.
+ */
+export function resolveClientIp(req: Request, trustProxyHops: number): string {
+  const socketIp = normalizeIp(req.socket?.remoteAddress || req.ip || "");
+  const hops = Number.isFinite(trustProxyHops) ? Math.max(0, Math.trunc(trustProxyHops)) : 0;
+  if (hops <= 0) return socketIp;
+
   const fwd = req.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0].trim().slice(0, 64);
-  return (req.ip || "").slice(0, 64);
+  if (!fwd) return socketIp;
+
+  const forwarded = fwd
+    .split(",")
+    .map((s) => normalizeIp(s))
+    .filter((s) => s !== "unknown");
+  const chain = [...forwarded, socketIp];
+  const index = Math.max(0, chain.length - 1 - hops);
+  return chain[index] ?? socketIp;
+}
+
+/** Cache the resolved IP on the request (called by ClientIpMiddleware). */
+export function attachClientIp(req: Request, trustProxyHops: number): string {
+  const ip = resolveClientIp(req, trustProxyHops);
+  (req as RequestWithClientIp)[CLIENT_IP] = ip;
+  return ip;
+}
+
+/**
+ * Client IP for rate limits and session metadata.
+ * Uses the middleware-resolved value when present; otherwise the socket
+ * address (forwarded headers are not trusted without hop count).
+ */
+export function getClientIp(req: Request): string {
+  const cached = (req as RequestWithClientIp)[CLIENT_IP];
+  if (cached) return cached;
+  return resolveClientIp(req, 0);
 }
