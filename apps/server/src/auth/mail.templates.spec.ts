@@ -1,4 +1,4 @@
-import { mfaRecoveryEmail, passwordResetEmail, verificationEmail } from "./mail.templates.js";
+import { mfaRecoveryEmail, verificationEmail } from "./mail.templates.js";
 
 describe("verificationEmail", () => {
   it("includes the code in subject-adjacent text and html", () => {
