@@ -8,6 +8,9 @@ const STATUS_BY_CODE: Record<string, HttpStatus> = {
   [ErrorCode.TOKEN_EXPIRED]: HttpStatus.UNAUTHORIZED,
   [ErrorCode.SESSION_REVOKED]: HttpStatus.UNAUTHORIZED,
   [ErrorCode.EMAIL_NOT_VERIFIED]: HttpStatus.UNAUTHORIZED,
+  [ErrorCode.MFA_REQUIRED]: HttpStatus.UNAUTHORIZED,
+  [ErrorCode.MFA_ENROLLMENT_REQUIRED]: HttpStatus.FORBIDDEN,
+  [ErrorCode.MFA_INVALID]: HttpStatus.UNAUTHORIZED,
 
   [ErrorCode.EMAIL_ALREADY_EXISTS]: HttpStatus.CONFLICT,
   [ErrorCode.INVALID_VERIFICATION_TOKEN]: HttpStatus.BAD_REQUEST,
@@ -20,6 +23,11 @@ const STATUS_BY_CODE: Record<string, HttpStatus> = {
 
   [ErrorCode.BOOKMARK_NOT_FOUND]: HttpStatus.NOT_FOUND,
   [ErrorCode.FETCH_FAILED]: HttpStatus.BAD_REQUEST,
+
+  [ErrorCode.AVATAR_TOO_LARGE]: HttpStatus.PAYLOAD_TOO_LARGE,
+  [ErrorCode.AVATAR_UNSUPPORTED_TYPE]: HttpStatus.BAD_REQUEST,
+  [ErrorCode.AVATAR_ANIMATED_DISABLED]: HttpStatus.BAD_REQUEST,
+  [ErrorCode.AVATAR_NOT_FOUND]: HttpStatus.NOT_FOUND,
 
   [ErrorCode.VALIDATION_ERROR]: HttpStatus.BAD_REQUEST,
   [ErrorCode.NOT_FOUND]: HttpStatus.NOT_FOUND,

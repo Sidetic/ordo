@@ -32,6 +32,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message: body.message,
         ...(body.details !== undefined ? { details: body.details } : {}),
       };
+    } else if (isMulterTooLarge(exception)) {
+      status = HttpStatus.PAYLOAD_TOO_LARGE;
+      payload = {
+        code: ErrorCode.AVATAR_TOO_LARGE,
+        message: "This image is too large",
+      };
     } else if (exception instanceof HttpException) {
       status = exception.getStatus();
       const body = exception.getResponse();
@@ -95,4 +101,13 @@ function retryAfterSecondsOf(details: unknown): number | null {
   const n = (details as { retryAfterSeconds?: unknown }).retryAfterSeconds;
   if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return null;
   return Math.ceil(n);
+}
+
+function isMulterTooLarge(exception: unknown): boolean {
+  return (
+    typeof exception === "object" &&
+    exception !== null &&
+    "code" in exception &&
+    (exception as { code?: string }).code === "LIMIT_FILE_SIZE"
+  );
 }
