@@ -50,6 +50,14 @@ export class RateLimitInterceptor implements NestInterceptor {
         if (userId) this.rateLimit.consumeBookmarkCreate(userId);
         return;
       }
+      case "mfa-verify":
+        this.rateLimit.consumeMfaVerify(ip);
+        return;
+      case "avatar-upload": {
+        const userId = req.user?.userId;
+        if (userId) this.rateLimit.consumeAvatarUpload(userId);
+        return;
+      }
     }
   }
 }

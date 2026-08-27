@@ -26,6 +26,8 @@ export const RATE_LIMIT = {
   forgotPasswordIp: { limit: 10, windowMs: HOUR } satisfies WindowPolicy,
   resetPasswordIp: { limit: 10, windowMs: 15 * MINUTE } satisfies WindowPolicy,
   bookmarkCreateUser: { limit: 30, windowMs: MINUTE } satisfies WindowPolicy,
+  mfaVerifyIp: { limit: 30, windowMs: 15 * MINUTE } satisfies WindowPolicy,
+  avatarUploadUser: { limit: 10, windowMs: HOUR } satisfies WindowPolicy,
 } as const;
 
 export const RATE_LIMIT_MAX_KEYS = 20_000;

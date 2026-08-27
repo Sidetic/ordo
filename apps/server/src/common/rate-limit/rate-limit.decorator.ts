@@ -6,7 +6,9 @@ export type RateLimitPolicyName =
   | "register"
   | "forgot-password"
   | "reset-password"
-  | "bookmark-create";
+  | "bookmark-create"
+  | "mfa-verify"
+  | "avatar-upload";
 
 /** Bind a consume-on-request rate-limit policy to a handler. */
 export const RateLimit = (policy: RateLimitPolicyName) => SetMetadata(RATE_LIMIT_KEY, policy);

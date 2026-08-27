@@ -128,6 +128,16 @@ export class RateLimitService implements OnModuleInit, OnModuleDestroy {
     this.consumeWindow(`bookmark:${userId}`, RATE_LIMIT.bookmarkCreateUser, "URLs fetched");
   }
 
+  consumeMfaVerify(ip: string): void {
+    if (!this.enabled) return;
+    this.consumeWindow(this.ipStoreKey("mfa", ip), RATE_LIMIT.mfaVerifyIp, "MFA attempts");
+  }
+
+  consumeAvatarUpload(userId: string): void {
+    if (!this.enabled) return;
+    this.consumeWindow(`avatar:${userId}`, RATE_LIMIT.avatarUploadUser, "avatar uploads");
+  }
+
   private accountStoreKey(accountKey: string): string {
     return `login:id:${accountKey}`;
   }
