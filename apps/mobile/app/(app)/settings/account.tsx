@@ -1,6 +1,6 @@
 /** Account identity and security settings. */
 import React, { useState } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -11,7 +11,6 @@ import {
   SettingsScrollView,
 } from "../../../src/components/settings/SettingsPage";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
-import { Text } from "../../../src/components/ui/Text";
 import { UserAvatar } from "../../../src/components/ui/UserAvatar";
 import { toast } from "../../../src/components/ui/toast-store";
 import { useAuthStore } from "../../../src/store/auth";
@@ -74,54 +73,20 @@ export default function AccountScreen() {
     }
   };
 
-  const removeAvatar = async () => {
-    if (busy || !user?.hasAvatar) return;
-    setBusy(true);
-    try {
-      const updated = await authApi.deleteAvatar();
-      setUser(updated);
-      haptics.success();
-      toast.success("Profile picture removed");
-    } catch (e) {
-      haptics.error();
-      toast.error(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <SettingsPage title="Account">
       <SettingsScrollView>
-        <SettingsGroup label="Profile" compact>
-          <Pressable
-            onPress={pickAvatar}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: spacing[16],
-              paddingHorizontal: spacing[16],
-              paddingVertical: spacing[16],
-            }}
-          >
-            <UserAvatar user={user} size={64} />
-            <View style={{ flex: 1 }}>
-              <Text variant="body">{busy ? "Updating…" : "Profile picture"}</Text>
-              <Text variant="footnote" color="tertiary">
-                Optional. Tap to choose a square photo.
-              </Text>
-            </View>
-          </Pressable>
-          {user?.hasAvatar ? (
-            <SettingRow
-              icon="trash-outline"
-              label="Remove photo"
-              destructive
-              onPress={removeAvatar}
-              divider={false}
-            />
-          ) : null}
-        </SettingsGroup>
+        <Pressable
+          onPress={pickAvatar}
+          disabled={busy}
+          style={{
+            alignSelf: "center",
+            paddingBottom: spacing[24],
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          <UserAvatar user={user} size={72} />
+        </Pressable>
 
         <SettingsGroup label="Account details" compact>
           <SettingRow
