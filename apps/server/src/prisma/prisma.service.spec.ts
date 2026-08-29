@@ -67,6 +67,16 @@ const LEGACY_DDL = [
     CONSTRAINT "FolderToken_folderId_fkey" FOREIGN KEY ("folderId") REFERENCES "Folder" ("id") ON DELETE CASCADE ON UPDATE CASCADE
   )`,
   `CREATE INDEX "FolderToken_folderId_idx" ON "FolderToken"("folderId")`,
+  `CREATE TABLE "EmailVerificationToken" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "expiresAt" DATETIME NOT NULL,
+    "consumedAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "EmailVerificationToken_token_key" UNIQUE ("token"),
+    CONSTRAINT "EmailVerificationToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+  )`,
 ];
 
 function tempDbPath(): string {
@@ -107,6 +117,8 @@ const LEGACY_SEED = [
    VALUES ('b-kept','u1','f1','https://example.com/b','B','example.com',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`,
   `INSERT INTO "Bookmark" ("id","userId","folderId","url","title","domain","createdAt","updatedAt")
    VALUES ('b-other-user','u2','d2','https://example.com/c','C','example.com',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`,
+  `INSERT INTO "EmailVerificationToken" ("id","userId","token","expiresAt","createdAt")
+   VALUES ('otp1','u1','legacy-otp',datetime('now','+10 minutes'),CURRENT_TIMESTAMP)`,
 ];
 
 function boot(path: string): Promise<PrismaService> {
@@ -234,6 +246,7 @@ describe("PrismaService legacy schema migration", () => {
     expect(userCols.some((c) => c.name === "totpSecretEnc")).toBe(true);
     const migratedUser = await service.user.findUniqueOrThrow({ where: { id: "u1" } });
     expect(migratedUser.displayName).toBe("one");
+    expect(await service.emailVerificationToken.count()).toBe(1);
 
     // indexes and foreign keys survive the rebuild
     const indexes = (await service.$queryRawUnsafe(
