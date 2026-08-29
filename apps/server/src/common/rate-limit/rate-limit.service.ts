@@ -147,6 +147,16 @@ export class RateLimitService implements OnModuleInit, OnModuleDestroy {
     this.consumeWindow(`avatar:${userId}`, RATE_LIMIT.avatarUploadUser, "avatar uploads");
   }
 
+  consumeImportUpload(userId: string): void {
+    if (!this.enabled) return;
+    this.consumeWindow(`import:${userId}`, RATE_LIMIT.importUploadUser, "imports");
+  }
+
+  consumeExport(userId: string): void {
+    if (!this.enabled) return;
+    this.consumeWindow(`export:${userId}`, RATE_LIMIT.exportUser, "exports");
+  }
+
   private accountStoreKey(accountKey: string): string {
     return `login:id:${accountKey}`;
   }

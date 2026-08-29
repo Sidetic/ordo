@@ -66,6 +66,16 @@ export class RateLimitInterceptor implements NestInterceptor {
         if (userId) this.rateLimit.consumeAvatarUpload(userId);
         return;
       }
+      case "import-upload": {
+        const userId = req.user?.userId;
+        if (userId) this.rateLimit.consumeImportUpload(userId);
+        return;
+      }
+      case "export": {
+        const userId = req.user?.userId;
+        if (userId) this.rateLimit.consumeExport(userId);
+        return;
+      }
     }
   }
 }

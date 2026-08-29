@@ -29,6 +29,8 @@ export const RATE_LIMIT = {
   folderUnlockUser: { limit: 10, windowMs: 15 * MINUTE } satisfies WindowPolicy,
   mfaVerifyIp: { limit: 30, windowMs: 15 * MINUTE } satisfies WindowPolicy,
   avatarUploadUser: { limit: 10, windowMs: HOUR } satisfies WindowPolicy,
+  importUploadUser: { limit: 10, windowMs: HOUR } satisfies WindowPolicy,
+  exportUser: { limit: 30, windowMs: HOUR } satisfies WindowPolicy,
 } as const;
 
 export const RATE_LIMIT_MAX_KEYS = 20_000;

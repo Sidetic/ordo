@@ -9,7 +9,9 @@ export type RateLimitPolicyName =
   | "bookmark-create"
   | "folder-unlock"
   | "mfa-verify"
-  | "avatar-upload";
+  | "avatar-upload"
+  | "import-upload"
+  | "export";
 
 /** Bind a consume-on-request rate-limit policy to a handler. */
 export const RateLimit = (policy: RateLimitPolicyName) => SetMetadata(RATE_LIMIT_KEY, policy);
