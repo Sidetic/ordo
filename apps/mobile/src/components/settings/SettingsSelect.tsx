@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Text } from "../ui/Text";
 import { haptics } from "../../lib/haptics";
 import { useTheme } from "../../theme/ThemeProvider";
-import { radius, spacing } from "../../theme/tokens";
+import { layout, radius, spacing } from "../../theme/tokens";
 
 export interface SettingsSelectOption<T extends string> {
   value: T;
@@ -124,21 +124,24 @@ export function SettingsSelect<T extends string>({
 
   return (
     <>
-      <View ref={anchorRef} collapsable={false}>
+      <View ref={anchorRef} collapsable={false} style={styles.anchor}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${title}, ${selected?.label ?? value}`}
           accessibilityState={{ expanded: mounted }}
           onPress={show}
+          hitSlop={{ top: 4, bottom: 4 }}
           style={({ pressed }) => [
             styles.trigger,
             { borderColor: palette.borderStrong, backgroundColor: palette.surfaceSecondary },
             pressed && styles.pressed,
           ]}
         >
-          {selected?.icon ? <Ionicons name={selected.icon} size={18} color={palette.textTertiary} /> : null}
-          <Text variant="footnote" numberOfLines={1}>{selected?.shortLabel ?? selected?.label ?? value}</Text>
-          <Ionicons name="chevron-down" size={16} color={palette.textTertiary} />
+          {selected?.icon ? <Ionicons name={selected.icon} size={16} color={palette.textTertiary} /> : null}
+          <Text variant="subhead" numberOfLines={1} style={styles.triggerLabel}>
+            {selected?.shortLabel ?? selected?.label ?? value}
+          </Text>
+          <Ionicons name="chevron-down" size={14} color={palette.textTertiary} />
         </Pressable>
       </View>
 
@@ -174,16 +177,18 @@ export function SettingsSelect<T extends string>({
 }
 
 const styles = StyleSheet.create({
+  anchor: { flexShrink: 0 },
   trigger: {
-    minHeight: 42,
-    maxWidth: 220,
+    width: layout.settingsControlWidth,
+    minHeight: 36,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing[8],
-    paddingHorizontal: spacing[12],
+    gap: spacing[6],
+    paddingHorizontal: spacing[10],
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
   },
+  triggerLabel: { flex: 1, minWidth: 0 },
   pressed: { opacity: 0.72 },
   modalRoot: { flex: 1 },
   menu: {

@@ -110,11 +110,11 @@ export function SettingsSectionLabel({
 }) {
   return (
     <Text
-      variant="caption"
+      variant="label"
       color="secondary"
       style={[styles.sectionLabel, compact && styles.compactSectionLabel]}
     >
-      {children.toUpperCase()}
+      {children}
     </Text>
   );
 }

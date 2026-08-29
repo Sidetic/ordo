@@ -173,6 +173,8 @@ export const layout = {
   maxContentWidth: 640,
   maxFormWidth: 480,
   maxSettingsWidth: 720,
+  /** Trailing picker/value column in settings rows. */
+  settingsControlWidth: 148,
   maxLibraryWidth: 1200,
   sheetWidth: 560,
   navigationRailWidth: 96,

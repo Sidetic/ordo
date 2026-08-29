@@ -37,8 +37,8 @@ export default function AboutScreen() {
           compact
           footer={build.gitDirty ? "Built from a working copy with uncommitted changes." : undefined}
         >
-          <SettingRow icon="pricetag-outline" label="Version" description={`v${build.version}`} />
-          <SettingRow icon="git-commit-outline" label="Commit" description={commit} divider={false} />
+          <SettingRow icon="pricetag-outline" label="Version" value={`v${build.version}`} />
+          <SettingRow icon="git-commit-outline" label="Commit" value={commit} divider={false} />
         </SettingsGroup>
 
         <SettingsGroup label="Running">

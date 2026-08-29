@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { PressableScale } from "./PressableScale";
 import { Text } from "./Text";
 import { useTheme } from "../../theme/ThemeProvider";
-import { radius, spacing } from "../../theme/tokens";
+import { layout, radius, spacing } from "../../theme/tokens";
 
 export interface SettingRowProps {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -42,7 +42,13 @@ export function SettingRow({
         </View>
       ) : null}
       <View style={styles.body}>
-        <Text variant="body" style={{ color: destructive ? palette.danger : palette.text }}>{label}</Text>
+        <Text
+          variant="body"
+          numberOfLines={1}
+          style={{ color: destructive ? palette.danger : palette.text }}
+        >
+          {label}
+        </Text>
         {description ? (
           <Text variant="footnote" color="tertiary" style={styles.description}>
             {description}
@@ -54,7 +60,7 @@ export function SettingRow({
           {value}
         </Text>
       ) : null}
-      {right}
+      {right ? <View style={styles.trailing}>{right}</View> : null}
       {showChevron ? <Ionicons name="chevron-forward" size={16} color={palette.textFaint} /> : null}
     </View>
   );
@@ -82,8 +88,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   noDivider: { borderBottomWidth: 0 },
-  iconWrap: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
-  body: { flex: 1 },
+  iconWrap: { width: 28, height: 28, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  body: { flex: 1, minWidth: 0 },
   description: { marginTop: spacing[2] },
-  value: { maxWidth: 150 },
+  value: { maxWidth: layout.settingsControlWidth, flexShrink: 0 },
+  trailing: { flexShrink: 0 },
 });
