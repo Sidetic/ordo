@@ -42,7 +42,7 @@ export function NativeUpdateProgress() {
             {downloading
               ? "Keep Ordo open while the new app version downloads."
               : downloadFailed
-                ? "The app update could not be downloaded. Your current version is unchanged."
+                ? "The app update couldn't be downloaded. Your current version is unchanged."
                 : `Ordo v${update.release?.version ?? ""} has downloaded.`}
           </Text>
         </View>
@@ -66,16 +66,16 @@ export function NativeUpdateProgress() {
       ) : downloadFailed ? (
         <View style={styles.actions}>
           <Text variant="footnote" color="danger" align="center" style={styles.error}>
-            {update.error ?? "Update download failed"}
+            {update.error ?? "Couldn't download the update."}
           </Text>
           <Button
-            label="Try again"
+            label="Retry"
             size="lg"
             block
             onPress={() =>
               update
                 .downloadAndInstall()
-                .catch(() => toast.error("App update download failed"))
+                .catch(() => toast.error("Couldn't download the update."))
             }
           />
           <Button label="Later" variant="ghost" block onPress={update.dismissDownload} />
@@ -93,7 +93,7 @@ export function NativeUpdateProgress() {
             block
             icon={<Ionicons name="open-outline" size={17} color={palette.onAccent} />}
             onPress={() =>
-              update.install().catch(() => toast.error("Could not open the Android installer"))
+              update.install().catch(() => toast.error("Couldn't open the installer."))
             }
           />
           <Button label="Later" variant="ghost" block onPress={update.dismissDownload} />

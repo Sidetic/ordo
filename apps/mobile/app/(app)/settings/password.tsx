@@ -9,6 +9,7 @@ import {
 } from "../../../src/components/settings/SettingsPage";
 import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
+import { EyeToggle } from "../../../src/components/ui/EyeToggle";
 import { Text } from "../../../src/components/ui/Text";
 import { useChangePassword } from "../../../src/hooks/use-auth-actions";
 import { errorMessage, isMfaRequiredError } from "../../../src/lib/error-message";
@@ -91,9 +92,7 @@ export default function ChangePasswordScreen() {
                 textContentType="password"
                 autoComplete="current-password"
                 importantForAutofill="yes"
-                rightAccessory={
-                  <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
-                }
+                rightAccessory={<EyeToggle visible={showPwd} onPress={() => setShowPwd((v) => !v)} />}
               />
               <Input
                 label="New password"

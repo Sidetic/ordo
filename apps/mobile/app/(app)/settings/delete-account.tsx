@@ -12,6 +12,7 @@ import {
 } from "../../../src/components/settings/SettingsPage";
 import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
+import { EyeToggle } from "../../../src/components/ui/EyeToggle";
 import { Text } from "../../../src/components/ui/Text";
 import { toast } from "../../../src/components/ui/toast-store";
 import { MfaStepUpPanel } from "../../../src/components/auth/MfaStepUpPanel";
@@ -84,7 +85,7 @@ export default function DeleteAccountScreen() {
           <SettingsGroup
             label="Danger zone"
             compact
-            footer="All bookmarks, folders, and sessions will be permanently deleted. This cannot be undone."
+            footer="All bookmarks, folders, and sessions will be permanently deleted. This can't be undone."
           >
             <SettingsForm style={styles.form}>
               <Text variant="body" color="secondary">
@@ -97,14 +98,7 @@ export default function DeleteAccountScreen() {
                 placeholder="Enter your password"
                 secureTextEntry={!showPassword}
                 textContentType="password"
-                rightAccessory={
-                  <Button
-                    label={showPassword ? "Hide" : "Show"}
-                    variant="ghost"
-                    size="md"
-                    onPress={() => setShowPassword((value) => !value)}
-                  />
-                }
+                rightAccessory={<EyeToggle visible={showPassword} onPress={() => setShowPassword((value) => !value)} />}
               />
               <Input
                 label="Confirmation"

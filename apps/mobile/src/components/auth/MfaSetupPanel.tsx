@@ -145,7 +145,7 @@ export function MfaCodeField({
         style={styles.switcher}
       >
         <Text variant="footnote" color="accent">
-          {mode === "totp" ? "Use a backup code" : "Use authenticator code"}
+          {mode === "totp" ? "Use a backup code" : "Use an authenticator code"}
         </Text>
       </Pressable>
     </View>

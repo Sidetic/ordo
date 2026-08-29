@@ -28,7 +28,7 @@ export function UpdateReadyWatcher() {
       action: {
         label: "Install",
         onPress: () =>
-          native.downloadAndInstall().catch(() => toast.error("App update download failed")),
+          native.downloadAndInstall().catch(() => toast.error("Couldn't download the update.")),
       },
     });
   }, [native.downloadAndInstall, native.release, update.kind]);
@@ -45,7 +45,7 @@ export function UpdateReadyWatcher() {
       swipeable: true,
       action: {
         label: "Download",
-        onPress: () => ota.download().catch(() => toast.error("Update download failed")),
+        onPress: () => ota.download().catch(() => toast.error("Couldn't download the update.")),
       },
     });
   }, [ota.availableUpdateId, ota.download, ota.enabled, ota.status, update.kind]);
@@ -64,7 +64,7 @@ export function UpdateReadyWatcher() {
         label: "Restart",
         onPress: () => {
           if (!ota.enabled) return;
-          restartForUpdate().catch(() => toast.error("Update restart failed"));
+          restartForUpdate().catch(() => toast.error("Couldn't restart to apply the update."));
         },
       },
     });

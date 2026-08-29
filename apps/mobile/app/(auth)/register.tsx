@@ -13,10 +13,12 @@ import { useRegister } from "../../src/hooks/use-auth-actions";
 import { useServerInfo } from "../../src/hooks/queries";
 import { errorMessage } from "../../src/lib/error-message";
 import { haptics } from "../../src/lib/haptics";
-import { spacing } from "../../src/theme/tokens";
+import { useTheme } from "../../src/theme/ThemeProvider";
+import { radius, spacing } from "../../src/theme/tokens";
 import { RegisterSchema } from "@ordo/shared";
 
 export default function RegisterScreen() {
+  const { palette } = useTheme();
   const router = useRouter();
   const register = useRegister();
   const { data: info } = useServerInfo();
@@ -76,8 +78,13 @@ export default function RegisterScreen() {
         }
       >
       {!registrationEnabled ? (
-        <View style={[styles.disabledCard]}>
-          <Text variant="callout">Sign-ups are closed on this server.</Text>
+        <View
+          style={[
+            styles.disabledCard,
+            { backgroundColor: palette.surfaceSecondary, borderColor: palette.border },
+          ]}
+        >
+          <Text variant="callout">This server isn't accepting new sign-ups.</Text>
           <Text variant="footnote" color="secondary" style={{ marginTop: spacing[4] }}>
             Contact the server administrator for an account.
           </Text>
@@ -141,5 +148,5 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
   link: { textDecorationLine: "underline" },
-  disabledCard: { padding: spacing[16], borderRadius: 12 },
+  disabledCard: { padding: spacing[16], borderRadius: radius.lg, borderWidth: 1 },
 });

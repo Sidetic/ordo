@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import { Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
@@ -16,7 +15,7 @@ import { UserAvatar } from "../../../src/components/ui/UserAvatar";
 import { FloatingPanel } from "../../../src/components/ui/FloatingPanel";
 import { Button } from "../../../src/components/ui/Button";
 import { Text } from "../../../src/components/ui/Text";
-import { PressableScale } from "../../../src/components/ui/PressableScale";
+import { SheetActionRow } from "../../../src/components/ui/SheetActionRow";
 import { toast } from "../../../src/components/ui/toast-store";
 import { useAuthStore } from "../../../src/store/auth";
 import { useServerInfo } from "../../../src/hooks/queries";
@@ -25,7 +24,6 @@ import { errorMessage } from "../../../src/lib/error-message";
 import { formatDate } from "../../../src/lib/format";
 import { haptics } from "../../../src/lib/haptics";
 import { spacing } from "../../../src/theme/tokens";
-import { useTheme } from "../../../src/theme/ThemeProvider";
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -183,7 +181,7 @@ export default function AccountScreen() {
           <SettingRow
             icon="trash-outline"
             label="Delete account"
-            description="Permanently delete your account and data"
+            description="Permanently deletes your account and data."
             destructive
             onPress={() => router.push("/settings/delete-account")}
             showChevron
@@ -196,18 +194,18 @@ export default function AccountScreen() {
         <Text variant="title3" style={styles.menuTitle}>
           Profile picture
         </Text>
-        <ActionRow
+        <SheetActionRow
           icon="image-outline"
           label="Choose photo"
           onPress={() => afterSheet(() => void choosePhoto())}
         />
-        <ActionRow
+        <SheetActionRow
           icon="camera-outline"
           label="Take photo"
           onPress={() => afterSheet(() => void takePhoto())}
         />
         {user?.hasAvatar ? (
-          <ActionRow
+          <SheetActionRow
             icon="trash-outline"
             label="Remove photo"
             tone="danger"
@@ -220,47 +218,7 @@ export default function AccountScreen() {
   );
 }
 
-function ActionRow({
-  icon,
-  label,
-  tone,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  tone?: "danger";
-  onPress: () => void;
-}) {
-  const { palette } = useTheme();
-  const color = tone === "danger" ? palette.danger : palette.text;
-  return (
-    <PressableScale
-      accessibilityRole="button"
-      style={[styles.row, { borderBottomColor: palette.border }]}
-      onPress={() => {
-        haptics.light();
-        onPress();
-      }}
-    >
-      <Ionicons name={icon} size={20} color={color} />
-      <Text variant="body" style={[styles.rowLabel, { color }]}>
-        {label}
-      </Text>
-      <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
-    </PressableScale>
-  );
-}
-
 const styles = StyleSheet.create({
   menuTitle: { marginBottom: spacing[12] },
   menuCancel: { marginTop: spacing[8] },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[12],
-    minHeight: 50,
-    paddingHorizontal: spacing[4],
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  rowLabel: { flex: 1 },
 });

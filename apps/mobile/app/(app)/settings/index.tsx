@@ -1,20 +1,19 @@
 /** Settings hub: focused destinations for account and app preferences. */
 import React, { useState } from "react";
-import { Modal, Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../../src/components/ui/Header";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { Button } from "../../../src/components/ui/Button";
-import { Text } from "../../../src/components/ui/Text";
+import { ConfirmDialog } from "../../../src/components/ui/ConfirmDialog";
 import { SettingsGroup, SettingsScrollView } from "../../../src/components/settings/SettingsPage";
 import { useLogout } from "../../../src/hooks/use-auth-actions";
 import { useFloatingDockMetrics } from "../../../src/hooks/use-floating-dock-metrics";
 import { useTheme } from "../../../src/theme/ThemeProvider";
-import { layout, radius, spacing } from "../../../src/theme/tokens";
+import { layout, spacing } from "../../../src/theme/tokens";
 
 export default function SettingsScreen() {
-  const { palette, shadows } = useTheme();
+  const { palette } = useTheme();
   const router = useRouter();
   const { visible: floatingNavigation, clearance: floatingBottomClearance } =
     useFloatingDockMetrics();
@@ -54,7 +53,7 @@ export default function SettingsScreen() {
           <SettingRow
             icon="phone-portrait-outline"
             label="Active sessions"
-            description="Review devices signed in to your account"
+            description="Devices signed in to your account"
             onPress={() => router.push("/settings/sessions")}
             showChevron
           />
@@ -89,92 +88,21 @@ export default function SettingsScreen() {
         </SettingsGroup>
       </SettingsScrollView>
 
-      <Modal
+      <ConfirmDialog
         visible={confirmingLogout}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={logout.isPending ? () => {} : () => setConfirmingLogout(false)}
-      >
-        <View style={styles.modalRoot}>
-          <Pressable
-            style={[StyleSheet.absoluteFill, { backgroundColor: palette.overlay }]}
-            disabled={logout.isPending}
-            onPress={() => setConfirmingLogout(false)}
-          />
-          <View
-            accessibilityViewIsModal
-            style={[
-              styles.dialog,
-              {
-                backgroundColor: palette.surfaceElevated,
-                borderColor: palette.border,
-                ...shadows.level3,
-              },
-            ]}
-          >
-            <View style={styles.confirmContent}>
-              <View style={[styles.confirmIcon, { backgroundColor: palette.dangerSoft }]}>
-                <Ionicons name="log-out-outline" size={22} color={palette.danger} />
-              </View>
-              <Text variant="title1" align="center">
-                Sign out?
-              </Text>
-              <Text variant="body" color="secondary" align="center" style={styles.confirmCopy}>
-                You'll need to sign in again to access your saves.
-              </Text>
-            </View>
-            <View style={styles.actions}>
-              <Button
-                label="Sign out"
-                variant="primary"
-                size="lg"
-                loading={logout.isPending}
-                onPress={() => logout.mutate()}
-                style={styles.action}
-              />
-              <Button
-                label="Cancel"
-                variant="ghost"
-                disabled={logout.isPending}
-                onPress={() => setConfirmingLogout(false)}
-                style={styles.action}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onDismiss={() => setConfirmingLogout(false)}
+        icon="log-out-outline"
+        title="Sign out?"
+        message="You'll need to sign in again to access your bookmarks."
+        confirmLabel="Sign out"
+        loading={logout.isPending}
+        dismissible={!logout.isPending}
+        onConfirm={() => logout.mutate()}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   signout: { padding: spacing[16] },
-  modalRoot: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing[20],
-  },
-  dialog: {
-    width: "100%",
-    maxWidth: 340,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius["3xl"],
-    paddingHorizontal: spacing[24],
-    paddingTop: spacing[24],
-    paddingBottom: spacing[16],
-  },
-  confirmContent: { alignItems: "center" },
-  confirmIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius["2xl"],
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: spacing[16],
-  },
-  confirmCopy: { marginTop: spacing[8], maxWidth: 250 },
-  actions: { gap: spacing[4], marginTop: spacing[24] },
-  action: { width: "100%" },
 });

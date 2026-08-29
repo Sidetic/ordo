@@ -19,7 +19,7 @@ import {
 const tapOptions: readonly SettingsSelectOption<CreateButtonAction>[] = [
   { value: "menu", label: "Show create menu", shortLabel: "Show menu", icon: "apps-outline" },
   { value: "bookmark", label: "Save bookmark", icon: "bookmark-outline" },
-  { value: "folder", label: "Create folder", icon: "folder-outline" },
+  { value: "folder", label: "New folder", icon: "folder-outline" },
 ];
 
 const holdOptions: readonly SettingsSelectOption<CreateButtonHoldAction>[] = [

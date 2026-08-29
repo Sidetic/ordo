@@ -16,12 +16,12 @@ export function OtaUpdateCard() {
 
     if (!update.checking && !update.kind && !update.error) {
       manualCheck.current = false;
-      toast.show("You’re up to date.", { tone: "success", duration: 3000 });
+      toast.show("You're up to date", { tone: "success", duration: 3000 });
     } else if (!update.checking && update.kind) {
       manualCheck.current = false;
     } else if (!update.checking && update.error) {
       manualCheck.current = false;
-      toast.show(ota.message ?? native.error ?? "Update check failed", {
+      toast.show(ota.message ?? native.error ?? "Couldn't check for updates.", {
         tone: "danger",
         duration: 5000,
         action: {
@@ -39,17 +39,17 @@ export function OtaUpdateCard() {
   const description = !update.enabled
     ? "Automatic updates are available in production builds."
     : native.status === "downloading"
-      ? `Downloading Ordo v${native.release?.version ?? ""}`
+      ? `Downloading Ordo v${native.release?.version ?? ""}…`
       : update.kind === "native" && native.release
-        ? `Version ${native.release.version} is ready to install`
+        ? `Version ${native.release.version} is ready to install.`
         : update.kind === "ota" && ota.status === "ready"
-          ? "Quick update downloaded; restart to apply"
+          ? "Quick update downloaded. Restart to apply."
           : update.kind === "ota"
-            ? "Quick update available"
+            ? "A quick update is available."
             : `${channel.charAt(0).toUpperCase()}${channel.slice(1)} channel`;
 
   const buttonLabel = update.checking
-    ? "Checking"
+    ? "Checking…"
     : update.kind === "native"
       ? "Install"
       : ota.status === "ready"
@@ -74,15 +74,15 @@ export function OtaUpdateCard() {
             if (update.kind === "native") {
               void native
                 .downloadAndInstall()
-                .catch(() => toast.error("App update download failed"));
+                .catch(() => toast.error("Couldn't download the update."));
               return;
             }
             if (update.kind === "ota" && ota.status === "available") {
-              void ota.download().catch(() => toast.error("Update download failed"));
+              void ota.download().catch(() => toast.error("Couldn't download the update."));
               return;
             }
             if (update.kind === "ota" && ota.status === "ready") {
-              void ota.restart().catch(() => toast.error("Update restart failed"));
+              void ota.restart().catch(() => toast.error("Couldn't restart to apply the update."));
               return;
             }
             manualCheck.current = true;

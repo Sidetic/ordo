@@ -1,7 +1,7 @@
 /**
  * Top-level error boundary. Catches render errors anywhere in the tree and
  * shows a small themed fallback instead of a blank/white screen. "Reload"
- * refreshes the page on web; "Try again" clears the error and re-renders.
+ * refreshes the page on web; "Retry" clears the error and re-renders.
  */
 import React, { Component, type ReactNode } from "react";
 import {
@@ -60,7 +60,7 @@ function Fallback({ error, onReset }: { error: Error; onReset: () => void }) {
             style={[styles.button, { borderColor: secondary }]}
             onPress={onReset}
           >
-            <Text style={[styles.buttonLabel, { color: foreground }]}>Try again</Text>
+            <Text style={[styles.buttonLabel, { color: foreground }]}>Retry</Text>
           </Pressable>
         </View>
       </View>

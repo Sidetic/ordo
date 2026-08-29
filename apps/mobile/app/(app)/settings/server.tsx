@@ -1,6 +1,6 @@
 /** Verify and switch the self-hosted Ordo server. */
 import React, { useEffect, useRef, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
@@ -22,7 +22,7 @@ import { Button } from "../../../src/components/ui/Button";
 import { PressableScale } from "../../../src/components/ui/PressableScale";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { ServerProbeLog } from "../../../src/components/ui/ServerProbeLog";
-import { FloatingPanel } from "../../../src/components/ui/FloatingPanel";
+import { ConfirmDialog } from "../../../src/components/ui/ConfirmDialog";
 import { Text } from "../../../src/components/ui/Text";
 import { toast } from "../../../src/components/ui/toast-store";
 import { useServerInfo } from "../../../src/hooks/queries";
@@ -175,7 +175,7 @@ export default function ServerScreen() {
     } catch {
       if (!switchCommitted) {
         setSwitching(false);
-        toast.error("Couldn't change server");
+        toast.error("Couldn't change server.");
         return;
       }
     }
@@ -192,7 +192,7 @@ export default function ServerScreen() {
     ? "Unavailable"
     : serverInfo.data
       ? "Connected"
-      : "Checking...";
+      : "Checking…";
   const refreshConnection = () => {
     if (serverInfo.isFetching) return;
     haptics.light();
@@ -251,22 +251,17 @@ export default function ServerScreen() {
         </SettingsGroup>
       </SettingsScrollView>
 
-      <FloatingPanel
+      <ConfirmDialog
         visible={!!confirmedUrl}
-        onDismiss={switching ? () => {} : () => setConfirmedUrl(null)}
+        onDismiss={() => setConfirmedUrl(null)}
+        icon="log-out-outline"
+        title="Switch server?"
+        message="You'll be signed out and Ordo will restart."
+        confirmLabel="Switch and restart"
+        loading={switching}
+        dismissible={!switching}
+        onConfirm={() => void confirmSwitch()}
       >
-        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <View style={styles.confirmHeader}>
-          <View style={[styles.confirmIcon, { backgroundColor: palette.dangerSoft }]}>
-            <Ionicons name="log-out-outline" size={20} color={palette.danger} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text variant="title2">Switch server?</Text>
-            <Text variant="footnote" color="secondary" style={styles.confirmCopy}>
-              You will be signed out and Ordo will restart.
-            </Text>
-          </View>
-        </View>
         <View style={[styles.hostChange, { borderColor: palette.border }]}>
           <Text variant="monoSmall" color="tertiary" numberOfLines={1}>
             {hostOf(currentUrl)}
@@ -276,24 +271,7 @@ export default function ServerScreen() {
             {confirmedUrl ? hostOf(confirmedUrl) : ""}
           </Text>
         </View>
-        <View style={styles.actions}>
-          <Button
-            label="Cancel"
-            variant="secondary"
-            disabled={switching}
-            onPress={() => setConfirmedUrl(null)}
-            style={{ flex: 1 }}
-          />
-          <Button
-            label="Switch and restart"
-            variant="danger"
-            loading={switching}
-            onPress={() => void confirmSwitch()}
-            style={{ flex: 2 }}
-          />
-        </View>
-        </ScrollView>
-      </FloatingPanel>
+      </ConfirmDialog>
     </SettingsPage>
   );
 }
@@ -309,21 +287,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0,
   },
-  confirmHeader: { flexDirection: "row", alignItems: "flex-start", gap: spacing[12] },
-  confirmIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.lg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  confirmCopy: { marginTop: spacing[2] },
   hostChange: {
-    marginTop: spacing[16],
     padding: spacing[14],
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radius.sm,
     gap: spacing[8],
   },
-  actions: { flexDirection: "row", gap: spacing[10], marginTop: spacing[20] },
 });

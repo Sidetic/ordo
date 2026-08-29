@@ -83,7 +83,7 @@ export default function AboutScreen() {
           <SettingRow
             icon="flask-outline"
             label="Early access updates"
-            description="Include preview app versions"
+            description="Include preview app versions."
             right={
               <Toggle
                 value={nativeUpdate.includePrereleases}

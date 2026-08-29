@@ -55,7 +55,7 @@ export default function ChangeDisplayNameScreen() {
           <SettingsGroup
             label="Change display name"
             compact
-            footer="This is shown on your account. It is not used to sign in, and it does not need to be unique."
+            footer="This is shown on your account. It isn't used to sign in, and it doesn't need to be unique."
           >
             <SettingsForm style={styles.form}>
               <Input

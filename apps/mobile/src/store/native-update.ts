@@ -292,7 +292,7 @@ export const useNativeUpdateStore = create<NativeUpdateState>((set, get) => ({
     } catch (error) {
       set({
         status: "error",
-        error: error instanceof Error ? error.message : "Update download failed",
+        error: error instanceof Error ? error.message : "Couldn't download the update.",
       });
       throw error;
     }
@@ -309,7 +309,7 @@ export const useNativeUpdateStore = create<NativeUpdateState>((set, get) => ({
         flags: READ_URI_PERMISSION,
       });
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : "Could not open the installer" });
+      set({ error: error instanceof Error ? error.message : "Couldn't open the installer." });
       throw error;
     }
   },

@@ -139,7 +139,7 @@ export default function LoginMfaScreen() {
           />
           <View style={{ height: spacing[16] }} />
           <Button
-            label="Use authenticator code"
+            label="Use an authenticator code"
             variant="ghost"
             onPress={() => {
               setError("");
@@ -166,7 +166,7 @@ export default function LoginMfaScreen() {
             This turns off your authenticator so you can set it up again.
           </Text>
           <Button
-            label="Use authenticator code"
+            label="Use an authenticator code"
             variant="ghost"
             onPress={() => {
               setError("");

@@ -41,7 +41,7 @@ export default function SecurityScreen() {
                 <SettingRow
                   icon="key-outline"
                   label="New backup codes"
-                  description="Previous codes will stop working"
+                  description="Previous codes will stop working."
                   onPress={() => setStepUp("regenerate")}
                   showChevron
                   divider={false}
@@ -60,7 +60,7 @@ export default function SecurityScreen() {
             </>
           ) : (
             <SettingsGroup
-              label="Authenticator app"
+              label="Authenticator"
               compact
               footer="Use an authenticator app as a second step after your password."
             >

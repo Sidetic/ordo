@@ -240,7 +240,7 @@ export function ServerConnectSheet({
 
       {/* Actions */}
       <View style={styles.actions}>
-        <Button label="Close" variant="secondary" onPress={onDismiss} disabled={confirming} />
+        <Button label="Cancel" variant="secondary" onPress={onDismiss} disabled={confirming} />
         <View style={{ width: spacing[10] }} />
         <View style={{ flex: 2 }}>
           {animateReadyColor ? (

@@ -18,6 +18,7 @@ import {
 } from "../../../src/components/settings/SettingsPage";
 import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
+import { EyeToggle } from "../../../src/components/ui/EyeToggle";
 import { useRequestEmailChange } from "../../../src/hooks/use-auth-actions";
 import { useAuthStore } from "../../../src/store/auth";
 import { useServerInfo } from "../../../src/hooks/queries";
@@ -145,9 +146,7 @@ function ChangeEmailForm() {
                 autoComplete="password"
                 textContentType="password"
                 error={formError || undefined}
-                rightAccessory={
-                  <Button label={showPwd ? "Hide" : "Show"} variant="ghost" size="md" onPress={() => setShowPwd((v) => !v)} />
-                }
+                rightAccessory={<EyeToggle visible={showPwd} onPress={() => setShowPwd((v) => !v)} />}
               />
 
               <Button

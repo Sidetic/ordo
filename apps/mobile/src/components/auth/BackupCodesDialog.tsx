@@ -73,7 +73,7 @@ export function BackupCodesDialog({
                 Save your backup codes
               </Text>
               <Text variant="body" color="secondary" align="center" style={styles.copy}>
-                Each code signs you in once. Download them now — they will not be shown again.
+                Each code signs you in once. Download them now — they won't be shown again.
               </Text>
             </View>
 
