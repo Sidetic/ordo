@@ -12,40 +12,21 @@ import { Button } from "../../../src/components/ui/Button";
 import { EyeToggle } from "../../../src/components/ui/EyeToggle";
 import { Text } from "../../../src/components/ui/Text";
 import { useChangePassword } from "../../../src/hooks/use-auth-actions";
-import { errorMessage, isMfaRequiredError } from "../../../src/lib/error-message";
+import { errorMessage } from "../../../src/lib/error-message";
 import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
-import { MfaStepUpPanel } from "../../../src/components/auth/MfaStepUpPanel";
-import { useAuthStore } from "../../../src/store/auth";
 import { spacing } from "../../../src/theme/tokens";
 import { ChangePasswordSchema } from "@ordo/shared";
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
   const changePassword = useChangePassword();
-  const mfaEnabled = useAuthStore((s) => s.user?.mfaEnabled);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [formError, setFormError] = useState("");
-  const [mfaOpen, setMfaOpen] = useState(false);
-
-  const commit = async (mfaCode?: string) => {
-    const parsed = ChangePasswordSchema.safeParse({
-      currentPassword,
-      newPassword,
-      mfaCode,
-    });
-    if (!parsed.success) {
-      throw new Error(parsed.error.issues[0]?.message || "Please check your input.");
-    }
-    await changePassword.mutateAsync(parsed.data);
-    haptics.success();
-    toast.success("Password changed. All devices were signed out.");
-    router.back();
-  };
 
   const submit = async () => {
     setFormError("");
@@ -58,17 +39,12 @@ export default function ChangePasswordScreen() {
       setFormError(parsed.error.issues[0]?.message || "Please check your input.");
       return;
     }
-    if (mfaEnabled) {
-      setMfaOpen(true);
-      return;
-    }
     try {
-      await commit();
+      await changePassword.mutateAsync(parsed.data);
+      haptics.success();
+      toast.success("Password changed. All devices were signed out.");
+      router.back();
     } catch (e) {
-      if (isMfaRequiredError(e)) {
-        setMfaOpen(true);
-        return;
-      }
       haptics.error();
       setFormError(errorMessage(e));
     }
@@ -120,7 +96,7 @@ export default function ChangePasswordScreen() {
                 block
                 size="lg"
                 onPress={submit}
-                loading={changePassword.isPending && !mfaOpen}
+                loading={changePassword.isPending}
               />
               {formError ? (
                 <Text variant="footnote" color="danger" style={styles.formError}>
@@ -131,19 +107,6 @@ export default function ChangePasswordScreen() {
           </SettingsGroup>
         </SettingsScrollView>
       </KeyboardAvoidingView>
-
-      <MfaStepUpPanel
-        visible={mfaOpen}
-        onDismiss={() => setMfaOpen(false)}
-        title="Change password"
-        description="Enter a current authenticator or backup code to change your password."
-        confirmLabel="Change password"
-        onConfirm={commit}
-        onUnhandledError={(e) => {
-          haptics.error();
-          setFormError(errorMessage(e));
-        }}
-      />
     </SettingsPage>
   );
 }

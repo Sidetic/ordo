@@ -17,28 +17,28 @@ import { Text } from "../../../src/components/ui/Text";
 import { toast } from "../../../src/components/ui/toast-store";
 import { MfaStepUpPanel } from "../../../src/components/auth/MfaStepUpPanel";
 import { useDeleteAccount } from "../../../src/hooks/use-auth-actions";
-import { useAuthStore } from "../../../src/store/auth";
 import { errorMessage, isMfaRequiredError } from "../../../src/lib/error-message";
 import { haptics } from "../../../src/lib/haptics";
 import { spacing } from "../../../src/theme/tokens";
 
 export default function DeleteAccountScreen() {
   const deleteAccount = useDeleteAccount();
-  const mfaEnabled = useAuthStore((s) => s.user?.mfaEnabled);
   const [currentPassword, setCurrentPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState("");
   const [mfaOpen, setMfaOpen] = useState(false);
 
-  const commit = async (mfaCode?: string) => {
+  const runDelete = async (mfaCode?: string) => {
     const parsed = DeleteAccountSchema.safeParse({
       currentPassword,
       confirmation,
       mfaCode,
     });
     if (!parsed.success) {
-      throw new Error(parsed.error.issues[0]?.message || "Please check your input.");
+      const message = parsed.error.issues[0]?.message || "Please check your input.";
+      setFormError(message);
+      throw new Error(message);
     }
     await deleteAccount.mutateAsync(parsed.data);
     haptics.success();
@@ -56,13 +56,9 @@ export default function DeleteAccountScreen() {
       setFormError(parsed.error.issues[0]?.message || "Please check your input.");
       return;
     }
-    if (mfaEnabled) {
-      setMfaOpen(true);
-      return;
-    }
 
     try {
-      await commit();
+      await runDelete();
     } catch (error) {
       if (isMfaRequiredError(error)) {
         setMfaOpen(true);
@@ -133,13 +129,17 @@ export default function DeleteAccountScreen() {
         visible={mfaOpen}
         onDismiss={() => setMfaOpen(false)}
         title="Delete account?"
-        description="Enter a current authenticator or backup code to permanently delete your account."
+        description="Enter a current authenticator or backup code. This can't be undone."
         confirmLabel="Delete account"
         confirmVariant="danger"
-        onConfirm={commit}
-        onUnhandledError={(error) => {
+        onConfirm={async (code) => {
+          await runDelete(code);
+          setMfaOpen(false);
+        }}
+        onUnhandledError={(err) => {
+          setMfaOpen(false);
           haptics.error();
-          setFormError(errorMessage(error));
+          setFormError(errorMessage(err));
         }}
       />
     </SettingsPage>

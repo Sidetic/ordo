@@ -149,7 +149,7 @@ export const AuthRoutes = {
   changeEmail: {
     path: `${API_PREFIX}/auth/email/change`,
     method: "POST",
-    body: {} as { currentPassword: string; newEmail: string; mfaCode?: string },
+    body: {} as { currentPassword: string; newEmail: string },
     query: {} as Empty,
     params: {} as Empty,
     response: {} as { success: true },
@@ -173,7 +173,7 @@ export const AuthRoutes = {
   changePassword: {
     path: `${API_PREFIX}/auth/password`,
     method: "POST",
-    body: {} as { currentPassword: string; newPassword: string; mfaCode?: string },
+    body: {} as { currentPassword: string; newPassword: string },
     query: {} as Empty,
     params: {} as Empty,
     response: {} as AuthResponse,

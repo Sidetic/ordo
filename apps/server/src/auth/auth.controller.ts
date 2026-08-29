@@ -271,9 +271,9 @@ export class AuthController {
   async changeEmail(
     @CurrentUser() user: AuthContext,
     @Body(new ZodValidationPipe(ChangeEmailSchema))
-    body: { currentPassword: string; newEmail: string; mfaCode?: string },
+    body: { currentPassword: string; newEmail: string },
   ): Promise<{ success: true }> {
-    await this.auth.requestEmailChange(user.userId, body.currentPassword, body.newEmail, body.mfaCode);
+    await this.auth.requestEmailChange(user.userId, body.currentPassword, body.newEmail);
     return { success: true };
   }
 
@@ -301,7 +301,7 @@ export class AuthController {
   async changePassword(
     @CurrentUser() user: AuthContext,
     @Body(new ZodValidationPipe(ChangePasswordSchema))
-    body: { currentPassword: string; newPassword: string; mfaCode?: string },
+    body: { currentPassword: string; newPassword: string },
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {
@@ -311,7 +311,6 @@ export class AuthController {
       body.currentPassword,
       body.newPassword,
       this.clientMeta(req),
-      body.mfaCode,
     );
     if (!mobile) setAuthCookies(res, result.tokens);
     return this.maybeStripTokens(result, mobile);

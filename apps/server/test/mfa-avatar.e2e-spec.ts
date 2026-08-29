@@ -1,6 +1,6 @@
 import request from "supertest";
 import * as OTPAuth from "otpauth";
-import { ErrorCode, MFA } from "@ordo/shared";
+import { DELETE_ACCOUNT_CONFIRMATION, ErrorCode, MFA } from "@ordo/shared";
 import { MailService } from "../src/auth/mail.service.js";
 import {
   authedAgent,
@@ -183,32 +183,55 @@ describe("MFA + avatars (e2e)", () => {
       void secret;
     });
 
-    it("requires MFA to change the password once enrolled", async () => {
+    it("lets you change the password with only the current password once MFA is enrolled", async () => {
       const { agent } = await enrollTotp("stepup@ordo.app");
-      const missing = await agent
+      const changed = await agent
         .post("/api/auth/password")
         .send({ currentPassword: "supersecret", newPassword: "anothersecret" })
-        .expect(401);
-      expect(missing.body.error.code).toBe(ErrorCode.MFA_REQUIRED);
+        .expect(200);
+      expect(changed.body.user.email).toBe("stepup@ordo.app");
     });
 
-    it("requires MFA to remove a folder lock with the account password", async () => {
-      const { agent, secret } = await enrollTotp("folder-mfa@ordo.app");
+    it("requires MFA to delete the account once it is enrolled", async () => {
+      const { agent, secret } = await enrollTotp("delete-mfa@ordo.app");
+      const missing = await agent
+        .delete("/api/auth/account")
+        .send({ currentPassword: "supersecret", confirmation: DELETE_ACCOUNT_CONFIRMATION })
+        .expect(401);
+      expect(missing.body.error.code).toBe(ErrorCode.MFA_REQUIRED);
+      expect(await ctx.prisma.user.count({ where: { email: "delete-mfa@ordo.app" } })).toBe(1);
+
+      await agent
+        .delete("/api/auth/account")
+        .send({
+          currentPassword: "supersecret",
+          confirmation: DELETE_ACCOUNT_CONFIRMATION,
+          mfaCode: totpNow(secret, "delete-mfa@ordo.app"),
+        })
+        .expect(200, { success: true });
+      expect(await ctx.prisma.user.count({ where: { email: "delete-mfa@ordo.app" } })).toBe(0);
+    });
+
+    it("still requires MFA to turn the authenticator off", async () => {
+      const { agent } = await enrollTotp("keep-mfa@ordo.app");
+      const missing = await agent.post("/api/auth/mfa/totp/disable").send({}).expect(400);
+      expect(missing.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+
+      const wrong = await agent
+        .post("/api/auth/mfa/totp/disable")
+        .send({ mfaCode: "000000" })
+        .expect(401);
+      expect(wrong.body.error.code).toBe(ErrorCode.MFA_INVALID);
+    });
+
+    it("removes a folder lock with the account password even when MFA is on", async () => {
+      const { agent } = await enrollTotp("folder-mfa@ordo.app");
       const folder = await agent.post("/api/folders").send({ name: "Vault" }).expect(201);
       await agent.post(`/api/folders/${folder.body.id}/password`).send({ password: "1234" }).expect(200);
 
-      const needsMfa = await agent
-        .delete(`/api/folders/${folder.body.id}/password`)
-        .send({ accountPassword: "supersecret" })
-        .expect(401);
-      expect(needsMfa.body.error.code).toBe(ErrorCode.MFA_REQUIRED);
-
       await agent
         .delete(`/api/folders/${folder.body.id}/password`)
-        .send({
-          accountPassword: "supersecret",
-          mfaCode: totpNow(secret, "folder-mfa@ordo.app"),
-        })
+        .send({ accountPassword: "supersecret" })
         .expect(200);
     });
 

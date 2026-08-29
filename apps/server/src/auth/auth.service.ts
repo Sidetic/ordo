@@ -240,7 +240,6 @@ export class AuthService {
     userId: string,
     currentPassword: string,
     newEmail: string,
-    mfaCode?: string,
   ): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found.");
@@ -249,7 +248,6 @@ export class AuthService {
     if (!ok) {
       throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password.");
     }
-    await this.mfa.assertStepUp(user, mfaCode);
 
     if (newEmail === user.email) {
       throw new AppError(ErrorCode.VALIDATION_ERROR, "New email must be different from your current email.");
@@ -301,7 +299,6 @@ export class AuthService {
     currentPassword: string,
     newPassword: string,
     meta: ClientMeta,
-    mfaCode?: string,
   ): Promise<AuthResponse> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found.");
@@ -309,7 +306,6 @@ export class AuthService {
     if (!ok) {
       throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password.");
     }
-    await this.mfa.assertStepUp(user, mfaCode);
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
     const updated = await this.prisma.user.update({
       where: { id: userId },
@@ -321,7 +317,11 @@ export class AuthService {
     return this.buildAuthResponse(updated, session, tokens);
   }
 
-  async deleteAccount(userId: string, currentPassword: string, mfaCode?: string): Promise<void> {
+  async deleteAccount(
+    userId: string,
+    currentPassword: string,
+    mfaCode?: string,
+  ): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found.");
     const ok = await bcrypt.compare(currentPassword, user.passwordHash);

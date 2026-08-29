@@ -9,7 +9,6 @@ import type {
 import { ErrorCode } from "@ordo/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { AppError } from "../common/errors/app-error.js";
-import { MfaService } from "../auth/mfa.service.js";
 import { FolderTokenService } from "./folder-token.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
 import { toFolderDto } from "../common/mappers.js";
@@ -20,7 +19,6 @@ export class FoldersService {
     private readonly prisma: PrismaService,
     private readonly folderTokens: FolderTokenService,
     private readonly access: FolderAccessService,
-    private readonly mfa: MfaService,
   ) {}
 
   async list(userId: string): Promise<FolderDto[]> {
@@ -114,7 +112,6 @@ export class FoldersService {
       if (!ok) {
         throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password.");
       }
-      await this.mfa.assertStepUp(user, input.mfaCode);
     }
     await this.folderTokens.removePassword(folderId);
   }

@@ -42,12 +42,6 @@ export const RemoveFolderPasswordSchema = z
   .object({
     folderPassword: z.string().min(1, { message: "Enter the folder password." }).max(256).optional(),
     accountPassword: z.string().min(1, { message: "Enter your account password." }).max(256).optional(),
-    mfaCode: z
-      .string()
-      .trim()
-      .min(1, { message: "Enter your authenticator or backup code." })
-      .max(32)
-      .optional(),
   })
   .refine((data) => Boolean(data.folderPassword) !== Boolean(data.accountPassword), {
     message: "Enter the folder password or your account password.",

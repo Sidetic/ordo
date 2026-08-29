@@ -10,14 +10,12 @@ import { SheetActionRow } from "../ui/SheetActionRow";
 import { EyeToggle } from "../ui/EyeToggle";
 import { PressableScale } from "../ui/PressableScale";
 import { FolderIconPicker } from "./FolderIconPicker";
-import { MfaStepUpPanel } from "../auth/MfaStepUpPanel";
 import { useTheme } from "../../theme/ThemeProvider";
 import { spacing } from "../../theme/tokens";
 import { haptics } from "../../lib/haptics";
 import { toast } from "../ui/toast-store";
-import { errorMessage, isMfaRequiredError } from "../../lib/error-message";
+import { errorMessage } from "../../lib/error-message";
 import { foldersApi } from "../../lib/api/folders";
-import { useAuthStore } from "../../store/auth";
 import {
   invalidateBookmarks,
   useDeleteFolder,
@@ -37,7 +35,6 @@ export interface FolderActionsSheetProps {
 
 export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: FolderActionsSheetProps) {
   const { palette } = useTheme();
-  const mfaEnabled = useAuthStore((s) => s.user?.mfaEnabled);
   const rename = useRenameFolder();
   const update = useUpdateFolder();
   const del = useDeleteFolder();
@@ -51,7 +48,6 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
   const [icon, setIcon] = useState<FolderIcon>(DEFAULT_FOLDER_ICON);
   const [error, setError] = useState("");
   const [removing, setRemoving] = useState(false);
-  const [mfaOpen, setMfaOpen] = useState(false);
   const folderRef = React.useRef(folder);
   folderRef.current = folder;
 
@@ -67,7 +63,6 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     setIcon(currentFolder?.icon ?? DEFAULT_FOLDER_ICON);
     setError("");
     setRemoving(false);
-    setMfaOpen(false);
   }, [visible, folder?.id]);
 
   const showMode = (nextMode: Mode) => {
@@ -171,15 +166,6 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     }
   };
 
-  const removeWithAccountPassword = async (mfaCode?: string) => {
-    if (!folder) return;
-    if (!accountPassword) {
-      throw new Error("Enter your account password.");
-    }
-    await foldersApi.removePassword(folder.id, { accountPassword, mfaCode });
-    finishRemoved();
-  };
-
   const submitAccountBypass = async () => {
     if (!folder || removing) return;
     setError("");
@@ -187,18 +173,11 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
       setError("Enter your account password.");
       return;
     }
-    if (mfaEnabled) {
-      setMfaOpen(true);
-      return;
-    }
     setRemoving(true);
     try {
-      await removeWithAccountPassword();
+      await foldersApi.removePassword(folder.id, { accountPassword });
+      finishRemoved();
     } catch (cause) {
-      if (isMfaRequiredError(cause)) {
-        setMfaOpen(true);
-        return;
-      }
       haptics.error();
       setError(errorMessage(cause));
     } finally {
@@ -222,7 +201,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
 
   return (
     <>
-    <FloatingPanel visible={visible && !!folder && !mfaOpen} onDismiss={onDismiss}>
+    <FloatingPanel visible={visible && !!folder} onDismiss={onDismiss}>
       {folder && mode === "menu" ? (
         <>
           <View style={styles.titleRow}>
@@ -391,20 +370,6 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
         </ScrollView>
       ) : null}
     </FloatingPanel>
-
-    <MfaStepUpPanel
-      visible={mfaOpen}
-      onDismiss={() => setMfaOpen(false)}
-      title="Remove password?"
-      description="Enter a current authenticator or backup code to remove this folder's lock."
-      confirmLabel="Remove password"
-      confirmVariant="danger"
-      onConfirm={removeWithAccountPassword}
-      onUnhandledError={(cause) => {
-        haptics.error();
-        setError(errorMessage(cause));
-      }}
-    />
     </>
   );
 }

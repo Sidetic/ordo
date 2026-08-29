@@ -17,6 +17,7 @@ describe("AuthService account deletion", () => {
       passwordHash,
     });
     const deleteUser = jest.fn().mockResolvedValue({ count: 1 });
+    const assertStepUp = jest.fn().mockResolvedValue(undefined);
     const prisma = { user: { findUnique, deleteMany: deleteUser } };
     const service = new AuthService(
       prisma as never,
@@ -25,10 +26,10 @@ describe("AuthService account deletion", () => {
       {} as never,
       {} as never,
       { enabled: false, checkLogin() {}, recordLoginFailure() {}, clearLogin() {} } as never,
-      { assertStepUp: async () => undefined } as never,
+      { assertStepUp } as never,
       { deleteStored: async () => undefined } as never,
     );
-    return { service, deleteUser };
+    return { service, deleteUser, assertStepUp };
   };
 
   it("requires the exact confirmation phrase", () => {
@@ -38,26 +39,33 @@ describe("AuthService account deletion", () => {
     }).success).toBe(true);
     expect(DeleteAccountSchema.safeParse({
       currentPassword: "password123",
+      confirmation: DELETE_ACCOUNT_CONFIRMATION,
+      mfaCode: "123456",
+    }).success).toBe(true);
+    expect(DeleteAccountSchema.safeParse({
+      currentPassword: "password123",
       confirmation: "delete my account",
     }).success).toBe(false);
   });
 
   it("rejects an incorrect password without deleting the user", async () => {
     const passwordHash = await bcrypt.hash("password123", 4);
-    const { service, deleteUser } = createService(passwordHash);
+    const { service, deleteUser, assertStepUp } = createService(passwordHash);
 
     await expect(service.deleteAccount("user-1", "incorrect123")).rejects.toMatchObject({
       code: ErrorCode.INVALID_CREDENTIALS,
     });
     expect(deleteUser).not.toHaveBeenCalled();
+    expect(assertStepUp).not.toHaveBeenCalled();
   });
 
-  it("deletes the user after verifying the password", async () => {
+  it("deletes the user after verifying the password and MFA step-up", async () => {
     const passwordHash = await bcrypt.hash("password123", 4);
-    const { service, deleteUser } = createService(passwordHash);
+    const { service, deleteUser, assertStepUp } = createService(passwordHash);
 
-    await service.deleteAccount("user-1", "password123");
+    await service.deleteAccount("user-1", "password123", "123456");
 
+    expect(assertStepUp).toHaveBeenCalledWith(expect.objectContaining({ id: "user-1" }), "123456");
     expect(deleteUser).toHaveBeenCalledWith({ where: { id: "user-1" } });
   });
 });
