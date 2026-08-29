@@ -35,6 +35,7 @@ model User {
   emailTokens EmailVerificationToken[]
   backupCodes MfaBackupCode[]
   mfaChallenges MfaChallenge[]
+  importJobs  ImportJob[]
 }
 
 model EmailVerificationToken {
@@ -215,4 +216,31 @@ model BookmarkTagSuggestion {
   @@id([bookmarkId, tagId])
   @@index([tagId])
   @@index([bookmarkId, status])
+}
+
+/// Staged import job: uploaded file → parsed preview → confirmed commit.
+model ImportJob {
+  id           String    @id @default(cuid())
+  userId       String
+  /// parsing | ready | committing | completed | failed
+  status       String    @default("parsing")
+  /// ordo-json | netscape-html | csv
+  sourceFormat String?
+  fileName     String?
+  /// JSON-encoded parsed entries (see ParsedEntry in the import-export module).
+  entries      String?
+  /// JSON-encoded ImportPreviewDto once parsed.
+  preview      String?
+  /// Human-readable parse or commit failure when status = failed.
+  failure      String?
+  /// JSON-encoded ImportResultDto once committed.
+  result       String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  expiresAt    DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
