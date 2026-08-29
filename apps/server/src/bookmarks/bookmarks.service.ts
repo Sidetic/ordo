@@ -13,6 +13,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { AppError } from "../common/errors/app-error.js";
 import { ReaderService, UnsupportedContentError } from "./reader.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
+import { TagsService } from "./tags.service.js";
 import { toBookmarkDto, toBookmarkDetailDto } from "../common/mappers.js";
 import {
   clampLimit,
@@ -41,6 +42,13 @@ const LIST_SELECT = {
   isRead: true,
   createdAt: true,
   updatedAt: true,
+  tags: {
+    select: { tag: { select: { id: true, name: true, color: true } } },
+  },
+  suggestions: {
+    where: { status: "pending" },
+    select: { tag: { select: { id: true, name: true, color: true } } },
+  },
 } satisfies Prisma.BookmarkSelect;
 
 type ListItem = Prisma.BookmarkGetPayload<{ select: typeof LIST_SELECT }>;
@@ -60,6 +68,7 @@ export class BookmarksService implements OnApplicationBootstrap {
     private readonly prisma: PrismaService,
     private readonly reader: ReaderService,
     private readonly access: FolderAccessService,
+    private readonly tags: TagsService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -77,7 +86,13 @@ export class BookmarksService implements OnApplicationBootstrap {
   }
 
   /** Save immediately, then enrich the bookmark in the background. */
-  async create(userId: string, folder: Folder | null, url: string): Promise<BookmarkDto> {
+  async create(
+    userId: string,
+    folder: Folder | null,
+    url: string,
+    tagIds: string[] = [],
+  ): Promise<BookmarkDto> {
+    await this.tags.requireOwnedIds(userId, tagIds);
     const bookmark = await this.prisma.bookmark.create({
       data: {
         userId,
@@ -86,7 +101,9 @@ export class BookmarksService implements OnApplicationBootstrap {
         title: this.safeHostname(url),
         domain: this.safeHostname(url),
         fetchStatus: "pending",
+        tags: { create: tagIds.map((tagId) => ({ tagId })) },
       },
+      select: LIST_SELECT,
     });
     void this.enrichBookmark(bookmark.id, url);
     return toBookmarkDto(bookmark);
@@ -96,10 +113,16 @@ export class BookmarksService implements OnApplicationBootstrap {
   async list(
     userId: string,
     folder: Folder | null,
-    opts: { cursor?: string; limit?: number },
+    opts: { cursor?: string; limit?: number; scopeAll?: boolean; tagIds?: string[] },
   ): Promise<CursorPage<BookmarkDto>> {
+    const tagIds = opts.tagIds ?? [];
+    await this.tags.requireOwnedIds(userId, tagIds);
     return this.paginate(
-      { userId, folderId: folder ? folder.id : null },
+      {
+        userId,
+        ...(opts.scopeAll ? {} : { folderId: folder ? folder.id : null }),
+        ...this.tagFilter(tagIds),
+      },
       opts.cursor,
       opts.limit,
       (b) => toBookmarkDto(b),
@@ -109,16 +132,24 @@ export class BookmarksService implements OnApplicationBootstrap {
   async search(
     userId: string,
     q: string,
-    opts: { cursor?: string; limit?: number },
+    opts: { cursor?: string; limit?: number; tagIds?: string[] },
   ): Promise<CursorPage<BookmarkDto>> {
     const term = q.trim();
-    const where = {
+    const tagIds = opts.tagIds ?? [];
+    await this.tags.requireOwnedIds(userId, tagIds);
+    const where: Prisma.BookmarkWhereInput = {
       userId,
-      OR: [
-        { title: { contains: term } },
-        { url: { contains: term } },
-        { contentText: { contains: term } },
-        { description: { contains: term } },
+      AND: [
+        {
+          OR: [
+            { title: { contains: term } },
+            { url: { contains: term } },
+            { contentText: { contains: term } },
+            { description: { contains: term } },
+            { tags: { some: { tag: { name: { contains: term } } } } },
+          ],
+        },
+        ...tagIds.map((tagId) => ({ tags: { some: { tagId } } })),
       ],
     };
     return this.paginate(where, opts.cursor, opts.limit, (b) => toBookmarkDto(b));
@@ -131,6 +162,10 @@ export class BookmarksService implements OnApplicationBootstrap {
   ): Promise<BookmarkDto & { contentHtml: string | null }> {
     const bookmark = await this.prisma.bookmark.findFirst({
       where: { id: bookmarkId, userId },
+      include: {
+        tags: { include: { tag: true } },
+        suggestions: { where: { status: "pending" }, include: { tag: true } },
+      },
     });
     if (!bookmark) throw new AppError(ErrorCode.BOOKMARK_NOT_FOUND, "This bookmark no longer exists.");
     // Enforce protection on the owning folder (unfiled bookmarks have none).
@@ -191,6 +226,7 @@ export class BookmarksService implements OnApplicationBootstrap {
     const updated = await this.prisma.bookmark.update({
       where: { id: bookmarkId },
       data,
+      select: LIST_SELECT,
     });
     return toBookmarkDto(updated);
   }
@@ -208,6 +244,44 @@ export class BookmarksService implements OnApplicationBootstrap {
       await this.access.requireFolder(bookmark.folderId, userId, folderToken);
     }
     await this.prisma.bookmark.delete({ where: { id: bookmarkId } });
+  }
+
+  async updateTags(
+    userId: string,
+    bookmarkId: string,
+    tagIds: string[],
+    dismissedSuggestionIds: string[],
+    folderToken: string | null,
+  ): Promise<BookmarkDto> {
+    const bookmark = await this.prisma.bookmark.findFirst({
+      where: { id: bookmarkId, userId },
+      select: { id: true, folderId: true },
+    });
+    if (!bookmark) throw new AppError(ErrorCode.BOOKMARK_NOT_FOUND, "This bookmark no longer exists.");
+    if (bookmark.folderId) {
+      await this.access.requireFolder(bookmark.folderId, userId, folderToken);
+    }
+    await this.tags.requireOwnedIds(userId, [...tagIds, ...dismissedSuggestionIds]);
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.bookmarkTag.deleteMany({ where: { bookmarkId } });
+      if (tagIds.length > 0) {
+        await tx.bookmarkTag.createMany({
+          data: tagIds.map((tagId) => ({ bookmarkId, tagId })),
+        });
+      }
+      if (dismissedSuggestionIds.length > 0) {
+        await tx.bookmarkTagSuggestion.updateMany({
+          where: { bookmarkId, tagId: { in: dismissedSuggestionIds }, status: "pending" },
+          data: { status: "dismissed" },
+        });
+      }
+      await tx.bookmarkTagSuggestion.deleteMany({
+        where: { bookmarkId, tagId: { in: tagIds } },
+      });
+      return tx.bookmark.findUniqueOrThrow({ where: { id: bookmarkId }, select: LIST_SELECT });
+    });
+    return toBookmarkDto(updated);
   }
 
   /** Mark every unread bookmark in a folder as read; a null folder targets the
@@ -341,7 +415,7 @@ export class BookmarksService implements OnApplicationBootstrap {
   }
 
   private async paginate<T>(
-    where: Record<string, unknown>,
+    where: Prisma.BookmarkWhereInput,
     rawCursor: string | undefined,
     rawLimit: number | undefined,
     map: (row: ListItem) => T,
@@ -350,17 +424,19 @@ export class BookmarksService implements OnApplicationBootstrap {
     const cursor = decodeCursor(rawCursor ?? null);
 
     const items: ListItem[] = await this.prisma.bookmark.findMany({
-      where: {
-        ...where,
-        ...(cursor
-          ? {
-              OR: [
-                { createdAt: { lt: new Date(cursor.createdAt) } },
-                { createdAt: new Date(cursor.createdAt), id: { lt: cursor.id } },
-              ],
-            }
-          : {}),
-      },
+      where: cursor
+        ? {
+            AND: [
+              where,
+              {
+                OR: [
+                 { createdAt: { lt: new Date(cursor.createdAt) } },
+                 { createdAt: new Date(cursor.createdAt), id: { lt: cursor.id } },
+                ],
+              },
+            ],
+          }
+        : where,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
       select: LIST_SELECT,
@@ -389,5 +465,11 @@ export class BookmarksService implements OnApplicationBootstrap {
     } catch {
       return url.slice(0, 255);
     }
+  }
+
+  private tagFilter(tagIds: string[]): Prisma.BookmarkWhereInput {
+    return tagIds.length === 0
+      ? {}
+      : { AND: tagIds.map((tagId) => ({ tags: { some: { tagId } } })) };
   }
 }

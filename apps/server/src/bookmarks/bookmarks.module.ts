@@ -7,16 +7,19 @@ import { BookmarksService } from "./bookmarks.service.js";
 import { ReaderService } from "./reader.service.js";
 import { FolderTokenService } from "./folder-token.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
+import { TagsController } from "./tags.controller.js";
+import { TagsService } from "./tags.service.js";
 
 @Module({
   imports: [AuthModule],
-  controllers: [FoldersController, BookmarksController],
+  controllers: [FoldersController, BookmarksController, TagsController],
   providers: [
     FoldersService,
     BookmarksService,
     ReaderService,
     FolderTokenService,
     FolderAccessService,
+    TagsService,
   ],
 })
 export class BookmarksModule {}

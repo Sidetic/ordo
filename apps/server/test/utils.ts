@@ -64,6 +64,9 @@ export async function createTestApp(
 /** Truncate all tables (order respects foreign keys via cascade). */
 export async function clearDb(prisma: PrismaService): Promise<void> {
   await prisma.bookmark.deleteMany();
+  await prisma.bookmarkTagSuggestion.deleteMany();
+  await prisma.bookmarkTag.deleteMany();
+  await prisma.tag.deleteMany();
   await prisma.folderToken.deleteMany();
   await prisma.emailVerificationToken.deleteMany();
   await prisma.mfaBackupCode.deleteMany();

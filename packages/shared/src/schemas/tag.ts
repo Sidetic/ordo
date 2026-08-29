@@ -27,7 +27,7 @@ export const TagColorSchema = z.enum(TAG_COLORS);
 
 export const CreateTagSchema = z.object({
   name: TagNameSchema,
-  color: TagColorSchema,
+  color: TagColorSchema.optional(),
 });
 export type CreateTagInput = z.infer<typeof CreateTagSchema>;
 

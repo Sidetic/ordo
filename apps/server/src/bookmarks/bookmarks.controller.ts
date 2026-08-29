@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -16,6 +17,7 @@ import {
   CreateBookmarkSchema,
   MarkAllReadSchema,
   UpdateBookmarkSchema,
+  UpdateBookmarkTagsSchema,
   type BookmarkDto,
   type CursorPage,
 } from "@ordo/shared";
@@ -42,14 +44,14 @@ export class BookmarksController {
   @RateLimit("bookmark-create")
   async create(
     @CurrentUser() user: AuthContext,
-    @Body(new ZodValidationPipe(CreateBookmarkSchema)) body: { url: string; folderId?: string | null },
+    @Body(new ZodValidationPipe(CreateBookmarkSchema)) body: { url: string; folderId?: string | null; tagIds?: string[] },
     @Req() req: Request,
   ): Promise<BookmarkDto> {
     // A missing/null folderId stores the bookmark as unfiled.
     const folder = body.folderId
       ? await this.access.requireFolder(body.folderId, user.userId, getFolderToken(req))
       : null;
-    return this.bookmarks.create(user.userId, folder, body.url);
+    return this.bookmarks.create(user.userId, folder, body.url, body.tagIds);
   }
 
   @Get()
@@ -58,6 +60,8 @@ export class BookmarksController {
     @Query("folderId") folderId: string | undefined,
     @Query("cursor") cursor: string | undefined,
     @Query("limit") limit: string | undefined,
+    @Query("scope") scope: string | undefined,
+    @Query("tagIds") rawTagIds: string | undefined,
     @Req() req: Request,
   ): Promise<CursorPage<BookmarkDto>> {
     // Without a folderId only the user's unfiled bookmarks are listed.
@@ -67,6 +71,8 @@ export class BookmarksController {
     return this.bookmarks.list(user.userId, folder, {
       cursor,
       limit: limit ? parseInt(limit, 10) : undefined,
+      scopeAll: scope === "all",
+      tagIds: this.parseTagIds(rawTagIds),
     });
   }
 
@@ -76,10 +82,12 @@ export class BookmarksController {
     @Query("q") q: string,
     @Query("cursor") cursor: string | undefined,
     @Query("limit") limit: string | undefined,
+    @Query("tagIds") rawTagIds: string | undefined,
   ): Promise<CursorPage<BookmarkDto>> {
     return this.bookmarks.search(user.userId, q ?? "", {
       cursor,
       limit: limit ? parseInt(limit, 10) : undefined,
+      tagIds: this.parseTagIds(rawTagIds),
     });
   }
 
@@ -117,6 +125,25 @@ export class BookmarksController {
     return { success: true };
   }
 
+  @Put(":id/tags")
+  async updateTags(
+    @CurrentUser() user: AuthContext,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(UpdateBookmarkTagsSchema)) body: {
+      tagIds: string[];
+      dismissedSuggestionIds: string[];
+    },
+    @Req() req: Request,
+  ): Promise<BookmarkDto> {
+    return this.bookmarks.updateTags(
+      user.userId,
+      id,
+      body.tagIds,
+      body.dismissedSuggestionIds,
+      getFolderToken(req),
+    );
+  }
+
   @Post("mark-all-read")
   @HttpCode(200)
   async markAllRead(
@@ -130,5 +157,11 @@ export class BookmarksController {
       : null;
     const updated = await this.bookmarks.markAllRead(user.userId, folder);
     return { updated };
+  }
+
+  private parseTagIds(value: string | undefined): string[] {
+    return value
+      ? [...new Set(value.split(",").map((id) => id.trim()).filter(Boolean))]
+      : [];
   }
 }

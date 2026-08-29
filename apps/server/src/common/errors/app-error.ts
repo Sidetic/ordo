@@ -24,6 +24,9 @@ const STATUS_BY_CODE: Record<string, HttpStatus> = {
   [ErrorCode.BOOKMARK_NOT_FOUND]: HttpStatus.NOT_FOUND,
   [ErrorCode.FETCH_FAILED]: HttpStatus.BAD_REQUEST,
 
+  [ErrorCode.TAG_NOT_FOUND]: HttpStatus.NOT_FOUND,
+  [ErrorCode.TAG_ALREADY_EXISTS]: HttpStatus.CONFLICT,
+
   [ErrorCode.AVATAR_TOO_LARGE]: HttpStatus.PAYLOAD_TOO_LARGE,
   [ErrorCode.AVATAR_UNSUPPORTED_TYPE]: HttpStatus.BAD_REQUEST,
   [ErrorCode.AVATAR_ANIMATED_DISABLED]: HttpStatus.BAD_REQUEST,

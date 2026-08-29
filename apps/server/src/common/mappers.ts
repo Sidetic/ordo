@@ -1,12 +1,15 @@
-import type { Bookmark, Folder, Session, User } from "@prisma/client";
+import type { Bookmark, Folder, Session, Tag, User } from "@prisma/client";
 import {
   normalizeFolderIcon,
   normalizeReaderPreferences,
+  normalizeTagColor,
   type BookmarkDto,
   type ExtractionReason,
   type FetchStatus,
   type FolderDto,
   type SessionDto,
+  type TagDto,
+  type TagSummaryDto,
   type UserDto,
 } from "@ordo/shared";
 
@@ -119,7 +122,26 @@ export type BookmarkDtoFields = Pick<
   | "isRead"
   | "createdAt"
   | "updatedAt"
->;
+> & {
+  tags?: Array<{ tag: Pick<Tag, "id" | "name" | "color"> }>;
+  suggestions?: Array<{ tag: Pick<Tag, "id" | "name" | "color"> }>;
+};
+
+export function toTagSummaryDto(tag: Pick<Tag, "id" | "name" | "color">): TagSummaryDto {
+  return { id: tag.id, name: tag.name, color: normalizeTagColor(tag.color) };
+}
+
+export function toTagDto(
+  tag: Tag & { _count?: { bookmarks: number } },
+  bookmarkCount = tag._count?.bookmarks ?? 0,
+): TagDto {
+  return {
+    ...toTagSummaryDto(tag),
+    bookmarkCount,
+    createdAt: tag.createdAt.toISOString(),
+    updatedAt: tag.updatedAt.toISOString(),
+  };
+}
 
 export function toBookmarkDto(b: BookmarkDtoFields): BookmarkDto {
   return {
@@ -144,11 +166,17 @@ export function toBookmarkDto(b: BookmarkDtoFields): BookmarkDto {
     readProgress: b.readProgress,
     completedAt: b.completedAt?.toISOString() ?? null,
     isRead: b.isRead,
+    tags: (b.tags ?? [])
+      .map(({ tag }) => toTagSummaryDto(tag))
+      .sort((a, c) => a.name.localeCompare(c.name)),
+    suggestedTags: (b.suggestions ?? [])
+      .map(({ tag }) => toTagSummaryDto(tag))
+      .sort((a, c) => a.name.localeCompare(c.name)),
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),
   };
 }
 
-export function toBookmarkDetailDto(b: Bookmark): BookmarkDto & { contentHtml: string | null } {
+export function toBookmarkDetailDto(b: BookmarkDtoFields & Pick<Bookmark, "contentHtml">): BookmarkDto & { contentHtml: string | null } {
   return { ...toBookmarkDto(b), contentHtml: b.contentHtml };
 }

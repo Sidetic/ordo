@@ -755,6 +755,208 @@ describe("Bookmarks & Folders (e2e)", () => {
     });
   });
 
+  describe("tags", () => {
+    it("creates tags, lists them most-used-first, and validates payloads", async () => {
+      const { agent, userId } = await setup();
+      const rust = await agent.post("/api/tags").send({ name: "rust", color: "orange" }).expect(201);
+      const go = await agent.post("/api/tags").send({ name: "  Go  " }).expect(201);
+      expect(go.body.name).toBe("Go");
+      const tagged = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/a", tagIds: [rust.body.id] })
+        .expect(201);
+      expect(tagged.body.tags).toEqual([{ id: rust.body.id, name: "rust", color: "orange" }]);
+      expect(tagged.body.suggestedTags).toEqual([]);
+
+      const list = await agent.get("/api/tags").expect(200);
+      // most used first, then alphabetical
+      expect(list.body.map((t: { id: string }) => t.id)).toEqual([rust.body.id, go.body.id]);
+      expect(list.body[0].bookmarkCount).toBe(1);
+      expect(list.body[1].bookmarkCount).toBe(0);
+
+      const dup = await agent.post("/api/tags").send({ name: "RUST" }).expect(409);
+      expect(dup.body.error.code).toBe(ErrorCode.TAG_ALREADY_EXISTS);
+
+      const tooLong = await agent.post("/api/tags").send({ name: "x".repeat(41), color: "blue" }).expect(400);
+      expect(tooLong.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+
+      const badColor = await agent.post("/api/tags").send({ name: "ok", color: "chartreuse" }).expect(400);
+      expect(badColor.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+
+      // multi-word names collapse internal whitespace and match case-insensitively
+      await agent.post("/api/tags").send({ name: "machine   learning" }).expect(201);
+      await agent.post("/api/tags").send({ name: "Machine Learning" }).expect(409);
+      expect(await ctx.prisma.tag.count({ where: { userId } })).toBe(3);
+    });
+
+    it("renames and recolors tags, keeping assignments", async () => {
+      const { agent } = await setup();
+      const tag = await agent.post("/api/tags").send({ name: "drafts", color: "slate" }).expect(201);
+      const bookmark = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/a", tagIds: [tag.body.id] })
+        .expect(201);
+
+      const updated = await agent
+        .patch(`/api/tags/${tag.body.id}`)
+        .send({ name: "finished", color: "green" })
+        .expect(200);
+      expect(updated.body.name).toBe("finished");
+      expect(updated.body.color).toBe("green");
+      expect(updated.body.bookmarkCount).toBe(1);
+
+      const list = await agent.get("/api/bookmarks").expect(200);
+      expect(list.body.items[0].tags).toEqual([{ id: tag.body.id, name: "finished", color: "green" }]);
+
+      // rename colliding with another tag is rejected
+      await agent.post("/api/tags").send({ name: "other", color: "red" }).expect(201);
+      const conflict = await agent
+        .patch(`/api/tags/${tag.body.id}`)
+        .send({ name: "OTHER" })
+        .expect(409);
+      expect(conflict.body.error.code).toBe(ErrorCode.TAG_ALREADY_EXISTS);
+
+      await agent.patch(`/api/tags/${tag.body.id}`).send({}).expect(400);
+      expect(bookmark.body.id).toBeTruthy();
+    });
+
+    it("deleting a tag removes assignments but keeps bookmarks", async () => {
+      const { agent } = await setup();
+      const tag = await agent.post("/api/tags").send({ name: "temp", color: "blue" }).expect(201);
+      await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/a", tagIds: [tag.body.id] })
+        .expect(201);
+
+      await agent.delete(`/api/tags/${tag.body.id}`).expect(200);
+      expect(await ctx.prisma.tag.count()).toBe(0);
+      const list = await agent.get("/api/bookmarks").expect(200);
+      expect(list.body.items).toHaveLength(1);
+      expect(list.body.items[0].tags).toEqual([]);
+    });
+
+    it("does not expose or mutate another user's tags", async () => {
+      const { agent } = await setup();
+      const other = await registerUser(ctx.app, "tag-other@ordo.app");
+      const foreign = await ctx.prisma.tag.create({
+        data: { userId: other.user.id, name: "Private", normalizedName: "private", color: "red" },
+      });
+
+      const list = await agent.get("/api/tags").expect(200);
+      expect(list.body).toEqual([]);
+      await agent
+        .patch(`/api/tags/${foreign.id}`)
+        .send({ name: "Hijack" })
+        .expect(404);
+      await agent.delete(`/api/tags/${foreign.id}`).expect(404);
+
+      const mine = await agent.post("/api/tags").send({ name: "mine", color: "teal" }).expect(201);
+      await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/a", tagIds: [foreign.id] })
+        .expect(404);
+      await agent
+        .put(`/api/bookmarks/none/tags`)
+        .send({ tagIds: [mine.body.id] })
+        .expect(404);
+    });
+
+    it("replaces bookmark tags atomically and enforces the per-bookmark cap", async () => {
+      const { agent } = await setup();
+      const one = await agent.post("/api/tags").send({ name: "one", color: "blue" }).expect(201);
+      const two = await agent.post("/api/tags").send({ name: "two", color: "red" }).expect(201);
+      const three = await agent.post("/api/tags").send({ name: "three", color: "green" }).expect(201);
+      const created = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/a", tagIds: [one.body.id] })
+        .expect(201);
+
+      const updated = await agent
+        .put(`/api/bookmarks/${created.body.id}/tags`)
+        .send({ tagIds: [two.body.id, three.body.id] })
+        .expect(200);
+      expect(updated.body.tags.map((t: { name: string }) => t.name)).toEqual(["three", "two"]);
+
+      const cleared = await agent
+        .put(`/api/bookmarks/${created.body.id}/tags`)
+        .send({ tagIds: [] })
+        .expect(200);
+      expect(cleared.body.tags).toEqual([]);
+
+      const tooMany = Array.from({ length: 21 }, (_, i) => `cap-${i}`);      const made: { body: { id: string } }[] = [];
+      for (let i = 0; i < 21; i += 1) {
+        made.push(
+          await agent.post("/api/tags").send({ name: `cap-${i}`, color: i % 2 ? "red" : "blue" }).expect(201),
+        );
+      }
+      const rejected = await agent
+        .put(`/api/bookmarks/${created.body.id}/tags`)
+        .send({ tagIds: made.map((r) => r.body.id) })
+        .expect(400);
+      expect(rejected.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+    });
+
+    it("filters the whole library by tags with AND semantics", async () => {
+      const { agent, userId } = await setup();
+      const rust = await agent.post("/api/tags").send({ name: "rust", color: "orange" }).expect(201);
+      const wasm = await agent.post("/api/tags").send({ name: "wasm", color: "violet" }).expect(201);
+      const folder = await agent.post("/api/folders").send({ name: "Filed" }).expect(201);
+      const both = await ctx.prisma.bookmark.create({
+        data: { userId, folderId: null, url: "https://example.com/both", title: "B", domain: "example.com" },
+      });
+      await ctx.prisma.bookmarkTag.create({ data: { bookmarkId: both.id, tagId: rust.body.id } });
+      await ctx.prisma.bookmarkTag.create({ data: { bookmarkId: both.id, tagId: wasm.body.id } });
+      const rustOnly = await ctx.prisma.bookmark.create({
+        data: { userId, folderId: folder.body.id, url: "https://example.com/rust-only", title: "R", domain: "example.com" },
+      });
+      await ctx.prisma.bookmarkTag.create({ data: { bookmarkId: rustOnly.id, tagId: rust.body.id } });
+      await ctx.prisma.bookmark.create({
+        data: { userId, folderId: null, url: "https://example.com/none", title: "N", domain: "example.com" },
+      });
+
+      const rustOnlyList = await agent
+        .get(`/api/bookmarks?scope=all&tagIds=${rust.body.id}`)
+        .expect(200);
+      expect(rustOnlyList.body.items).toHaveLength(2);
+
+      const bothQuery = await agent
+        .get(`/api/bookmarks?scope=all&tagIds=${rust.body.id},${wasm.body.id}`)
+        .expect(200);
+      expect(bothQuery.body.items).toHaveLength(1);
+      expect(bothQuery.body.items[0].url).toBe("https://example.com/both");
+
+      // without scope=all only unfiled bookmarks are searched
+      const unfiled = await agent.get(`/api/bookmarks?tagIds=${rust.body.id}`).expect(200);
+      expect(unfiled.body.items).toHaveLength(1);
+
+      // unknown tag ids are rejected
+      await agent.get(`/api/bookmarks?scope=all&tagIds=missing`).expect(404);
+    });
+
+    it("searches by tag name and combines text with tag filters", async () => {
+      const { agent, userId } = await setup();
+      const espresso = await agent.post("/api/tags").send({ name: "espresso", color: "amber" }).expect(201);
+      const coffee = await ctx.prisma.bookmark.create({
+        data: { userId, folderId: null, url: "https://example.com/coffee", title: "Morning brew", domain: "example.com" },
+      });
+      await ctx.prisma.bookmarkTag.create({ data: { bookmarkId: coffee.id, tagId: espresso.body.id } });
+
+      const byTagName = await agent.get("/api/bookmarks/search?q=espresso").expect(200);
+      expect(byTagName.body.items).toHaveLength(1);
+      expect(byTagName.body.items[0].id).toBe(coffee.id);
+
+      const withFilter = await agent
+        .get(`/api/bookmarks/search?q=brew&tagIds=${espresso.body.id}`)
+        .expect(200);
+      expect(withFilter.body.items).toHaveLength(1);
+
+      const filterExcludes = await agent
+        .get(`/api/bookmarks/search?q=morning&tagIds=${espresso.body.id},unknown-id`)
+        .expect(404);
+      expect(filterExcludes.body.error.code).toBe(ErrorCode.TAG_NOT_FOUND);
+    });
+  });
+
   describe("search", () => {
     it("searches across all of the user's bookmarks, filed and unfiled", async () => {
       const { agent, userId } = await setup();
