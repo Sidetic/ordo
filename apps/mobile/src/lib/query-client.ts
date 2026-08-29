@@ -2,7 +2,8 @@
  * React Query client with sensible defaults:
  *  - staleTime so cached screens don't refetch on every focus (no flicker / SWR).
  *  - retry skips client errors (except token_expired, which the interceptor already retried).
- *  - retry pauses when offline.
+ *  - retry pauses when the device has no link (not when the Ordo server is down).
+ *  - networkMode `always` so a false "offline" flag cannot leave queries pending forever.
  */
 import { QueryClient } from "@tanstack/react-query";
 import { ApiClientError } from "./api/client";
@@ -13,6 +14,7 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 30_000,
       gcTime: 5 * 60_000,
+      networkMode: "always",
       retry: (failureCount, error) => {
         const err = error as ApiClientError;
         if (err?.status && err.status >= 400 && err.status < 500 && !err.tokenExpired) {
@@ -25,6 +27,7 @@ export const queryClient = new QueryClient({
     },
     mutations: {
       retry: false,
+      networkMode: "always",
     },
   },
 });

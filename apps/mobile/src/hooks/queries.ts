@@ -11,7 +11,9 @@ import { qk } from "../lib/api/query-keys";
 import { useAuthStore } from "../store/auth";
 import { useSettingsStore } from "../store/settings";
 
-/** Server info — unauthenticated; keyed by URL so switching servers refetches. */
+/** Server info — unauthenticated; keyed by URL so switching servers refetches.
+ *  Must not gate the app navigator: an unreachable server has to leave Tabs
+ *  mounted so Settings → Account / Server stay reachable. */
 export function useServerInfo() {
   const serverUrl = useSettingsStore((s) => s.serverUrl);
   return useQuery({
@@ -19,6 +21,7 @@ export function useServerInfo() {
     queryFn: () => serverApi.info(),
     staleTime: 60_000,
     retry: 1,
+    networkMode: "always",
   });
 }
 

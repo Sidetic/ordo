@@ -5,6 +5,7 @@
  * implementation temporarily mutated the store, which is what broke Save).
  */
 import type { ServerInfoDto } from "@ordo/shared";
+import { isAbortError, isDeadlineError, raceDeadline } from "./fetch-timeout";
 
 export type ProbeStepState = "pending" | "success" | "failure";
 
@@ -62,21 +63,6 @@ export function hostOf(url: string): string {
   } catch {
     return url;
   }
-}
-
-/**
- * Race a promise against a hard wall-clock deadline. Returns whatever settles
- * first; the losing promise is silenced so a late rejection (e.g. the fetch
- * eventually aborting after we've already given up) never surfaces as an
- * unhandled-rejection warning.
- */
-function raceDeadline<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>;
-  const deadline = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error("__deadline__")), ms);
-  });
-  promise.catch(() => {});
-  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer!));
 }
 
 /**
@@ -154,9 +140,7 @@ export async function probeServer(
       return { url: origin, status: "up", latencyMs: Date.now() - t0, info, detail: "reachable" };
     } catch (e) {
       clearTimeout(abortTimer);
-      const timedOut =
-        (e instanceof DOMException && e.name === "AbortError") ||
-        (e instanceof Error && e.message === "__deadline__");
+      const timedOut = isAbortError(e) || isDeadlineError(e);
       // Only retry on timeout — a non-timeout error (DNS NXDOMAIN, TLS
       // failure, connection refused) won't be fixed by a second try. The
       // timeout case is worth one more attempt because the WireGuard session

@@ -1,7 +1,7 @@
 /**
  * Map an error to a human-readable message. Never leaks raw error objects.
  */
-import { ApiClientError } from "./api/client";
+import { ApiClientError, LOCAL_ERROR } from "./api/client";
 import { ErrorCode } from "@ordo/shared";
 
 const FRIENDLY: Record<string, string> = {
@@ -31,7 +31,10 @@ const FRIENDLY: Record<string, string> = {
 
 export function errorMessage(err: unknown, fallback = "Something went wrong."): string {
   if (err instanceof ApiClientError) {
-    if (err.status === 0 || err.code === "network_error") {
+    if (err.code === LOCAL_ERROR.TIMEOUT) {
+      return "The server took too long to respond.";
+    }
+    if (err.status === 0 || err.code === LOCAL_ERROR.NETWORK) {
       return "Couldn't reach the server. Check your connection.";
     }
     if (err.code === ErrorCode.RATE_LIMITED && err.message) {

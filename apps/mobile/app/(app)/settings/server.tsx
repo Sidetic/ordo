@@ -307,6 +307,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
   confirmHeader: { flexDirection: "row", alignItems: "flex-start", gap: spacing[12] },
   confirmIcon: {

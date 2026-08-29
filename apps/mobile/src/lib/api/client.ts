@@ -26,6 +26,15 @@ import * as Device from "expo-device";
 import { useAuthStore } from "../../store/auth";
 import { useFolderTokenStore } from "../../store/folder-tokens";
 import { useSettingsStore } from "../../store/settings";
+import {
+  REQUEST_HARD_TIMEOUT_MS,
+  REQUEST_TIMEOUT_MS,
+  createTimeoutSignal,
+  isAbortError,
+  isDeadlineError,
+  mergeAbortSignals,
+  raceDeadline,
+} from "../fetch-timeout";
 
 /** Client-side error codes not present on the wire. */
 export const LOCAL_ERROR = {
@@ -106,19 +115,33 @@ async function parseError(res: Response): Promise<ApiClientError> {
 
 /** Lowest-level fetch: no interceptors, just normalised errors. */
 async function rawFetch(url: string, init: RequestInit): Promise<Response> {
-  let res: Response;
+  const timeout = createTimeoutSignal(REQUEST_TIMEOUT_MS);
+  const userSignal = init.signal;
+  const signal = userSignal ? mergeAbortSignals([userSignal, timeout.signal]) : timeout.signal;
   try {
-    res = await fetch(url, init);
+    const res = await raceDeadline(fetch(url, { ...init, signal }), REQUEST_HARD_TIMEOUT_MS);
+    if (!res.ok) throw await parseError(res);
+    return res;
   } catch (e) {
-    const aborted = e instanceof DOMException && e.name === "AbortError";
+    if (e instanceof ApiClientError) throw e;
+    const userAborted = Boolean(userSignal?.aborted);
+    const timedOut = !userAborted && (timeout.timedOut() || isDeadlineError(e) || isAbortError(e));
+    if (timedOut) {
+      throw new ApiClientError(0, {
+        code: LOCAL_ERROR.TIMEOUT,
+        message: "The server took too long to respond.",
+      });
+    }
     throw new ApiClientError(
       0,
       null,
-      aborted ? "Request cancelled" : "Couldn't reach the server. Check your connection.",
+      userAborted || isAbortError(e)
+        ? "The request was cancelled."
+        : "Couldn't reach the server. Check your connection.",
     );
+  } finally {
+    timeout.clear();
   }
-  if (!res.ok) throw await parseError(res);
-  return res;
 }
 
 function jsonHeaders(extra: Record<string, string>): Record<string, string> {
@@ -144,15 +167,17 @@ function deviceHeaders(): Record<string, string> {
 /* Refresh: single-flight so concurrent 401s share one refresh.        */
 /* ------------------------------------------------------------------ */
 
-let refreshInFlight: Promise<boolean> | null = null;
+type RefreshResult = "ok" | "rejected" | "unreachable";
+
+let refreshInFlight: Promise<RefreshResult> | null = null;
 let proactiveTimer: ReturnType<typeof setTimeout> | null = null;
 
-async function doRefresh(): Promise<boolean> {
+async function doRefresh(): Promise<RefreshResult> {
   const { tokens, setTokens, clear } = useAuthStore.getState();
   const refreshToken = tokens?.refreshToken;
   if (!refreshToken) {
     void clear();
-    return false;
+    return "rejected";
   }
   try {
     const res = await rawFetch(
@@ -166,18 +191,24 @@ async function doRefresh(): Promise<boolean> {
         }),
       },
     );
-    const data = await res.json();
+    const data = await raceDeadline(res.json(), REQUEST_HARD_TIMEOUT_MS);
     // Server rotates both tokens; persist the new pair.
     setTokens(data.tokens);
     scheduleProactiveRefresh(data.tokens?.expiresIn as number);
-    return true;
-  } catch {
-    void clear();
-    return false;
+    return "ok";
+  } catch (e) {
+    const err = e instanceof ApiClientError ? e : new ApiClientError(0, null);
+    // Only drop the session when the server actually rejected the refresh.
+    // A down host, timeout, or 5xx must not sign the user out.
+    if (err.status === 401 || err.sessionGone) {
+      void clear();
+      return "rejected";
+    }
+    return "unreachable";
   }
 }
 
-function refreshOnce(): Promise<boolean> {
+function refreshOnce(): Promise<RefreshResult> {
   if (!refreshInFlight) {
     refreshInFlight = doRefresh().finally(() => {
       refreshInFlight = null;
@@ -243,15 +274,28 @@ async function request<T>(
     const res = await rawFetch(url, init);
     if (options.raw) return res as T;
     if (res.status === 204) return undefined as T;
-    return (await res.json()) as T;
+    return await raceDeadline(res.json() as Promise<T>, REQUEST_HARD_TIMEOUT_MS);
   } catch (e) {
-    const err = e instanceof ApiClientError ? e : new ApiClientError(0, null, "Unexpected error");
+    const err =
+      e instanceof ApiClientError
+        ? e
+        : isDeadlineError(e)
+          ? new ApiClientError(0, {
+              code: LOCAL_ERROR.TIMEOUT,
+              message: "The server took too long to respond.",
+            })
+          : new ApiClientError(0, null, "Unexpected error");
     // Transparent refresh + single replay.
     if (err.tokenExpired && auth && !retried) {
-      const ok = await refreshOnce();
-      if (ok) return request<T>(path, options, true);
-      // refresh failed → session already cleared
-      throw new ApiClientError(401, { code: "session_revoked", message: "Session expired" });
+      const refresh = await refreshOnce();
+      if (refresh === "ok") return request<T>(path, options, true);
+      if (refresh === "rejected") {
+        throw new ApiClientError(401, { code: "session_revoked", message: "Your session has ended. Please sign in again." });
+      }
+      throw new ApiClientError(0, {
+        code: LOCAL_ERROR.NETWORK,
+        message: "Couldn't reach the server. Check your connection.",
+      });
     }
     // If the server says the session is gone, make sure we clear local state.
     if (err.sessionGone) void useAuthStore.getState().clear();

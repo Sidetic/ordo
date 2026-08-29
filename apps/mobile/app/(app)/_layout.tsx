@@ -13,7 +13,7 @@ import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metric
 import { useAuthStore } from "../../src/store/auth";
 import { useSettingsStore } from "../../src/store/settings";
 import { MfaEnrollmentScreen } from "../../src/components/auth/MfaEnrollmentScreen";
-import { ActivityIndicator, Text as NativeText, View, useWindowDimensions } from "react-native";
+import { Text as NativeText, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const HIDDEN = {
@@ -25,9 +25,8 @@ export default function AppLayout() {
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const pathname = usePathname();
-  const status = useAuthStore((s) => s.status);
   const user = useAuthStore((s) => s.user);
-  const { data: serverInfo, isPending: serverInfoPending } = useServerInfo();
+  const { data: serverInfo } = useServerInfo();
   const showNavigationLabels = useSettingsStore((s) => s.showNavigationLabels);
   const {
     floating,
@@ -249,38 +248,32 @@ export default function AppLayout() {
   // Reconcile local session with the server once authenticated.
   useValidateSession();
 
-  if (status === "loading" || (status === "authenticated" && serverInfoPending && !serverInfo)) {
-    return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: palette.background }}>
-        <ActivityIndicator color={palette.accent} />
-      </View>
-    );
-  }
-
-  if (serverInfo?.mfaRequired && user && !user.mfaEnabled) {
-    return <MfaEnrollmentScreen />;
-  }
+  // Keep <Tabs> mounted even while MFA enrollment is required. Replacing the
+  // navigator (or swapping in a full-screen spinner while server info loads)
+  // unmounted routes and kicked Settings → Account back to Home.
+  const needsMfaEnrollment = Boolean(serverInfo?.mfaRequired && user && !user.mfaEnabled);
 
   return (
-    <Tabs
-      backBehavior="history"
-      screenOptions={{
-        headerShown: false,
-        tabBarPosition: sideNavigation ? "left" : "bottom",
-        tabBarVariant: sideNavigation ? "material" : "uikit",
-        tabBarLabelPosition: "below-icon",
-        tabBarHideOnKeyboard: true,
-        tabBarActiveTintColor: palette.accent,
-        tabBarInactiveTintColor: palette.textTertiary,
-        tabBarShowLabel: showNavigationLabels,
-        tabBarActiveBackgroundColor: "transparent",
-        tabBarStyle,
-        sceneStyle:
-          sideNavigation && floating
-            ? { marginStart: railInset + railWidth + spacing[12] }
-            : undefined,
-      }}
-    >
+    <View style={{ flex: 1, backgroundColor: palette.background }}>
+      <Tabs
+        backBehavior="history"
+        screenOptions={{
+          headerShown: false,
+          tabBarPosition: sideNavigation ? "left" : "bottom",
+          tabBarVariant: sideNavigation ? "material" : "uikit",
+          tabBarLabelPosition: "below-icon",
+          tabBarHideOnKeyboard: true,
+          tabBarActiveTintColor: palette.accent,
+          tabBarInactiveTintColor: palette.textTertiary,
+          tabBarShowLabel: showNavigationLabels,
+          tabBarActiveBackgroundColor: "transparent",
+          tabBarStyle,
+          sceneStyle:
+            sideNavigation && floating
+              ? { marginStart: railInset + railWidth + spacing[12] }
+              : undefined,
+        }}
+      >
       <Tabs.Screen
         name="index"
         options={{
@@ -329,6 +322,25 @@ export default function AppLayout() {
       <Tabs.Screen name="settings/verify-email" options={formScreenOptions} />
       <Tabs.Screen name="settings/password" options={formScreenOptions} />
       <Tabs.Screen name="settings/delete-account" options={formScreenOptions} />
-    </Tabs>
+      </Tabs>
+      {needsMfaEnrollment ? (
+        <View
+          accessibilityViewIsModal
+          importantForAccessibility="yes"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 40,
+            elevation: 40,
+            backgroundColor: palette.background,
+          }}
+        >
+          <MfaEnrollmentScreen />
+        </View>
+      ) : null}
+    </View>
   );
 }
