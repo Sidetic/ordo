@@ -6,6 +6,7 @@ import {
   buildPath,
   type CreateFolderInput,
   type RemoveFolderPasswordInput,
+  type SetFolderPasswordInput,
   type UpdateFolderInput,
 } from "@ordo/shared";
 import { api } from "./client";
@@ -22,10 +23,10 @@ export const foldersApi = {
   remove: (id: string) =>
     api.delete<typeof FolderRoutes.remove.response>(buildPath(FolderRoutes.remove.path, { id })),
 
-  setPassword: (id: string, password: string) =>
+  setPassword: (id: string, input: SetFolderPasswordInput) =>
     api.post<typeof FolderRoutes.setPassword.response>(
       buildPath(FolderRoutes.setPassword.path, { id }),
-      { password },
+      input,
     ),
 
   removePassword: (id: string, body: RemoveFolderPasswordInput) =>

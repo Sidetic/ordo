@@ -40,6 +40,12 @@ module.exports = {
   plugins: [
     "expo-asset",
     [
+      "expo-local-authentication",
+      {
+        faceIDPermission: "Allow Ordo to use Face ID to unlock protected folders.",
+      },
+    ],
+    [
       "expo-image-picker",
       {
         photosPermission: "Allow Ordo to access your photos to set a profile picture.",

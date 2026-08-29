@@ -132,6 +132,8 @@ export function AddBookmarkSheet({
     }
   };
 
+  const lockedFolder = folders?.find((folder) => folder.id === lockedFolderId);
+
   return (
     <>
     <FloatingPanel visible={visible && !lockedFolderId} onDismiss={close}>
@@ -174,7 +176,8 @@ export function AddBookmarkSheet({
     <LockPrompt
       visible={visible && !!lockedFolderId}
       folderId={lockedFolderId ?? ""}
-      folderName={folders?.find((folder) => folder.id === lockedFolderId)?.name}
+      folderName={lockedFolder?.name}
+      lockType={lockedFolder?.lockType}
       onDismiss={() => setLockedFolderId(null)}
       onUnlocked={() => {
         setLockedFolderId(null);

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { DEFAULT_FOLDER_ICON, type FolderDto, type FolderIcon } from "@ordo/shared";
+import { DEFAULT_FOLDER_ICON, type FolderDto, type FolderIcon, type FolderLockType } from "@ordo/shared";
 import { FloatingPanel } from "../ui/FloatingPanel";
 import { PanelHeader } from "../ui/PanelHeader";
 import { Input } from "../ui/Input";
@@ -11,12 +11,19 @@ import { SheetActionRow } from "../ui/SheetActionRow";
 import { EyeToggle } from "../ui/EyeToggle";
 import { PressableScale } from "../ui/PressableScale";
 import { FolderIconPicker } from "./FolderIconPicker";
+import { PatternInput } from "./PatternInput";
 import { useTheme } from "../../theme/ThemeProvider";
 import { spacing } from "../../theme/tokens";
 import { haptics } from "../../lib/haptics";
 import { toast } from "../ui/toast-store";
 import { errorMessage } from "../../lib/error-message";
 import { foldersApi } from "../../lib/api/folders";
+import {
+  createDeviceLockCredential,
+  deleteDeviceLockCredential,
+  getDeviceLockCredential,
+  isDeviceLockAvailable,
+} from "../../lib/device-folder-lock";
 import {
   invalidateBookmarks,
   useDeleteFolder,
@@ -25,7 +32,7 @@ import {
 } from "../../hooks/use-folders";
 import { useFolderTokenStore } from "../../store/folder-tokens";
 
-type Mode = "menu" | "rename" | "password" | "icon" | "delete" | "removePassword" | "removePasswordAccount";
+type Mode = "menu" | "rename" | "lockChoice" | "lockCredential" | "icon" | "delete" | "removePassword" | "removePasswordAccount";
 
 export interface FolderActionsSheetProps {
   visible: boolean;
@@ -43,6 +50,11 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
   const [mode, setMode] = useState<Mode>("menu");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [lockType, setLockType] = useState<FolderLockType>("password");
+  const [pattern, setPattern] = useState<number[]>([]);
+  const [savedPattern, setSavedPattern] = useState<number[]>([]);
+  const [deviceLockAvailable, setDeviceLockAvailable] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [accountPassword, setAccountPassword] = useState("");
   const [showAccountPassword, setShowAccountPassword] = useState(false);
@@ -58,18 +70,26 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     setMode("menu");
     setName(currentFolder?.name ?? "");
     setPassword("");
+    setConfirmPassword("");
+    setLockType("password");
+    setPattern([]);
+    setSavedPattern([]);
     setShowPassword(false);
     setAccountPassword("");
     setShowAccountPassword(false);
     setIcon(currentFolder?.icon ?? DEFAULT_FOLDER_ICON);
     setError("");
     setRemoving(false);
+    void isDeviceLockAvailable().then(setDeviceLockAvailable);
   }, [visible, folder?.id]);
 
   const showMode = (nextMode: Mode) => {
     setError("");
-    if (nextMode !== "password" && nextMode !== "removePassword") {
+    if (nextMode !== "lockCredential" && nextMode !== "removePassword") {
       setPassword("");
+      setConfirmPassword("");
+      setPattern([]);
+      setSavedPattern([]);
       setShowPassword(false);
     }
     if (nextMode !== "removePasswordAccount") {
@@ -120,14 +140,38 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     }
   };
 
-  const doSetPassword = async () => {
+  const doSetCredential = async () => {
     if (!folder) return;
-    if (password.length < 4) {
+    const credential = lockType === "pattern" ? pattern.join("-") : password;
+    if (lockType === "pattern" && savedPattern.length === 0) {
+      if (pattern.length < 4) {
+        setError("Connect at least 4 dots.");
+        return;
+      }
+      setSavedPattern(pattern);
+      setPattern([]);
+      setError("");
+      return;
+    }
+    if (lockType === "pattern" && savedPattern.join("-") !== credential) {
+      setError("Patterns do not match. Try again.");
+      setPattern([]);
+      return;
+    }
+    if (lockType === "pin" && !/^\d{4,12}$/.test(password)) {
+      setError("Use a 4 to 12 digit PIN.");
+      return;
+    }
+    if (lockType === "pin" && password !== confirmPassword) {
+      setError("PINs do not match.");
+      return;
+    }
+    if (lockType === "password" && password.length < 4) {
       setError("Use at least 4 characters.");
       return;
     }
     try {
-      await foldersApi.setPassword(folder.id, password);
+      await foldersApi.setPassword(folder.id, { password: credential, lockType });
       clearToken(folder.id);
       invalidateBookmarks();
       haptics.success();
@@ -138,25 +182,84 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     }
   };
 
+  const doSetDeviceLock = async () => {
+    if (!folder) return;
+    if (!deviceLockAvailable) {
+      setError("Set up fingerprint or face unlock on this device first.");
+      return;
+    }
+    setRemoving(true);
+    setError("");
+    try {
+      const credential = await createDeviceLockCredential(folder.id);
+      try {
+        await foldersApi.setPassword(folder.id, { password: credential, lockType: "device" });
+      } catch (cause) {
+        await deleteDeviceLockCredential(folder.id);
+        throw cause;
+      }
+      clearToken(folder.id);
+      invalidateBookmarks();
+      haptics.success();
+      toast.success("Folder locked");
+      onDismiss();
+    } catch (cause) {
+      setError(errorMessage(cause, "Could not enable the device lock."));
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   const finishRemoved = () => {
     if (!folder) return;
     clearToken(folder.id);
     invalidateBookmarks();
     haptics.success();
-    toast.success("Password removed");
+    toast.success("Lock removed");
+    void deleteDeviceLockCredential(folder.id);
     onDismiss();
+  };
+
+  const removeWithDeviceLock = async () => {
+    if (!folder || removing) return;
+    setError("");
+    setRemoving(true);
+    let credential: string | null;
+    try {
+      credential = await getDeviceLockCredential(folder.id);
+      if (!credential) {
+        setError("This device no longer has the folder key. Use your account password instead.");
+        setRemoving(false);
+        return;
+      }
+    } catch {
+      haptics.error();
+      setError("Device authentication was cancelled or unsuccessful.");
+      setRemoving(false);
+      return;
+    }
+    try {
+      await foldersApi.removePassword(folder.id, { folderPassword: credential });
+      finishRemoved();
+    } catch (cause) {
+      haptics.error();
+      setError(errorMessage(cause));
+    } finally {
+      setRemoving(false);
+    }
   };
 
   const removeWithFolderPassword = async () => {
     if (!folder || removing) return;
-    if (!password) {
-      setError("Enter the folder password.");
+    const credential = folder.lockType === "pattern" ? pattern.join("-") : password;
+    if (!credential || (folder.lockType === "pattern" && pattern.length < 4)) {
+      setError(folder.lockType === "pattern" ? "Connect at least 4 dots." : `Enter the folder ${folder.lockType === "pin" ? "PIN" : "password"}.`);
       return;
     }
     setError("");
     setRemoving(true);
     try {
-      await foldersApi.removePassword(folder.id, { folderPassword: password });
+      await foldersApi.removePassword(folder.id, { folderPassword: credential });
       finishRemoved();
     } catch (cause) {
       haptics.error();
@@ -223,9 +326,9 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
             <SheetActionRow icon="happy-outline" label="Change icon" onPress={() => showMode("icon")} />
             <SheetActionRow icon="create-outline" label="Rename" onPress={() => showMode("rename")} />
             {folder.protected ? (
-              <SheetActionRow icon="lock-open-outline" label="Remove password" onPress={() => showMode("removePassword")} />
+              <SheetActionRow icon="lock-open-outline" label="Remove lock" onPress={() => showMode("removePassword")} />
             ) : (
-              <SheetActionRow icon="lock-closed-outline" label="Lock folder" onPress={() => showMode("password")} />
+              <SheetActionRow icon="lock-closed-outline" label="Lock folder" onPress={() => showMode("lockChoice")} />
             )}
             <SheetActionRow icon="trash-outline" label="Delete folder" tone="danger" onPress={() => showMode("delete")} />
           </View>
@@ -244,25 +347,63 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
         </>
       ) : null}
 
-      {folder && mode === "password" ? (
+      {folder && mode === "lockChoice" ? (
         <>
           <PanelHeader
             title="Lock folder"
-            subtitle="A password will be required to view this folder."
+            subtitle="Choose how you want to unlock this folder."
           />
-          <Input
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="At least 4 characters"
-            secureTextEntry={!showPassword}
-            autoFocus
-            error={error || undefined}
-            rightAccessory={<EyeToggle visible={showPassword} onPress={() => setShowPassword((value) => !value)} />}
+          {error ? <Text variant="footnote" color="danger" style={styles.error}>{error}</Text> : null}
+          <View>
+            <SheetActionRow icon="finger-print-outline" label="Device lock" onPress={doSetDeviceLock} />
+            <SheetActionRow icon="apps-outline" label="Pattern" onPress={() => { setLockType("pattern"); showMode("lockCredential"); }} />
+            <SheetActionRow icon="keypad-outline" label="PIN" onPress={() => { setLockType("pin"); showMode("lockCredential"); }} />
+            <SheetActionRow icon="text-outline" label="Text password" onPress={() => { setLockType("password"); showMode("lockCredential"); }} />
+          </View>
+          <Button label="Cancel" variant="ghost" block disabled={removing} onPress={() => showMode("menu")} style={styles.menuCancel} />
+        </>
+      ) : null}
+
+      {folder && mode === "lockCredential" ? (
+        <>
+          <PanelHeader
+            title={lockType === "pattern" ? (savedPattern.length ? "Confirm pattern" : "Set a pattern") : lockType === "pin" ? "Set a PIN" : "Set a password"}
+            subtitle={lockType === "pattern" ? "Tap at least 4 dots in order." : lockType === "pin" ? "Use 4 to 12 digits." : "Use at least 4 characters."}
           />
+          {lockType === "pattern" ? (
+            <>
+              <PatternInput value={pattern} onChange={setPattern} />
+              {error ? <Text variant="footnote" color="danger" align="center">{error}</Text> : null}
+            </>
+          ) : (
+            <>
+              <Input
+                label={lockType === "pin" ? "PIN" : "Password"}
+                value={password}
+                onChangeText={(value) => setPassword(lockType === "pin" ? value.replace(/\D/g, "").slice(0, 12) : value)}
+                placeholder={lockType === "pin" ? "4 to 12 digits" : "At least 4 characters"}
+                keyboardType={lockType === "pin" ? "number-pad" : "default"}
+                secureTextEntry={!showPassword}
+                autoFocus
+                error={error || undefined}
+                rightAccessory={<EyeToggle visible={showPassword} onPress={() => setShowPassword((value) => !value)} />}
+              />
+              {lockType === "pin" ? (
+                <Input
+                  label="Confirm PIN"
+                  value={confirmPassword}
+                  onChangeText={(value) => setConfirmPassword(value.replace(/\D/g, "").slice(0, 12))}
+                  placeholder="Enter PIN again"
+                  keyboardType="number-pad"
+                  secureTextEntry
+                  containerStyle={styles.confirmInput}
+                />
+              ) : null}
+            </>
+          )}
           <View style={styles.actions}>
-            <Button label="Lock folder" block size="lg" onPress={doSetPassword} />
-            <Button label="Cancel" variant="ghost" block onPress={() => showMode("menu")} />
+            <Button label={lockType === "pattern" && !savedPattern.length ? "Continue" : "Lock folder"} block size="lg" onPress={doSetCredential} />
+            <Button label="Back" variant="ghost" block onPress={() => showMode("lockChoice")} />
           </View>
         </>
       ) : null}
@@ -273,32 +414,42 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
             icon="lock-open-outline"
             iconColor={palette.danger}
             iconBackground={palette.dangerSoft}
-            title="Remove password?"
-            subtitle="This folder will no longer require a password to open."
+            title="Remove lock?"
+            subtitle="This folder will no longer require authentication to open."
             subtitleVariant="body"
           />
-          <Input
-            label="Folder password"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Folder password"
-            secureTextEntry={!showPassword}
-            autoFocus
-            error={error || undefined}
-            onSubmitEditing={removeWithFolderPassword}
-            rightAccessory={<EyeToggle visible={showPassword} onPress={() => setShowPassword((value) => !value)} />}
-          />
+          {folder.lockType === "device" ? (
+            error ? <Text variant="footnote" color="danger" align="center">{error}</Text> : null
+          ) : folder.lockType === "pattern" ? (
+            <>
+              <PatternInput value={pattern} onChange={setPattern} />
+              {error ? <Text variant="footnote" color="danger" align="center">{error}</Text> : null}
+            </>
+          ) : (
+            <Input
+              label={folder.lockType === "pin" ? "Folder PIN" : "Folder password"}
+              value={password}
+              onChangeText={(value) => setPassword(folder.lockType === "pin" ? value.replace(/\D/g, "").slice(0, 12) : value)}
+              placeholder={folder.lockType === "pin" ? "Folder PIN" : "Folder password"}
+              keyboardType={folder.lockType === "pin" ? "number-pad" : "default"}
+              secureTextEntry={!showPassword}
+              autoFocus
+              error={error || undefined}
+              onSubmitEditing={removeWithFolderPassword}
+              rightAccessory={<EyeToggle visible={showPassword} onPress={() => setShowPassword((value) => !value)} />}
+            />
+          )}
           <PressableScale
             accessibilityRole="button"
-            accessibilityLabel="Forgot the folder password?"
+            accessibilityLabel="Use account password"
             hitSlop={8}
             onPress={() => showMode("removePasswordAccount")}
             style={styles.forgot}
           >
-            <Text variant="footnote" color="accent">Forgot the folder password?</Text>
+            <Text variant="footnote" color="accent">Use account password</Text>
           </PressableScale>
           <View style={styles.actions}>
-            <Button label="Remove password" variant="danger" block size="lg" onPress={removeWithFolderPassword} loading={removing} />
+            <Button label={folder.lockType === "device" ? "Use device lock" : "Remove lock"} variant="danger" block size="lg" onPress={folder.lockType === "device" ? removeWithDeviceLock : removeWithFolderPassword} loading={removing} />
             <Button label="Cancel" variant="ghost" block disabled={removing} onPress={() => showMode("menu")} />
           </View>
         </ScrollView>
@@ -310,7 +461,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
             icon="lock-open-outline"
             iconColor={palette.danger}
             iconBackground={palette.dangerSoft}
-            title="Remove password?"
+            title="Remove lock?"
             subtitle="Enter your account password to remove this folder's lock."
             subtitleVariant="body"
           />
@@ -337,7 +488,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
             <Text variant="footnote" color="accent">Use folder password</Text>
           </PressableScale>
           <View style={styles.actions}>
-            <Button label="Remove password" variant="danger" block size="lg" onPress={submitAccountBypass} loading={removing} />
+            <Button label="Remove lock" variant="danger" block size="lg" onPress={submitAccountBypass} loading={removing} />
             <Button label="Cancel" variant="ghost" block disabled={removing} onPress={() => showMode("menu")} />
           </View>
         </ScrollView>
@@ -389,4 +540,5 @@ const styles = StyleSheet.create({
   menuCancel: { marginTop: spacing[8] },
   actions: { gap: spacing[8], marginTop: spacing[20] },
   forgot: { alignSelf: "center", marginTop: spacing[10] },
+  confirmInput: { marginTop: spacing[12] },
 });

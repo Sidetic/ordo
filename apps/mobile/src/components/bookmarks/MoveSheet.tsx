@@ -115,6 +115,7 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
         visible={visible && !!lockedTarget}
         folderId={lockedTarget?.id ?? ""}
         folderName={lockedTarget?.name}
+        lockType={lockedTarget?.lockType}
         onDismiss={() => setLockedTarget(null)}
         onUnlocked={() => {
           const target = lockedTarget;

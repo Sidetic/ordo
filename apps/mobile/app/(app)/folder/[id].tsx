@@ -187,12 +187,13 @@ export default function FolderDetailScreen() {
           <EmptyState
             icon="lock-closed-outline"
             title="This folder is locked"
-            message="Enter the password to view these bookmarks."
+            message="Unlock this folder to view its bookmarks."
           />
           <LockPrompt
-            visible={protectedError && !!folderId}
+            visible={protectedError && !!folderId && !!folder}
             folderId={folderId ?? ""}
             folderName={folder?.name}
+            lockType={folder?.lockType}
             onDismiss={() => router.back()}
             onUnlocked={() => bookmarks.refetch()}
           />

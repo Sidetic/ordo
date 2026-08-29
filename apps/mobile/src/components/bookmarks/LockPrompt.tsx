@@ -1,16 +1,17 @@
-/**
- * Password prompt shown when accessing a protected folder. On success the
- * folder token is cached by the store and the parent refetches.
- */
+/** Unlock prompt for device, pattern, PIN, and text folder locks. */
 import React, { useState } from "react";
 import { View } from "react-native";
+import type { FolderLockType } from "@ordo/shared";
 import { FloatingPanel } from "../ui/FloatingPanel";
 import { PanelHeader } from "../ui/PanelHeader";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
+import { Text } from "../ui/Text";
 import { EyeToggle } from "../ui/EyeToggle";
+import { PatternInput } from "./PatternInput";
 import { useUnlockFolder } from "../../hooks/use-folders";
 import { useFolderTokenStore } from "../../store/folder-tokens";
+import { getDeviceLockCredential } from "../../lib/device-folder-lock";
 import { errorMessage } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
 import { spacing } from "../../theme/tokens";
@@ -19,62 +20,129 @@ export interface LockPromptProps {
   visible: boolean;
   folderId: string;
   folderName?: string;
+  lockType?: FolderLockType | null;
   onDismiss: () => void;
   onUnlocked: () => void;
 }
 
-export function LockPrompt({ visible, folderId, folderName, onDismiss, onUnlocked }: LockPromptProps) {
+export function LockPrompt({
+  visible,
+  folderId,
+  folderName,
+  lockType = "password",
+  onDismiss,
+  onUnlocked,
+}: LockPromptProps) {
   const unlock = useUnlockFolder();
-  const setToken = useFolderTokenStore((s) => s.set);
+  const setToken = useFolderTokenStore((state) => state.set);
   const [password, setPassword] = useState("");
+  const [pattern, setPattern] = useState<number[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
+  const reset = () => {
+    setPassword("");
+    setPattern([]);
+    setShowPassword(false);
+    setError("");
+  };
+
+  React.useEffect(() => {
+    if (!visible) return;
+    setPassword("");
+    setPattern([]);
+    setShowPassword(false);
+    setError("");
+  }, [visible, folderId, lockType]);
+
+  const finishUnlock = async (credential: string) => {
+    const result = await unlock.mutateAsync({ id: folderId, password: credential });
+    setToken(folderId, result.token, result.expiresIn);
+    haptics.success();
+    reset();
+    onUnlocked();
+  };
+
   const submit = async () => {
     setError("");
-    if (!password) {
-      setError("Enter the folder password.");
+    const credential = lockType === "pattern" ? pattern.join("-") : password;
+    if (!credential || (lockType === "pattern" && pattern.length < 4)) {
+      setError(lockType === "pattern" ? "Connect at least 4 dots." : `Enter the folder ${lockType === "pin" ? "PIN" : "password"}.`);
       return;
     }
     try {
-      const res = await unlock.mutateAsync({ id: folderId, password });
-      setToken(folderId, res.token, res.expiresIn);
-      haptics.success();
-      setPassword("");
-      setShowPassword(false);
-      onUnlocked();
-    } catch (e) {
+      await finishUnlock(credential);
+    } catch (cause) {
       haptics.error();
-      setError(errorMessage(e, "That password is incorrect."));
+      setError(errorMessage(cause, lockType === "pin" ? "That PIN is incorrect." : "That password is incorrect."));
+    }
+  };
+
+  const submitDeviceLock = async () => {
+    setError("");
+    let credential: string | null;
+    try {
+      credential = await getDeviceLockCredential(folderId);
+    } catch {
+      setError("Device authentication was cancelled or unsuccessful.");
+      return;
+    }
+    if (!credential) {
+      setError("This device no longer has the folder key. Remove the lock with your account password.");
+      return;
+    }
+    try {
+      await finishUnlock(credential);
+    } catch (cause) {
+      setError(errorMessage(cause));
     }
   };
 
   const close = () => {
-    setPassword("");
-    setShowPassword(false);
-    setError("");
+    reset();
     onDismiss();
   };
+
+  const methodName = lockType === "pin" ? "PIN" : lockType === "pattern" ? "pattern" : "password";
 
   return (
     <FloatingPanel visible={visible} onDismiss={close}>
       <PanelHeader
+        icon={lockType === "device" ? "finger-print-outline" : "lock-open-outline"}
         title="Unlock folder"
-        subtitle={`Enter the password to unlock${folderName ? ` ${folderName}` : ""}.`}
+        subtitle={
+          lockType === "device"
+            ? `Use your device lock to unlock${folderName ? ` ${folderName}` : " this folder"}.`
+            : `Enter the ${methodName} to unlock${folderName ? ` ${folderName}` : ""}.`
+        }
       />
-      <Input
-        label="Password"
-        value={password}
-        onChangeText={setPassword}
-        placeholder="Folder password"
-        secureTextEntry={!showPassword}
-        autoFocus
-        error={error || undefined}
-        onSubmitEditing={submit}
-        rightAccessory={<EyeToggle visible={showPassword} onPress={() => setShowPassword((value) => !value)} />}
-      />
-      <View style={{ height: spacing[20] }} />
-      <Button label="Unlock" block size="lg" onPress={submit} loading={unlock.isPending} />
+      {lockType === "device" ? (
+        <Button label="Use device lock" block size="lg" onPress={submitDeviceLock} loading={unlock.isPending} />
+      ) : lockType === "pattern" ? (
+        <PatternInput value={pattern} onChange={setPattern} />
+      ) : (
+        <Input
+          label={lockType === "pin" ? "PIN" : "Password"}
+          value={password}
+          onChangeText={(value) => setPassword(lockType === "pin" ? value.replace(/\D/g, "").slice(0, 12) : value)}
+          placeholder={lockType === "pin" ? "4 to 12 digits" : "Folder password"}
+          keyboardType={lockType === "pin" ? "number-pad" : "default"}
+          secureTextEntry={!showPassword}
+          autoFocus
+          error={error || undefined}
+          onSubmitEditing={submit}
+          rightAccessory={<EyeToggle visible={showPassword} onPress={() => setShowPassword((value) => !value)} />}
+        />
+      )}
+      {(lockType === "pattern" || lockType === "device") && error ? (
+        <Text variant="footnote" color="danger" align="center">{error}</Text>
+      ) : null}
+      {lockType !== "device" ? (
+        <>
+          <View style={{ height: spacing[20] }} />
+          <Button label="Unlock" block size="lg" onPress={submit} loading={unlock.isPending} />
+        </>
+      ) : null}
       <View style={{ height: spacing[10] }} />
       <Button label="Cancel" variant="ghost" block onPress={close} />
     </FloatingPanel>
