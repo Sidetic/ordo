@@ -1,11 +1,13 @@
 /**
  * Map an error to a human-readable message. Never leaks raw error objects.
+ *
+ * Prefer the server message for codes where the server is specific
+ * (wrong password vs wrong login, validation details, size limits).
  */
 import { ApiClientError, LOCAL_ERROR } from "./api/client";
 import { ErrorCode } from "@ordo/shared";
 
 const FRIENDLY: Record<string, string> = {
-  [ErrorCode.INVALID_CREDENTIALS]: "Incorrect email or password",
   [ErrorCode.EMAIL_ALREADY_EXISTS]: "An account with this email already exists.",
   [ErrorCode.EMAIL_NOT_VERIFIED]: "Please verify your email before signing in.",
   [ErrorCode.INVALID_VERIFICATION_TOKEN]: "This verification code is invalid or has expired.",
@@ -16,17 +18,23 @@ const FRIENDLY: Record<string, string> = {
   [ErrorCode.MFA_REQUIRED]: "Enter your authenticator or backup code.",
   [ErrorCode.MFA_ENROLLMENT_REQUIRED]: "Set up an authenticator app to continue.",
   [ErrorCode.MFA_INVALID]: "That code is incorrect or has expired.",
-  [ErrorCode.AVATAR_TOO_LARGE]: "That image is too large.",
   [ErrorCode.AVATAR_UNSUPPORTED_TYPE]: "Use a JPEG, PNG, or WebP image.",
   [ErrorCode.AVATAR_ANIMATED_DISABLED]: "Animated images are disabled on this server.",
   [ErrorCode.AVATAR_NOT_FOUND]: "No profile picture yet.",
   [ErrorCode.FOLDER_NOT_FOUND]: "This folder no longer exists.",
   [ErrorCode.FOLDER_PROTECTED]: "This folder is locked.",
+  [ErrorCode.FOLDER_TOKEN_EXPIRED]: "Folder access expired. Unlock it again.",
   [ErrorCode.INVALID_FOLDER_PASSWORD]: "That password is incorrect.",
   [ErrorCode.BOOKMARK_NOT_FOUND]: "This bookmark no longer exists.",
-  [ErrorCode.VALIDATION_ERROR]: "Please check your input and try again.",
+  [ErrorCode.FETCH_FAILED]: "Couldn't load that page.",
+  [ErrorCode.NOT_FOUND]: "That item wasn't found.",
+  [ErrorCode.FORBIDDEN]: "You don't have access to that.",
+  [ErrorCode.CONFLICT]: "That change couldn't be saved.",
   [ErrorCode.RATE_LIMITED]: "Too many requests. Please wait a moment.",
   [ErrorCode.INTERNAL_ERROR]: "Something went wrong on the server.",
+  [ErrorCode.VALIDATION_ERROR]: "Please check your input.",
+  [ErrorCode.INVALID_CREDENTIALS]: "Incorrect email or password.",
+  [ErrorCode.AVATAR_TOO_LARGE]: "That image is too large.",
 };
 
 export function errorMessage(err: unknown, fallback = "Something went wrong."): string {
@@ -37,10 +45,9 @@ export function errorMessage(err: unknown, fallback = "Something went wrong."): 
     if (err.status === 0 || err.code === LOCAL_ERROR.NETWORK) {
       return "Couldn't reach the server. Check your connection.";
     }
-    if (err.code === ErrorCode.RATE_LIMITED && err.message) {
-      return err.message;
-    }
-    return FRIENDLY[err.code] || err.message || fallback;
+    // Prefer the server message so specific copy (wrong password vs login,
+    // "session not found", "this folder is not locked") is not overwritten.
+    return err.message || FRIENDLY[err.code] || fallback;
   }
   if (err instanceof Error && err.message) return err.message;
   return fallback;

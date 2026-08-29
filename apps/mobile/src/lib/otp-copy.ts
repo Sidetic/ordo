@@ -9,7 +9,7 @@ export function otpRequestFooter(
 ): string {
   if (smtpConfigured === false) {
     return kind === "email-change"
-      ? "This server has no SMTP. The code will be printed in the server console."
+      ? "This server isn't sending mail. The code will be printed in the server console."
       : "If an account exists, the reset code will be printed in the server console.";
   }
   return kind === "email-change"
