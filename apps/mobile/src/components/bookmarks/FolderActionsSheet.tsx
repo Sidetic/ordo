@@ -143,7 +143,6 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     invalidateBookmarks();
     haptics.success();
     toast.success("Password removed");
-    setMfaOpen(false);
     onDismiss();
   };
 
@@ -200,7 +199,6 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
   };
 
   return (
-    <>
     <FloatingPanel visible={visible && !!folder} onDismiss={onDismiss}>
       {folder && mode === "menu" ? (
         <>
@@ -370,7 +368,6 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
         </ScrollView>
       ) : null}
     </FloatingPanel>
-    </>
   );
 }
 
