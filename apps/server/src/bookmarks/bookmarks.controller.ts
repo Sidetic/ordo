@@ -28,6 +28,7 @@ import {
   type AuthContext,
 } from "../common/decorators/current-user.decorator.js";
 import { getFolderToken } from "../common/utils/request.js";
+import { getFolderTokens } from "../common/utils/folder-tokens.js";
 import { BookmarksService } from "./bookmarks.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
 import { RateLimit } from "../common/rate-limit/rate-limit.decorator.js";
@@ -73,6 +74,7 @@ export class BookmarksController {
       limit: limit ? parseInt(limit, 10) : undefined,
       scopeAll: scope === "all",
       tagIds: this.parseTagIds(rawTagIds),
+      folderTokens: getFolderTokens(req),
     });
   }
 
@@ -83,11 +85,13 @@ export class BookmarksController {
     @Query("cursor") cursor: string | undefined,
     @Query("limit") limit: string | undefined,
     @Query("tagIds") rawTagIds: string | undefined,
+    @Req() req: Request,
   ): Promise<CursorPage<BookmarkDto>> {
     return this.bookmarks.search(user.userId, q ?? "", {
       cursor,
       limit: limit ? parseInt(limit, 10) : undefined,
       tagIds: this.parseTagIds(rawTagIds),
+      folderTokens: getFolderTokens(req),
     });
   }
 

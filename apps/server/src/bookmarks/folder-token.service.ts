@@ -71,4 +71,15 @@ export class FolderTokenService {
     }
     return true;
   }
+
+  /** Resolve which folder IDs the given (untrusted) tokens validly unlock. */
+  async resolveFolderIds(tokens: readonly string[]): Promise<string[]> {
+    if (tokens.length === 0) return [];
+    const records = await this.prisma.folderToken.findMany({
+      where: { tokenHash: { in: [...new Set(tokens)].map((t) => this.tokens.hash(t)) } },
+      select: { folderId: true, expiresAt: true },
+    });
+    const now = new Date();
+    return [...new Set(records.filter((r) => r.expiresAt >= now).map((r) => r.folderId))];
+  }
 }

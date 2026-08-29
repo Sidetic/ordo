@@ -11,15 +11,28 @@ import {
 import { AppError } from "../common/errors/app-error.js";
 import { toTagDto } from "../common/mappers.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { FolderAccessService } from "./folder-access.service.js";
 
 @Injectable()
 export class TagsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly access: FolderAccessService,
+  ) {}
 
-  async list(userId: string): Promise<TagDto[]> {
+  /** Tags with visible bookmark counts: protected-folder assignments are
+   *  excluded unless one of the presented unlock tokens opens the folder. */
+  async list(userId: string, folderTokens: readonly string[] = []): Promise<TagDto[]> {
+    const authorized = await this.access.authorizedFolderIds(userId, folderTokens);
     const tags = await this.prisma.tag.findMany({
       where: { userId },
-      include: { _count: { select: { bookmarks: true } } },
+      include: {
+        _count: {
+          select: {
+            bookmarks: { where: { bookmark: this.access.visibleBookmarksFilter(authorized) } },
+          },
+        },
+      },
     });
     return tags
       .map((tag) => toTagDto(tag))

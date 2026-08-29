@@ -957,6 +957,71 @@ describe("Bookmarks & Folders (e2e)", () => {
     });
   });
 
+  describe("tag and search visibility across protected folders", () => {
+    async function lockFolder(agent: ReturnType<typeof request.agent>, name: string) {
+      const folder = await agent.post("/api/folders").send({ name }).expect(201);
+      await agent.post(`/api/folders/${folder.body.id}/password`).send({ password: "1234" }).expect(200);
+      return folder.body.id as string;
+    }
+
+    it("hides protected bookmarks from global lists and search until unlocked", async () => {
+      const { agent, userId } = await setup();
+      const secret = await lockFolder(agent, "Vault");
+      const tag = await agent.post("/api/tags").send({ name: "shared", color: "teal" }).expect(201);
+      const hidden = await ctx.prisma.bookmark.create({
+        data: { userId, folderId: secret, url: "https://example.com/secret", title: "Secret plan", domain: "example.com" },
+      });
+      await ctx.prisma.bookmarkTag.create({ data: { bookmarkId: hidden.id, tagId: tag.body.id } });
+      await ctx.prisma.bookmark.create({
+        data: { userId, folderId: null, url: "https://example.com/open", title: "Open notes", domain: "example.com" },
+      });
+
+      // no tokens: protected bookmark is absent from scope=all and search
+      const list = await agent.get("/api/bookmarks?scope=all").expect(200);
+      expect(list.body.items.map((b: { url: string }) => b.url)).toEqual(["https://example.com/open"]);
+      const search = await agent.get("/api/bookmarks/search?q=secret").expect(200);
+      expect(search.body.items).toHaveLength(0);
+      const tagList = await agent.get("/api/tags").expect(200);
+      expect(tagList.body[0].bookmarkCount).toBe(0);
+
+      // unlock and replay with the plural token header
+      const unlocked = await agent
+        .post(`/api/folders/${secret}/unlock`)
+        .send({ password: "1234" })
+        .expect(200);
+      const token: string = unlocked.body.token;
+      const list2 = await agent.get("/api/bookmarks?scope=all").set("x-folder-tokens", token).expect(200);
+      expect(list2.body.items).toHaveLength(2);
+      const search2 = await agent
+        .get("/api/bookmarks/search?q=secret")
+        .set("x-folder-tokens", unlocked.body.token)
+        .expect(200);
+      expect(search2.body.items).toHaveLength(1);
+      const tagList2 = await agent.get("/api/tags").set("x-folder-tokens", unlocked.body.token).expect(200);
+      expect(tagList2.body[0].bookmarkCount).toBe(1);
+    });
+
+    it("ignores tokens that belong to another user's folders", async () => {
+      const { agent, userId } = await setup();
+      const other = await registerUser(ctx.app, "vault-owner@ordo.app");
+      const foreignFolder = await ctx.prisma.folder.create({
+        data: { userId: other.user.id, name: "Foreign", passwordHash: "x" },
+      });
+      const bookmark = await ctx.prisma.bookmark.create({
+        data: { userId, folderId: null, url: "https://example.com/mine", title: "Mine", domain: "example.com" },
+      });
+      expect(bookmark.id).toBeTruthy();
+      expect(foreignFolder.id).toBeTruthy();
+
+      // a validly-shaped but foreign token must not unlock anything
+      const res = await agent
+        .get("/api/bookmarks?scope=all")
+        .set("x-folder-tokens", "not-a-real-token")
+        .expect(200);
+      expect(res.body.items).toHaveLength(1);
+    });
+  });
+
   describe("search", () => {
     it("searches across all of the user's bookmarks, filed and unfiled", async () => {
       const { agent, userId } = await setup();

@@ -109,18 +109,25 @@ export class BookmarksService implements OnApplicationBootstrap {
     return toBookmarkDto(bookmark);
   }
 
-  /** List a folder's bookmarks; a null folder lists only unfiled bookmarks. */
+  /** List a folder's bookmarks; a null folder lists only unfiled bookmarks.
+   *  `scope=all` spans the whole library, hiding protected-folder bookmarks
+   *  unless one of the presented unlock tokens opens them. */
   async list(
     userId: string,
     folder: Folder | null,
-    opts: { cursor?: string; limit?: number; scopeAll?: boolean; tagIds?: string[] },
+    opts: { cursor?: string; limit?: number; scopeAll?: boolean; tagIds?: string[]; folderTokens?: string[] },
   ): Promise<CursorPage<BookmarkDto>> {
     const tagIds = opts.tagIds ?? [];
     await this.tags.requireOwnedIds(userId, tagIds);
+    const authorized = opts.scopeAll
+      ? await this.access.authorizedFolderIds(userId, opts.folderTokens ?? [])
+      : [];
     return this.paginate(
       {
         userId,
-        ...(opts.scopeAll ? {} : { folderId: folder ? folder.id : null }),
+        ...(opts.scopeAll
+          ? this.access.visibleBookmarksFilter(authorized)
+          : { folderId: folder ? folder.id : null }),
         ...this.tagFilter(tagIds),
       },
       opts.cursor,
@@ -132,14 +139,16 @@ export class BookmarksService implements OnApplicationBootstrap {
   async search(
     userId: string,
     q: string,
-    opts: { cursor?: string; limit?: number; tagIds?: string[] },
+    opts: { cursor?: string; limit?: number; tagIds?: string[]; folderTokens?: string[] },
   ): Promise<CursorPage<BookmarkDto>> {
     const term = q.trim();
     const tagIds = opts.tagIds ?? [];
     await this.tags.requireOwnedIds(userId, tagIds);
+    const authorized = await this.access.authorizedFolderIds(userId, opts.folderTokens ?? []);
     const where: Prisma.BookmarkWhereInput = {
       userId,
       AND: [
+        this.access.visibleBookmarksFilter(authorized),
         {
           OR: [
             { title: { contains: term } },

@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import type { Request } from "express";
 import {
   CreateTagSchema,
   UpdateTagSchema,
@@ -9,6 +10,7 @@ import {
 import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser, type AuthContext } from "../common/decorators/current-user.decorator.js";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe.js";
+import { getFolderTokens } from "../common/utils/folder-tokens.js";
 import { TagsService } from "./tags.service.js";
 
 @UseGuards(AuthGuard)
@@ -17,8 +19,11 @@ export class TagsController {
   constructor(private readonly tags: TagsService) {}
 
   @Get()
-  list(@CurrentUser() user: AuthContext): Promise<TagDto[]> {
-    return this.tags.list(user.userId);
+  list(
+    @CurrentUser() user: AuthContext,
+    @Req() req: Request,
+  ): Promise<TagDto[]> {
+    return this.tags.list(user.userId, getFolderTokens(req));
   }
 
   @Post()

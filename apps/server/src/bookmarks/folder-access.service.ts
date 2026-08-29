@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { Folder } from "@prisma/client";
+import type { Folder, Prisma } from "@prisma/client";
 import { ErrorCode } from "@ordo/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { AppError } from "../common/errors/app-error.js";
@@ -46,5 +46,35 @@ export class FolderAccessService {
       throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "This folder no longer exists.");
     }
     return folder;
+  }
+
+  /**
+   * Folder IDs the given unlock tokens validly open for this user. Tokens are
+   * untrusted input: they are hashed, checked for expiry, and scoped to folders
+   * actually owned by the user.
+   */
+  async authorizedFolderIds(userId: string, tokens: readonly string[]): Promise<string[]> {
+    const unlocked = await this.folderTokens.resolveFolderIds(tokens);
+    if (unlocked.length === 0) return [];
+    const owned = await this.prisma.folder.findMany({
+      where: { userId, id: { in: unlocked } },
+      select: { id: true },
+    });
+    return owned.map((f) => f.id);
+  }
+
+  /**
+   * Bookmark filter matching every bookmark the user may see in global
+   * contexts: unfiled, in unprotected folders, or in folders unlocked by the
+   * presented tokens. Protected-folder content stays hidden until unlocked.
+   */
+  visibleBookmarksFilter(authorizedFolderIds: string[]): Prisma.BookmarkWhereInput {
+    return {
+      OR: [
+        { folderId: null },
+        { folder: { passwordHash: null } },
+        { folderId: { in: authorizedFolderIds } },
+      ],
+    };
   }
 }
