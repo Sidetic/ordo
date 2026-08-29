@@ -18,8 +18,7 @@ import {
   removeBookmarkFromPages,
   updateBookmarkEverywhere,
   updateBookmarkInPages,
-} from "../lib/cache-helpers";
-import {
+} from "../lib/cache-helpers";import {
   DEFAULT_PAGE_SIZE,
   type BookmarkDetailDto,
   type BookmarkDto,
@@ -62,11 +61,11 @@ export function useInfiniteBookmarks(folderId: string | null, enabled = true) {
   });
 }
 
-export function useInfiniteSearch(q: string) {
+export function useInfiniteSearch(q: string, tagIds: readonly string[] = []) {
   return useInfiniteQuery({
-    queryKey: qk.search(q),
+    queryKey: qk.search(q, tagIds),
     queryFn: ({ pageParam }) =>
-      bookmarksApi.search(q, pageParam ?? undefined, DEFAULT_PAGE_SIZE),
+      bookmarksApi.search(q, pageParam ?? undefined, DEFAULT_PAGE_SIZE, [...tagIds]),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor : undefined),
     enabled: q.trim().length > 0,
@@ -90,11 +89,14 @@ export function useBookmarkDetail(id: string, enabled = true, folderId?: string 
 export function useCreateBookmark() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ url, folderId }: { url: string; folderId: string | null }) =>
-      bookmarksApi.create(url, folderId),
+    mutationFn: ({ url, folderId, tagIds = [] }: { url: string; folderId: string | null; tagIds?: string[] }) =>
+      bookmarksApi.create(url, folderId, tagIds),
     onSuccess: (bookmark) => {
       prependBookmarkToPages(qc, qk.bookmarks(bookmark.folderId), bookmark);
       bumpFolderCount(bookmark.folderId, +1, bookmark.isRead ? 0 : +1);
+      if (bookmark.tags.length > 0) {
+        void qc.invalidateQueries({ queryKey: ["tags"] });
+      }
     },
   });
 }
@@ -114,6 +116,10 @@ export function useToggleRead(folderId: string | null) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(qk.bookmarks(folderId), ctx.prev);
       if (ctx?.prevFolders) qc.setQueryData(qk.folders, ctx.prevFolders);
+    },
+    onSuccess: (updated) => {
+      // Reconcile every other view (tag lists, search, detail) with the server.
+      updateBookmarkEverywhere(qc, updated.id, (bookmark) => ({ ...bookmark, ...updated }));
     },
   });
 }
@@ -149,6 +155,12 @@ export function useDeleteBookmark(folderId: string | null) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(qk.bookmarks(folderId), ctx.prev);
       if (ctx?.prevFolders) qc.setQueryData(qk.folders, ctx.prevFolders);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["tags"] });
+      // Tag-filtered and search lists may have contained the deleted row.
+      void qc.invalidateQueries({ queryKey: ["bookmarks", "tagged"] });
+      void qc.invalidateQueries({ queryKey: ["bookmarks", "search"] });
     },
   });
 }

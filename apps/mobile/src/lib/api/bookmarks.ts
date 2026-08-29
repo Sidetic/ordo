@@ -12,10 +12,10 @@ export interface ListBookmarksParams {
 }
 
 export const bookmarksApi = {
-  create: (url: string, folderId: string | null) =>
+  create: (url: string, folderId: string | null, tagIds: string[] = []) =>
     api.post<typeof BookmarkRoutes.create.response>(
       BookmarkRoutes.create.path,
-      { url, folderId },
+      { url, folderId, tagIds },
       { folderId },
     ),
 
@@ -25,10 +25,28 @@ export const bookmarksApi = {
       folderId,
     }),
 
-  search: (q: string, cursor?: string | null, limit?: number) =>
+  /** Whole-library list filtered by tags (AND semantics). */
+  listTagged: (tagIds: string[], cursor?: string | null, limit?: number) =>
+    api.get<typeof BookmarkRoutes.list.response>(BookmarkRoutes.list.path, {
+      query: {
+        scope: "all",
+        tagIds: tagIds.length > 0 ? tagIds.join(",") : undefined,
+        cursor,
+        limit,
+      },
+      folderTokens: true,
+    }),
+
+  search: (q: string, cursor?: string | null, limit?: number, tagIds: string[] = []) =>
     api.get<typeof BookmarkRoutes.search.response>(BookmarkRoutes.search.path, {
-      query: { q, cursor, limit },
+      query: {
+        q,
+        cursor,
+        limit,
+        tagIds: tagIds.length > 0 ? tagIds.join(",") : undefined,
+      },
       auth: true,
+      folderTokens: true,
     }),
 
   detail: (id: string, folderId?: string | null) =>
@@ -51,6 +69,18 @@ export const bookmarksApi = {
   remove: (id: string, opts?: { folderId?: string | null }) =>
     api.delete<typeof BookmarkRoutes.remove.response>(
       buildPath(BookmarkRoutes.remove.path, { id }),
+      opts,
+    ),
+
+  /** Atomically replace a bookmark's tags and dismiss the given suggestions. */
+  updateTags: (
+    id: string,
+    body: { tagIds: string[]; dismissedSuggestionIds?: string[] },
+    opts?: { folderId?: string | null },
+  ) =>
+    api.put<typeof BookmarkRoutes.updateTags.response>(
+      buildPath(BookmarkRoutes.updateTags.path, { id }),
+      { tagIds: body.tagIds, dismissedSuggestionIds: body.dismissedSuggestionIds ?? [] },
       opts,
     ),
 
