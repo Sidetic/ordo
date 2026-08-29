@@ -65,6 +65,13 @@ export default function SettingsScreen() {
             showChevron
           />
           <SettingRow
+            icon="swap-horizontal-outline"
+            label="Data"
+            description="Import and export bookmarks"
+            onPress={() => router.push("/settings/data")}
+            showChevron
+          />
+          <SettingRow
             icon="information-circle-outline"
             label="About"
             description="Version, updates, and project links"

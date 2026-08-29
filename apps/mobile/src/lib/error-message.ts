@@ -27,6 +27,8 @@ const FRIENDLY: Record<string, string> = {
   [ErrorCode.INVALID_FOLDER_PASSWORD]: "That password is incorrect.",
   [ErrorCode.BOOKMARK_NOT_FOUND]: "This bookmark no longer exists.",
   [ErrorCode.FETCH_FAILED]: "Couldn't load that page.",
+  [ErrorCode.TAG_NOT_FOUND]: "This tag no longer exists.",
+  [ErrorCode.TAG_ALREADY_EXISTS]: "A tag with this name already exists.",
   [ErrorCode.NOT_FOUND]: "That item wasn't found.",
   [ErrorCode.FORBIDDEN]: "You don't have access to that.",
   [ErrorCode.CONFLICT]: "That change couldn't be saved.",
@@ -35,6 +37,11 @@ const FRIENDLY: Record<string, string> = {
   [ErrorCode.VALIDATION_ERROR]: "Please check your input.",
   [ErrorCode.INVALID_CREDENTIALS]: "Incorrect email or password.",
   [ErrorCode.AVATAR_TOO_LARGE]: "That image is too large.",
+  [ErrorCode.IMPORT_NOT_FOUND]: "This import no longer exists.",
+  [ErrorCode.IMPORT_INVALID_STATE]: "This import can't be confirmed again.",
+  [ErrorCode.IMPORT_FILE_TOO_LARGE]: "That file is too large to import.",
+  [ErrorCode.IMPORT_UNSUPPORTED_FORMAT]: "Use an Ordo, HTML, or CSV bookmark export.",
+  [ErrorCode.IMPORT_PARSE_FAILED]: "That file couldn't be read.",
 };
 
 export function errorMessage(err: unknown, fallback = "Something went wrong."): string {

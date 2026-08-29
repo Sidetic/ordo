@@ -18,6 +18,7 @@ import {
   DEVICE_NAME_HEADER,
   DEVICE_TYPE_HEADER,
   FOLDER_TOKEN_HEADER,
+  FOLDER_TOKENS_HEADER,
   REFRESH_TOKEN_HEADER,
   type ApiError,
   type SessionDeviceType,
@@ -82,6 +83,12 @@ export interface RequestOptions<B = unknown> {
   auth?: boolean;
   /** If set (non-null), attach the cached folder unlock token for this folder (if any). */
   folderId?: string | null;
+  /** If true, attach every cached folder unlock token (global tag/search scope). */
+  folderTokens?: boolean;
+  /** Extra headers merged into the request (e.g. x-folder-tokens). */
+  headers?: Record<string, string>;
+  /** Per-attempt timeout override in ms (large transfers). */
+  timeoutMs?: number;
   signal?: AbortSignal;
 }
 
@@ -114,12 +121,12 @@ async function parseError(res: Response): Promise<ApiClientError> {
 }
 
 /** Lowest-level fetch: no interceptors, just normalised errors. */
-async function rawFetch(url: string, init: RequestInit): Promise<Response> {
-  const timeout = createTimeoutSignal(REQUEST_TIMEOUT_MS);
+async function rawFetch(url: string, init: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<Response> {
+  const timeout = createTimeoutSignal(timeoutMs);
   const userSignal = init.signal;
   const signal = userSignal ? mergeAbortSignals([userSignal, timeout.signal]) : timeout.signal;
   try {
-    const res = await raceDeadline(fetch(url, { ...init, signal }), REQUEST_HARD_TIMEOUT_MS);
+    const res = await raceDeadline(fetch(url, { ...init, signal }), timeoutMs + 2_000);
     if (!res.ok) throw await parseError(res);
     return res;
   } catch (e) {
@@ -252,6 +259,7 @@ async function request<T>(
   const headers: Record<string, string> = {
     [CLIENT_TYPE_HEADER]: CLIENT_TYPE_MOBILE,
     ...deviceHeaders(),
+    ...options.headers,
   };
   if (auth && tokens?.accessToken) {
     headers.authorization = `Bearer ${tokens.accessToken}`;
@@ -259,6 +267,12 @@ async function request<T>(
   if (options.folderId) {
     const folderToken = useFolderTokenStore.getState().get(options.folderId);
     if (folderToken) headers[FOLDER_TOKEN_HEADER] = folderToken;
+  }
+  if (options.folderTokens) {
+    // Global queries span the library; send every live unlock token so
+    // protected-folder content is included only while actually unlocked.
+    const all = useFolderTokenStore.getState().liveTokens();
+    if (all.length > 0) headers[FOLDER_TOKENS_HEADER] = all.join(",");
   }
   const init: RequestInit = { method: options.method ?? "GET", headers, signal: options.signal };
   if (options.formData) {
@@ -269,12 +283,13 @@ async function request<T>(
   }
 
   const url = buildUrl(path, options.query);
+  const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
 
   try {
-    const res = await rawFetch(url, init);
+    const res = await rawFetch(url, init, timeoutMs);
     if (options.raw) return res as T;
     if (res.status === 204) return undefined as T;
-    return await raceDeadline(res.json() as Promise<T>, REQUEST_HARD_TIMEOUT_MS);
+    return await raceDeadline(res.json() as Promise<T>, timeoutMs + 2_000);
   } catch (e) {
     const err =
       e instanceof ApiClientError
@@ -311,7 +326,11 @@ export const api = {
     request<T>(path, { ...opts, method: "POST", formData }),
   patch: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
     request<T>(path, { ...opts, method: "PATCH", body }),
+  put: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
+    request<T>(path, { ...opts, method: "PUT", body }),
   delete: <T>(path: string, opts?: RequestOptions) => request<T>(path, { ...opts, method: "DELETE" }),
   getBlob: (path: string, opts?: RequestOptions) =>
     request<Response>(path, { ...opts, method: "GET", raw: true }),
+  postBlob: (path: string, body?: unknown, opts?: RequestOptions) =>
+    request<Response>(path, { ...opts, method: "POST", body, raw: true }),
 };

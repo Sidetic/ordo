@@ -31,6 +31,7 @@
     "expo-constants": "~17.0.5",
     "expo-crypto": "~14.0.2",
     "expo-device": "~7.0.3",
+    "expo-document-picker": "~13.0.3",
     "expo-file-system": "~18.0.12",
     "expo-haptics": "~14.0.1",
     "expo-image-manipulator": "~13.0.6",
