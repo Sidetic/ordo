@@ -18,10 +18,9 @@ on:
         default: 'false'
         type: boolean
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'release' }}
-
+# Concurrency is per-job, not workflow-wide. A workflow-level group would
+# cancel an in-flight APK when a later JS-only push starts OTA, leaving that
+# native fingerprint with no binary.
 jobs:
   detect:
     runs-on: ubuntu-latest
@@ -130,6 +129,9 @@ jobs:
   analyze:
     needs: detect
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    concurrency:
+      group: ci-analyze-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -167,6 +169,9 @@ jobs:
     # OTA-eligible pushes to main. Native fingerprint changes and commits
     # explicitly marked with -apk are routed to an installable APK instead.
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect.outputs.should_build != 'true') || (github.event_name == 'workflow_dispatch' && inputs.publish_ota == true)
+    concurrency:
+      group: ci-ota-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
