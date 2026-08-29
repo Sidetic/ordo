@@ -248,6 +248,15 @@ describe("PrismaService legacy schema migration", () => {
     expect(migratedUser.displayName).toBe("one");
     expect(await service.emailVerificationToken.count()).toBe(1);
 
+    const tagTables = (await service.$queryRawUnsafe(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('Tag', 'BookmarkTag', 'BookmarkTagSuggestion')`,
+    )) as Array<{ name: string }>;
+    expect(tagTables.map((table) => table.name).sort()).toEqual([
+      "BookmarkTag",
+      "BookmarkTagSuggestion",
+      "Tag",
+    ]);
+
     // indexes and foreign keys survive the rebuild
     const indexes = (await service.$queryRawUnsafe(
       `SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'Bookmark'`,
@@ -272,6 +281,7 @@ describe("PrismaService legacy schema migration", () => {
     expect(await second.bookmark.count({ where: { folderId: null } })).toBe(2);
     expect(await second.bookmark.count()).toBe(3);
     expect(await second.folder.count()).toBe(1);
+    expect(await second.tag.count()).toBe(0);
     await second.onModuleDestroy();
   });
 

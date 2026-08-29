@@ -68,6 +68,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         BOOKMARK_ADDITIVE_COLUMNS,
         await this.$queryRaw<SqliteColumn[]>(Prisma.sql`PRAGMA table_info("Bookmark")`),
       );
+      await this.addMissingColumns(
+        "Folder",
+        FOLDER_ADDITIVE_COLUMNS,
+        await this.$queryRaw<SqliteColumn[]>(Prisma.sql`PRAGMA table_info("Folder")`),
+      );
 
       // --- 3. username → displayName (drop uniqueness; keep values) ---
       await this.migrateUsernameToDisplayName(
@@ -95,6 +100,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       }
 
       await this.ensureMfaTables();
+      await this.ensureTagTables();
 
       // --- 4. fold legacy default folders into unfiled bookmarks ---
       const folderColumns = await this.$queryRaw<SqliteColumn[]>(
@@ -205,6 +211,27 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     );
   }
 
+  private async ensureTagTables(): Promise<void> {
+    await this.$executeRawUnsafe(TAG_DDL);
+    await this.$executeRawUnsafe(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "Tag_userId_normalizedName_key" ON "Tag"("userId", "normalizedName")`,
+    );
+    await this.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "Tag_userId_idx" ON "Tag"("userId")`,
+    );
+    await this.$executeRawUnsafe(BOOKMARK_TAG_DDL);
+    await this.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "BookmarkTag_tagId_idx" ON "BookmarkTag"("tagId")`,
+    );
+    await this.$executeRawUnsafe(BOOKMARK_TAG_SUGGESTION_DDL);
+    await this.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "BookmarkTagSuggestion_tagId_idx" ON "BookmarkTagSuggestion"("tagId")`,
+    );
+    await this.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "BookmarkTagSuggestion_bookmarkId_status_idx" ON "BookmarkTagSuggestion"("bookmarkId", "status")`,
+    );
+  }
+
   /**
    * SQLite cannot alter a NOT NULL constraint in place, so Bookmark is
    * recreated with an identical shape except `folderId TEXT` (nullable).
@@ -279,6 +306,10 @@ const BOOKMARK_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: stri
   ["readingTimeMinutes", "INTEGER"],
   ["readProgress", "REAL NOT NULL DEFAULT 0"],
   ["completedAt", "DATETIME"],
+];
+
+const FOLDER_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: string]> = [
+  ["lockType", "TEXT"],
 ];
 
 /** Columns added to pre-existing User tables at runtime. */
@@ -369,4 +400,38 @@ CREATE TABLE IF NOT EXISTS "MfaChallenge" (
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "MfaChallenge_tokenHash_key" UNIQUE ("tokenHash"),
     CONSTRAINT "MfaChallenge_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+)`;
+
+const TAG_DDL = `
+CREATE TABLE IF NOT EXISTS "Tag" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "normalizedName" TEXT NOT NULL,
+    "color" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Tag_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+)`;
+
+const BOOKMARK_TAG_DDL = `
+CREATE TABLE IF NOT EXISTS "BookmarkTag" (
+    "bookmarkId" TEXT NOT NULL,
+    "tagId" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ("bookmarkId", "tagId"),
+    CONSTRAINT "BookmarkTag_bookmarkId_fkey" FOREIGN KEY ("bookmarkId") REFERENCES "Bookmark" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "BookmarkTag_tagId_fkey" FOREIGN KEY ("tagId") REFERENCES "Tag" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+)`;
+
+const BOOKMARK_TAG_SUGGESTION_DDL = `
+CREATE TABLE IF NOT EXISTS "BookmarkTagSuggestion" (
+    "bookmarkId" TEXT NOT NULL,
+    "tagId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    PRIMARY KEY ("bookmarkId", "tagId"),
+    CONSTRAINT "BookmarkTagSuggestion_bookmarkId_fkey" FOREIGN KEY ("bookmarkId") REFERENCES "Bookmark" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "BookmarkTagSuggestion_tagId_fkey" FOREIGN KEY ("tagId") REFERENCES "Tag" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 )`;
