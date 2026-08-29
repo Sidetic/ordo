@@ -24,14 +24,14 @@ export class FolderAccessService {
   ): Promise<Folder> {
     const folder = await this.prisma.folder.findFirst({ where: { id: folderId, userId } });
     if (!folder) {
-      throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "Folder not found");
+      throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "This folder no longer exists.");
     }
     if (folder.passwordHash) {
       const ok = folderToken ? await this.folderTokens.verify(folder.id, folderToken) : false;
       if (!ok) {
         throw new AppError(
           ErrorCode.FOLDER_PROTECTED,
-          "This folder is locked — unlock it to continue",
+          "This folder is locked.",
         );
       }
     }
@@ -43,7 +43,7 @@ export class FolderAccessService {
   async loadOwned(folderId: string, userId: string): Promise<Folder> {
     const folder = await this.prisma.folder.findFirst({ where: { id: folderId, userId } });
     if (!folder) {
-      throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "Folder not found");
+      throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "This folder no longer exists.");
     }
     return folder;
   }

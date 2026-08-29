@@ -36,7 +36,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       status = HttpStatus.PAYLOAD_TOO_LARGE;
       payload = {
         code: ErrorCode.AVATAR_TOO_LARGE,
-        message: "This image is too large",
+        message: "That image is too large.",
       };
     } else if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -46,7 +46,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.error(`Unhandled error at ${path}`, (exception as Error)?.stack ?? exception);
       payload = {
         code: ErrorCode.INTERNAL_ERROR,
-        message: "Something went wrong on our end",
+        message: "Something went wrong on the server.",
       };
     }
 

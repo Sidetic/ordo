@@ -29,19 +29,19 @@ export class AvatarService {
 
   async upload(userId: string, file: { buffer: Buffer; mimetype?: string; size: number }): Promise<UserDto> {
     if (!file?.buffer?.length) {
-      throw new AppError(ErrorCode.VALIDATION_ERROR, "Choose an image to upload");
+      throw new AppError(ErrorCode.VALIDATION_ERROR, "Choose an image to upload.");
     }
     if (file.size > this.cfg.profilePictureMaxBytes || file.buffer.length > this.cfg.profilePictureMaxBytes) {
       throw new AppError(
         ErrorCode.AVATAR_TOO_LARGE,
-        `Profile pictures must be ${Math.round(this.cfg.profilePictureMaxBytes / (1024 * 1024))} MB or smaller`,
+        `Profile pictures must be ${Math.round(this.cfg.profilePictureMaxBytes / (1024 * 1024))} MB or smaller.`,
       );
     }
     const kind = sniffImage(file.buffer);
     if (!kind) {
       throw new AppError(
         ErrorCode.AVATAR_UNSUPPORTED_TYPE,
-        "Use a JPEG, PNG, or WebP image",
+        "Use a JPEG, PNG, or WebP image.",
       );
     }
 
@@ -51,7 +51,7 @@ export class AvatarService {
     } catch (err) {
       if (err instanceof AppError) throw err;
       this.logger.warn(`Avatar decode failed: ${(err as Error).message}`);
-      throw new AppError(ErrorCode.AVATAR_UNSUPPORTED_TYPE, "Use a JPEG, PNG, or WebP image");
+      throw new AppError(ErrorCode.AVATAR_UNSUPPORTED_TYPE, "Use a JPEG, PNG, or WebP image.");
     }
 
     const now = new Date();
@@ -130,7 +130,7 @@ export class AvatarService {
     if (pages > 1 && !this.cfg.avatarAllowAnimated) {
       throw new AppError(
         ErrorCode.AVATAR_ANIMATED_DISABLED,
-        "Animated images are disabled on this server",
+        "Animated images are disabled on this server.",
       );
     }
     const keepAnimation = pages > 1 && this.cfg.avatarAllowAnimated;

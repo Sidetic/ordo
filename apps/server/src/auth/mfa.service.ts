@@ -149,7 +149,7 @@ export class MfaService {
       orderBy: { createdAt: "desc" },
     });
     if (!pending || pending.expiresAt < new Date() || !pending.payload) {
-      throw new AppError(ErrorCode.MFA_INVALID, "Start authenticator setup again");
+      throw new AppError(ErrorCode.MFA_INVALID, "Start authenticator setup again.");
     }
     const secret = OTPAuth.Secret.fromBase32(decryptSecret(pending.payload, this.totpKey));
     if (!this.validTotp(user.email, secret, code)) {
@@ -180,7 +180,7 @@ export class MfaService {
   async disableTotp(userId: string, mfaCode: string): Promise<User> {
     const user = await this.requireUser(userId);
     if (!this.isEnabled(user)) {
-      throw new AppError(ErrorCode.VALIDATION_ERROR, "Authenticator app is not enabled");
+      throw new AppError(ErrorCode.VALIDATION_ERROR, "Authenticator is not enabled.");
     }
     await this.assertStepUp(user, mfaCode);
     return this.disableMfa(userId);
@@ -189,7 +189,7 @@ export class MfaService {
   async regenerateBackupCodes(userId: string, mfaCode: string): Promise<string[]> {
     const user = await this.requireUser(userId);
     if (!this.isEnabled(user)) {
-      throw new AppError(ErrorCode.VALIDATION_ERROR, "Authenticator app is not enabled");
+      throw new AppError(ErrorCode.VALIDATION_ERROR, "Authenticator is not enabled.");
     }
     await this.assertStepUp(user, mfaCode);
     const codes = generateBackupCodes();
@@ -208,7 +208,7 @@ export class MfaService {
   async assertStepUp(user: User, mfaCode: string | undefined): Promise<void> {
     if (!this.isEnabled(user)) return;
     if (!mfaCode) {
-      throw new AppError(ErrorCode.MFA_REQUIRED, "Enter your authenticator or backup code");
+      throw new AppError(ErrorCode.MFA_REQUIRED, "Enter your authenticator or backup code.");
     }
     const ok = await this.verifyMfaCode(user, mfaCode, { consumeBackup: true });
     if (!ok) throw this.invalid();
@@ -342,18 +342,18 @@ export class MfaService {
 
   private async requireUser(userId: string): Promise<User> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
+    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found.");
     return user;
   }
 
   private invalid(): AppError {
-    return new AppError(ErrorCode.MFA_INVALID, "That code is incorrect or has expired");
+    return new AppError(ErrorCode.MFA_INVALID, "That code is incorrect or has expired.");
   }
 
   private invalidOtp(): AppError {
     return new AppError(
       ErrorCode.INVALID_VERIFICATION_TOKEN,
-      "This verification code is invalid or has expired",
+      "This verification code is invalid or has expired.",
     );
   }
 }

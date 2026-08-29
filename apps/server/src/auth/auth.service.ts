@@ -57,14 +57,14 @@ export class AuthService {
     meta: ClientMeta,
   ): Promise<AuthResponse> {
     if (!this.cfg.registrationEnabled) {
-      throw new AppError(ErrorCode.REGISTRATION_DISABLED, "Registration is disabled on this server");
+      throw new AppError(ErrorCode.REGISTRATION_DISABLED, "This server isn't accepting new sign-ups.");
     }
 
     const email = input.email.toLowerCase().trim();
     const displayName = input.displayName.trim();
     const existingEmail = await this.prisma.user.findUnique({ where: { email } });
     if (existingEmail) {
-      throw new AppError(ErrorCode.EMAIL_ALREADY_EXISTS, "An account with this email already exists");
+      throw new AppError(ErrorCode.EMAIL_ALREADY_EXISTS, "An account with this email already exists.");
     }
 
     const passwordHash = await bcrypt.hash(input.password, BCRYPT_COST);
@@ -103,12 +103,12 @@ export class AuthService {
 
     if (!user) {
       this.rateLimit.recordLoginFailure(loginKeys);
-      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email or password");
+      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email or password.");
     }
     const ok = await bcrypt.compare(input.password, user.passwordHash);
     if (!ok) {
       this.rateLimit.recordLoginFailure({ ...loginKeys, userId: user.id });
-      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email or password");
+      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect email or password.");
     }
 
     this.rateLimit.clearLogin({ accountKey: email, userId: user.id });
@@ -116,7 +116,7 @@ export class AuthService {
     if (this.cfg.emailVerificationRequired && user.emailVerifiedAt === null) {
       throw new AppError(
         ErrorCode.EMAIL_NOT_VERIFIED,
-        "Please verify your email before signing in",
+        "Please verify your email before signing in.",
       );
     }
 
@@ -152,13 +152,13 @@ export class AuthService {
 
   async refresh(refreshToken: string | null | undefined, meta?: Omit<ClientMeta, "ip">): Promise<AuthResponse> {
     if (!refreshToken) {
-      throw new AppError(ErrorCode.SESSION_REVOKED, "This session is no longer valid");
+      throw new AppError(ErrorCode.SESSION_REVOKED, "Your session has ended. Please sign in again.");
     }
     const { session, tokens } = await this.sessions.rotate(refreshToken, meta);
     const user = await this.prisma.user.findUnique({ where: { id: session.userId } });
     if (!user) {
       await this.sessions.revokeByAccessHash(tokens.accessHash).catch(() => undefined);
-      throw new AppError(ErrorCode.SESSION_REVOKED, "This session is no longer valid");
+      throw new AppError(ErrorCode.SESSION_REVOKED, "Your session has ended. Please sign in again.");
     }
     return this.buildAuthResponse(user, session, tokens);
   }
@@ -174,7 +174,7 @@ export class AuthService {
 
   async me(userId: string): Promise<UserDto> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
+    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found.");
     return toUserDto(user);
   }
 
@@ -184,7 +184,7 @@ export class AuthService {
     patch: UpdateReaderPreferencesInput,
   ): Promise<UserDto> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
+    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found.");
     const merged = { ...normalizeReaderPreferences(user.preferences), ...patch };
     const updated = await this.prisma.user.update({
       where: { id: userId },
@@ -243,21 +243,21 @@ export class AuthService {
     mfaCode?: string,
   ): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
+    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found.");
 
     const ok = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!ok) {
-      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password");
+      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password.");
     }
     await this.mfa.assertStepUp(user, mfaCode);
 
     if (newEmail === user.email) {
-      throw new AppError(ErrorCode.VALIDATION_ERROR, "New email must be different from your current email");
+      throw new AppError(ErrorCode.VALIDATION_ERROR, "New email must be different from your current email.");
     }
 
     const taken = await this.prisma.user.findUnique({ where: { email: newEmail } });
     if (taken) {
-      throw new AppError(ErrorCode.EMAIL_ALREADY_EXISTS, "An account with this email already exists");
+      throw new AppError(ErrorCode.EMAIL_ALREADY_EXISTS, "An account with this email already exists.");
     }
 
     await this.prisma.user.update({ where: { id: userId }, data: { pendingEmail: newEmail } });
@@ -275,7 +275,7 @@ export class AuthService {
     if (!user || !user.pendingEmail) {
       throw new AppError(
         ErrorCode.INVALID_VERIFICATION_TOKEN,
-        "No pending email change to verify",
+        "No pending email change to verify.",
       );
     }
     const record = await this.matchOtp(userId, token, EMAIL_OTP_PURPOSE.EMAIL_CHANGE);
@@ -304,10 +304,10 @@ export class AuthService {
     mfaCode?: string,
   ): Promise<AuthResponse> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
+    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found.");
     const ok = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!ok) {
-      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password");
+      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password.");
     }
     await this.mfa.assertStepUp(user, mfaCode);
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
@@ -323,10 +323,10 @@ export class AuthService {
 
   async deleteAccount(userId: string, currentPassword: string, mfaCode?: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found");
+    if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found.");
     const ok = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!ok) {
-      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password");
+      throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password.");
     }
     await this.mfa.assertStepUp(user, mfaCode);
     await this.avatars.deleteStored(userId);
@@ -403,7 +403,7 @@ export class AuthService {
   private invalidOtp(): AppError {
     return new AppError(
       ErrorCode.INVALID_VERIFICATION_TOKEN,
-      "This verification code is invalid or has expired",
+      "This verification code is invalid or has expired.",
     );
   }
 

@@ -80,11 +80,11 @@ export class SessionService {
       where: { refreshTokenHash: hash },
     });
     if (!session) {
-      throw new AppError(ErrorCode.SESSION_REVOKED, "This session is no longer valid");
+      throw new AppError(ErrorCode.SESSION_REVOKED, "Your session has ended. Please sign in again.");
     }
     if (session.refreshTokenExpiresAt < new Date()) {
       await this.prisma.session.delete({ where: { id: session.id } }).catch(() => undefined);
-      throw new AppError(ErrorCode.TOKEN_EXPIRED, "Please sign in again");
+      throw new AppError(ErrorCode.TOKEN_EXPIRED, "Your session has expired.");
     }
 
     const pair = this.tokens.generatePair();
@@ -109,7 +109,7 @@ export class SessionService {
   async revoke(sessionId: string, userId: string): Promise<void> {
     const session = await this.prisma.session.findUnique({ where: { id: sessionId } });
     if (!session || session.userId !== userId) {
-      throw new AppError(ErrorCode.NOT_FOUND, "Session not found");
+      throw new AppError(ErrorCode.NOT_FOUND, "Session not found.");
     }
     await this.prisma.session.delete({ where: { id: sessionId } });
   }

@@ -33,14 +33,14 @@ export class AuthGuard implements CanActivate {
     const req = ctx.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = getAccessToken(req);
     if (!token) {
-      throw new AppError(ErrorCode.UNAUTHORIZED, "Sign in to continue");
+      throw new AppError(ErrorCode.UNAUTHORIZED, "Sign in to continue.");
     }
     const result = await this.sessions.validateAccess(token);
     if (!result) {
-      throw new AppError(ErrorCode.UNAUTHORIZED, "Sign in to continue");
+      throw new AppError(ErrorCode.UNAUTHORIZED, "Sign in to continue.");
     }
     if (result.expired) {
-      throw new AppError(ErrorCode.TOKEN_EXPIRED, "Your session has expired");
+      throw new AppError(ErrorCode.TOKEN_EXPIRED, "Your session has expired.");
     }
     req.user = { userId: result.userId, sessionId: result.sessionId };
 
@@ -57,7 +57,7 @@ export class AuthGuard implements CanActivate {
         if (!user?.totpEnabledAt) {
           throw new AppError(
             ErrorCode.MFA_ENROLLMENT_REQUIRED,
-            "Set up an authenticator app to continue",
+            "Set up an authenticator app to continue.",
           );
         }
       }

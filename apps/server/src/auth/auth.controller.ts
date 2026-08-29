@@ -391,7 +391,7 @@ export class AuthController {
     @CurrentUser() user: AuthContext,
     @UploadedFile() file?: { buffer: Buffer; size: number; mimetype: string },
   ): Promise<UserDto> {
-    if (!file) throw new AppError(ErrorCode.VALIDATION_ERROR, "Choose an image to upload");
+    if (!file) throw new AppError(ErrorCode.VALIDATION_ERROR, "Choose an image to upload.");
     return this.avatars.upload(user.userId, file);
   }
 
@@ -403,7 +403,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile | void> {
     const payload = await this.avatars.get(user.userId);
-    if (!payload) throw new AppError(ErrorCode.AVATAR_NOT_FOUND, "No profile picture");
+    if (!payload) throw new AppError(ErrorCode.AVATAR_NOT_FOUND, "No profile picture yet.");
     const etag = `"${payload.updatedAt.getTime().toString(16)}"`;
     res.setHeader("Cache-Control", "private, max-age=0, must-revalidate");
     res.setHeader("ETag", etag);
