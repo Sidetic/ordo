@@ -1,8 +1,15 @@
 /**
- * Client/UI settings store: server URL, theme mode, AMOLED and navigation preferences.
- * Persisted to AsyncStorage (non-secret). Hydrated explicitly on app start.
+ * Client/UI settings store: server URL, recent server history, theme mode,
+ * AMOLED and navigation preferences. Persisted to AsyncStorage (non-secret).
+ * Hydrated explicitly on app start.
  */
 import { create } from "zustand";
+import {
+  parseServerHistory,
+  recordServerSwitch,
+  removeServerHistoryEntry,
+  type ServerHistoryEntry,
+} from "../lib/server-history";
 import { prefsGet, prefsSet, StorageKeys } from "../lib/storage";
 import type { ThemeMode } from "../theme/theme";
 
@@ -25,10 +32,13 @@ export interface SettingsState {
   createButtonHoldAction: CreateButtonHoldAction;
   /** One-time tip: OTP is printed to the server console when SMTP is unset. */
   consoleOtpTipDismissed: boolean;
+  /** Last three servers left behind when switching. URLs only — no credentials. */
+  serverHistory: ServerHistoryEntry[];
   hydrated: boolean;
 
   hydrate: () => Promise<void>;
   setServerUrl: (url: string) => Promise<void>;
+  removeServerHistory: (url: string) => void;
   setThemeMode: (mode: ThemeMode) => void;
   setAmoled: (on: boolean) => void;
   setNavigationStyle: (style: NavigationStyle) => void;
@@ -47,6 +57,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   createButtonTapAction: "menu",
   createButtonHoldAction: "bookmark",
   consoleOtpTipDismissed: false,
+  serverHistory: [],
   hydrated: false,
 
   hydrate: async () => {
@@ -68,13 +79,21 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           ? saved.createButtonHoldAction
           : "bookmark",
       consoleOtpTipDismissed: saved?.consoleOtpTipDismissed === true,
+      serverHistory: parseServerHistory(saved?.serverHistory),
       hydrated: true,
     });
   },
 
   setServerUrl: async (url) => {
-    set({ serverUrl: url });
-    await prefsSet(StorageKeys.SETTINGS, { ...get(), serverUrl: url });
+    const previous = get().serverUrl;
+    const serverHistory = recordServerSwitch(get().serverHistory, previous, url);
+    set({ serverUrl: url, serverHistory });
+    await prefsSet(StorageKeys.SETTINGS, { ...get(), serverUrl: url, serverHistory });
+  },
+  removeServerHistory: (url) => {
+    const serverHistory = removeServerHistoryEntry(get().serverHistory, url);
+    set({ serverHistory });
+    void prefsSet(StorageKeys.SETTINGS, { ...get(), serverHistory });
   },
   setThemeMode: (mode) => {
     set({ themeMode: mode });

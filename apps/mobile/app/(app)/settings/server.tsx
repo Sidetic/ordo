@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   cancelAnimation,
@@ -17,17 +18,20 @@ import {
   SettingsPage,
   SettingsScrollView,
 } from "../../../src/components/settings/SettingsPage";
+import { ServerHistoryPanel } from "../../../src/components/settings/ServerHistoryPanel";
 import { Input } from "../../../src/components/ui/Input";
 import { Button } from "../../../src/components/ui/Button";
 import { PressableScale } from "../../../src/components/ui/PressableScale";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { ServerProbeLog } from "../../../src/components/ui/ServerProbeLog";
 import { ConfirmDialog } from "../../../src/components/ui/ConfirmDialog";
+import { Segmented } from "../../../src/components/ui/Segmented";
 import { Text } from "../../../src/components/ui/Text";
 import { toast } from "../../../src/components/ui/toast-store";
 import { useServerInfo } from "../../../src/hooks/queries";
 import { cancelProactiveRefresh } from "../../../src/lib/api/client";
 import { queryClient } from "../../../src/lib/query-client";
+import { visibleServerHistory } from "../../../src/lib/server-history";
 import {
   hostOf,
   normalizeServerUrl,
@@ -40,7 +44,14 @@ import { useSettingsStore } from "../../../src/store/settings";
 import { restartRuntime } from "../../../src/store/update-restart";
 import { useTheme } from "../../../src/theme/ThemeProvider";
 import { haptics } from "../../../src/lib/haptics";
-import { radius, spacing } from "../../../src/theme/tokens";
+import { layout, radius, spacing } from "../../../src/theme/tokens";
+
+const TABS = [
+  { value: "connection", label: "Connection" },
+  { value: "history", label: "History" },
+] as const;
+
+type ServerTab = (typeof TABS)[number]["value"];
 
 function RefreshConnectionButton({
   refreshing,
@@ -97,23 +108,41 @@ function RefreshConnectionButton({
 export default function ServerScreen() {
   const { palette } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const currentUrl = useSettingsStore((s) => s.serverUrl);
   const setServerUrl = useSettingsStore((s) => s.setServerUrl);
+  const serverHistory = useSettingsStore((s) => s.serverHistory);
+  const removeServerHistory = useSettingsStore((s) => s.removeServerHistory);
   const clearAuth = useAuthStore((s) => s.clear);
   const clearFolderTokens = useFolderTokenStore((s) => s.clearAll);
   const serverInfo = useServerInfo();
+  const [tab, setTab] = useState<ServerTab>("connection");
   const [url, setUrl] = useState(currentUrl);
   const [steps, setSteps] = useState<ProbeStep[]>([]);
   const [probing, setProbing] = useState(false);
   const [reachable, setReachable] = useState(false);
   const [rechecking, setRechecking] = useState(false);
+  const [historySteps, setHistorySteps] = useState<ProbeStep[]>([]);
+  const [historyTarget, setHistoryTarget] = useState<string | null>(null);
+  const [historyProbing, setHistoryProbing] = useState(false);
   const [confirmedUrl, setConfirmedUrl] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const historyProbeGen = useRef(0);
 
   const normalized = normalizeServerUrl(url);
   const unchanged = !normalized || normalized === normalizeServerUrl(currentUrl);
-  const canChange = !!normalized && !unchanged && reachable && !probing && !rechecking;
+  const historyBusy = historyProbing;
+  const canChange =
+    !!normalized &&
+    !unchanged &&
+    reachable &&
+    !probing &&
+    !rechecking &&
+    !historyBusy &&
+    !switching &&
+    !confirmedUrl;
+  const recents = visibleServerHistory(serverHistory, currentUrl);
 
   useEffect(() => {
     let cancelled = false;
@@ -144,16 +173,42 @@ export default function ServerScreen() {
     };
   }, [unchanged, url]);
 
-  const requestSwitch = async () => {
+  const probeCandidate = async (target: string, onSteps: (next: ProbeStep[]) => void) => {
+    const origin = normalizeServerUrl(target);
+    if (!origin || origin === normalizeServerUrl(currentUrl) || switching) return null;
+    const result = await probeServer(origin, onSteps);
+    return result.status === "up" && result.url ? result.url : null;
+  };
+
+  const requestTypedSwitch = async () => {
     if (!normalized || !canChange) return;
     setRechecking(true);
-    const result = await probeServer(normalized, setSteps);
+    const next = await probeCandidate(normalized, setSteps);
     setRechecking(false);
-    if (result.status === "up" && result.url) {
-      setConfirmedUrl(result.url);
-    } else {
-      setReachable(false);
+    if (next) setConfirmedUrl(next);
+    else setReachable(false);
+  };
+
+  const requestReconnect = async (target: string) => {
+    const origin = normalizeServerUrl(target);
+    if (!origin || origin === normalizeServerUrl(currentUrl) || switching || historyProbing || confirmedUrl) return;
+    const gen = ++historyProbeGen.current;
+    haptics.light();
+    setHistoryTarget(origin);
+    setHistoryProbing(true);
+    setHistorySteps([]);
+    const next = await probeCandidate(origin, (nextSteps) => {
+      if (historyProbeGen.current === gen) setHistorySteps(nextSteps);
+    });
+    if (historyProbeGen.current !== gen) return;
+    setHistoryProbing(false);
+    if (!next) {
+      haptics.error();
+      toast.error("That server isn't reachable.");
+      return;
     }
+    haptics.success();
+    setConfirmedUrl(next);
   };
 
   const confirmSwitch = async () => {
@@ -199,56 +254,103 @@ export default function ServerScreen() {
     void serverInfo.refetch();
   };
 
+  const selectTab = (next: ServerTab) => {
+    if (next === tab) return;
+    historyProbeGen.current += 1;
+    setHistoryTarget(null);
+    setHistoryProbing(false);
+    setHistorySteps([]);
+    setTab(next);
+  };
+
   return (
     <SettingsPage title="Server">
-      <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-        <SettingsGroup label="Current server" compact>
-          <SettingRow
-            icon={
-              serverInfo.isLoading
-                ? "sync-outline"
-                : serverInfo.data && !serverInfo.error
-                  ? "checkmark-circle-outline"
-                  : "cloud-offline-outline"
-            }
-            label={hostOf(currentUrl)}
-            description={currentUrl}
-            value={connectionValue}
-            right={
-              <RefreshConnectionButton
-                refreshing={serverInfo.isFetching}
-                onPress={refreshConnection}
-              />
-            }
-            divider={false}
-          />
-        </SettingsGroup>
+      <View
+        style={[
+          styles.tabs,
+          {
+            paddingLeft: insets.left + spacing[16],
+            paddingRight: insets.right + spacing[16],
+          },
+        ]}
+      >
+        <View style={styles.tabsInner}>
+          <Segmented options={TABS} value={tab} onChange={selectTab} />
+        </View>
+      </View>
 
-        <SettingsGroup label="Change server" footer="Switching servers signs you out and restarts Ordo.">
-          <SettingsForm style={styles.editor}>
-            <Input
-              label="Server URL"
-              value={url}
-              onChangeText={setUrl}
-              placeholder="https://ordo.example.com"
-              mono
-              keyboardType="url"
-              autoCapitalize="none"
-              autoCorrect={false}
-              icon={<Ionicons name="link" size={15} color={palette.textTertiary} />}
-            />
-            {!unchanged ? <ServerProbeLog steps={steps} probing={probing} /> : null}
-            <Button
-              label="Change server"
-              block
-              size="lg"
-              disabled={!canChange}
-              loading={rechecking}
-              onPress={() => void requestSwitch()}
-              style={styles.changeButton}
-            />
-          </SettingsForm>
-        </SettingsGroup>
+      <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+        {tab === "connection" ? (
+          <>
+            <SettingsGroup label="Current server" compact>
+              <SettingRow
+                icon={
+                  serverInfo.isLoading
+                    ? "sync-outline"
+                    : serverInfo.data && !serverInfo.error
+                      ? "checkmark-circle-outline"
+                      : "cloud-offline-outline"
+                }
+                label={hostOf(currentUrl)}
+                description={currentUrl}
+                value={connectionValue}
+                right={
+                  <RefreshConnectionButton
+                    refreshing={serverInfo.isFetching}
+                    onPress={refreshConnection}
+                  />
+                }
+                divider={false}
+              />
+            </SettingsGroup>
+
+            <SettingsGroup label="Change server" footer="Switching servers signs you out and restarts Ordo.">
+              <SettingsForm style={styles.editor}>
+                <Input
+                  label="Server URL"
+                  value={url}
+                  onChangeText={setUrl}
+                  placeholder="https://ordo.example.com"
+                  mono
+                  keyboardType="url"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  icon={<Ionicons name="link" size={15} color={palette.textTertiary} />}
+                />
+                {!unchanged ? <ServerProbeLog steps={steps} probing={probing} /> : null}
+                <Button
+                  label="Change server"
+                  block
+                  size="lg"
+                  disabled={!canChange}
+                  loading={rechecking}
+                  onPress={() => void requestTypedSwitch()}
+                  style={styles.changeButton}
+                />
+              </SettingsForm>
+            </SettingsGroup>
+          </>
+        ) : (
+          <ServerHistoryPanel
+            entries={recents}
+            probingUrl={historyTarget}
+            steps={historySteps}
+            probing={historyProbing}
+            busy={switching || rechecking || !!confirmedUrl}
+            onReconnect={(target) => void requestReconnect(target)}
+            onRemove={(target) => {
+              haptics.light();
+              removeServerHistory(target);
+              if (historyTarget === target) {
+                historyProbeGen.current += 1;
+                setHistoryTarget(null);
+                setHistoryProbing(false);
+                setHistorySteps([]);
+              }
+            }}
+            onChangeServer={() => selectTab("connection")}
+          />
+        )}
       </SettingsScrollView>
 
       <ConfirmDialog
@@ -277,6 +379,8 @@ export default function ServerScreen() {
 }
 
 const styles = StyleSheet.create({
+  tabs: { paddingTop: spacing[8], paddingBottom: spacing[4] },
+  tabsInner: { width: "100%", maxWidth: layout.maxSettingsWidth, alignSelf: "center" },
   editor: { padding: spacing[16] },
   changeButton: { marginTop: spacing[16] },
   refreshAction: {

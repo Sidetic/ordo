@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -46,11 +46,19 @@ function suffixFor(step: ProbeStep): string {
   return parts.join(" - ");
 }
 
-export function ServerProbeLog({ steps, probing }: { steps: ProbeStep[]; probing: boolean }) {
+export function ServerProbeLog({
+  steps,
+  probing,
+  style,
+}: {
+  steps: ProbeStep[];
+  probing: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
   const { palette } = useTheme();
 
   return (
-    <View style={[styles.terminal, { backgroundColor: terminalPalette.bg, borderColor: palette.border }]}>
+    <View style={[styles.terminal, { backgroundColor: terminalPalette.bg, borderColor: palette.border }, style]}>
       {steps.length === 0 ? (
         <Text style={styles.awaiting}>{"> awaiting url..."}</Text>
       ) : (

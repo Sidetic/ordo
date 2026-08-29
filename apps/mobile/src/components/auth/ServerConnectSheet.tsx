@@ -34,6 +34,8 @@ import {
   probeServer,
   type ProbeStep,
 } from "../../lib/server-probe";
+import { visibleServerHistory } from "../../lib/server-history";
+import { timeAgo } from "../../lib/format";
 
 /**
  * Change button that sits greyed-out (neutral fill + muted label) until the
@@ -126,6 +128,8 @@ export function ServerConnectSheet({
   const { palette } = useTheme();
   const currentUrl = useSettingsStore((s) => s.serverUrl);
   const setServerUrl = useSettingsStore((s) => s.setServerUrl);
+  const serverHistory = useSettingsStore((s) => s.serverHistory);
+  const recents = visibleServerHistory(serverHistory, currentUrl);
 
   const [url, setUrl] = useState(currentUrl);
   const [steps, setSteps] = useState<ProbeStep[]>([]);
@@ -223,6 +227,49 @@ export function ServerConnectSheet({
         />
       </View>
 
+      {/* Recents fill the URL so the existing health check still has to pass. */}
+      {recents.length > 0 ? (
+        <View style={styles.recents}>
+          <Text variant="label" color="tertiary">Recent</Text>
+          {recents.map((entry) => {
+            const selected = normalizeServerUrl(url) === entry.url;
+            return (
+              <PressableScale
+                key={entry.url}
+                accessibilityRole="button"
+                accessibilityLabel={`Use recent server ${hostOf(entry.url)}`}
+                disabled={confirming}
+                onPress={() => {
+                  haptics.selection();
+                  setUrl(entry.url);
+                }}
+                style={[
+                  styles.recentRow,
+                  {
+                    backgroundColor: selected ? palette.accentSoft : palette.surfaceSecondary,
+                    borderColor: selected ? palette.accent : "transparent",
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="time-outline"
+                  size={14}
+                  color={selected ? palette.accent : palette.textTertiary}
+                />
+                <View style={styles.recentCopy}>
+                  <Text variant="subhead" numberOfLines={1} color={selected ? "accent" : "primary"}>
+                    {hostOf(entry.url)}
+                  </Text>
+                  <Text variant="monoSmall" color="tertiary" numberOfLines={1}>
+                    {timeAgo(new Date(entry.lastConnectedAt).toISOString())}
+                  </Text>
+                </View>
+              </PressableScale>
+            );
+          })}
+        </View>
+      ) : null}
+
       {/* Terminal log */}
       {!isUnchanged ? (
         <ServerProbeLog steps={steps} probing={probing} />
@@ -269,6 +316,18 @@ export function ServerConnectSheet({
 const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "flex-start", gap: spacing[12] },
   headerIcon: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
+  recents: { marginTop: spacing[16], gap: spacing[8] },
+  recentRow: {
+    minHeight: 44,
+    borderWidth: 1,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing[12],
+    paddingVertical: spacing[8],
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[10],
+  },
+  recentCopy: { flex: 1, minWidth: 0 },
   currentRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: spacing[10] },
   actions: { flexDirection: "row", alignItems: "center", marginTop: spacing[20] },
   changeBtn: {
