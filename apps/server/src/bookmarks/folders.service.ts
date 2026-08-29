@@ -1,12 +1,15 @@
 import { Injectable } from "@nestjs/common";
+import bcrypt from "bcryptjs";
 import type {
   CreateFolderInput,
   FolderDto,
+  RemoveFolderPasswordInput,
   UpdateFolderInput,
 } from "@ordo/shared";
 import { ErrorCode } from "@ordo/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { AppError } from "../common/errors/app-error.js";
+import { MfaService } from "../auth/mfa.service.js";
 import { FolderTokenService } from "./folder-token.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
 import { toFolderDto } from "../common/mappers.js";
@@ -17,6 +20,7 @@ export class FoldersService {
     private readonly prisma: PrismaService,
     private readonly folderTokens: FolderTokenService,
     private readonly access: FolderAccessService,
+    private readonly mfa: MfaService,
   ) {}
 
   async list(userId: string): Promise<FolderDto[]> {
@@ -68,7 +72,7 @@ export class FoldersService {
   /** Partial metadata update: name, icon, and/or pinned. */
   async update(folderId: string, userId: string, input: UpdateFolderInput): Promise<FolderDto> {
     const folder = await this.prisma.folder.findFirst({ where: { id: folderId, userId } });
-    if (!folder) throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "Folder not found");
+    if (!folder) throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "This folder no longer exists.");
 
     const data: { name?: string; icon?: string; pinned?: boolean } = {};
     if (input.name !== undefined) data.name = input.name;
@@ -83,7 +87,7 @@ export class FoldersService {
    *  cascading delete. */
   async remove(folderId: string, userId: string): Promise<void> {
     const folder = await this.prisma.folder.findFirst({ where: { id: folderId, userId } });
-    if (!folder) throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "Folder not found");
+    if (!folder) throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "This folder no longer exists.");
     await this.prisma.folder.delete({ where: { id: folderId } });
   }
 
@@ -92,8 +96,26 @@ export class FoldersService {
     await this.folderTokens.setPassword(folderId, password);
   }
 
-  async removePassword(folderId: string, userId: string): Promise<void> {
-    await this.access.loadOwned(folderId, userId);
+  async removePassword(
+    folderId: string,
+    userId: string,
+    input: RemoveFolderPasswordInput,
+  ): Promise<void> {
+    const folder = await this.access.loadOwned(folderId, userId);
+    if (!folder.passwordHash) {
+      throw new AppError(ErrorCode.FORBIDDEN, "This folder is not locked.");
+    }
+    if (input.folderPassword) {
+      await this.folderTokens.assertPassword(folder, input.folderPassword);
+    } else {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found.");
+      const ok = await bcrypt.compare(input.accountPassword ?? "", user.passwordHash);
+      if (!ok) {
+        throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password.");
+      }
+      await this.mfa.assertStepUp(user, input.mfaCode);
+    }
     await this.folderTokens.removePassword(folderId);
   }
 

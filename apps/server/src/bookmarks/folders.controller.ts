@@ -11,11 +11,13 @@ import {
 } from "@nestjs/common";
 import {
   CreateFolderSchema,
+  RemoveFolderPasswordSchema,
   SetFolderPasswordSchema,
   UnlockFolderSchema,
   UpdateFolderSchema,
   type CreateFolderInput,
   type FolderDto,
+  type RemoveFolderPasswordInput,
   type UpdateFolderInput,
 } from "@ordo/shared";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe.js";
@@ -80,8 +82,9 @@ export class FoldersController {
   async removePassword(
     @CurrentUser() user: AuthContext,
     @Param("id") id: string,
+    @Body(new ZodValidationPipe(RemoveFolderPasswordSchema)) body: RemoveFolderPasswordInput,
   ): Promise<{ success: true }> {
-    await this.folders.removePassword(id, user.userId);
+    await this.folders.removePassword(id, user.userId, body);
     return { success: true };
   }
 

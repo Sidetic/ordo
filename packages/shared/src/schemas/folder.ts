@@ -4,8 +4,8 @@ import { FOLDER_ICONS } from "../constants.js";
 const name = z
   .string()
   .trim()
-  .min(1, { message: "Name is required" })
-  .max(100, { message: "Name is too long" });
+  .min(1, { message: "Enter a folder name." })
+  .max(100, { message: "Name is too long." });
 
 /** Valid folder icons (curated Ionicons outline names). */
 export const FolderIconSchema = z.enum(FOLDER_ICONS);
@@ -23,16 +23,33 @@ export const UpdateFolderSchema = z
     pinned: z.boolean().optional(),
   })
   .refine((data) => data.name !== undefined || data.icon !== undefined || data.pinned !== undefined, {
-    message: "At least one of name, icon, or pinned is required",
+    message: "Provide at least one field to update.",
   });
 export type UpdateFolderInput = z.infer<typeof UpdateFolderSchema>;
 
 export const SetFolderPasswordSchema = z.object({
-  password: z.string().min(4, { message: "Folder password is too short" }).max(256),
+  password: z.string().min(4, { message: "Use at least 4 characters." }).max(256),
 });
 export type SetFolderPasswordInput = z.infer<typeof SetFolderPasswordSchema>;
 
 export const UnlockFolderSchema = z.object({
-  password: z.string().min(1),
+  password: z.string().min(1, { message: "Enter the folder password." }),
 });
 export type UnlockFolderInput = z.infer<typeof UnlockFolderSchema>;
+
+/** Remove a folder lock with either the folder password or the account password. */
+export const RemoveFolderPasswordSchema = z
+  .object({
+    folderPassword: z.string().min(1, { message: "Enter the folder password." }).max(256).optional(),
+    accountPassword: z.string().min(1, { message: "Enter your account password." }).max(256).optional(),
+    mfaCode: z
+      .string()
+      .trim()
+      .min(1, { message: "Enter your authenticator or backup code." })
+      .max(32)
+      .optional(),
+  })
+  .refine((data) => Boolean(data.folderPassword) !== Boolean(data.accountPassword), {
+    message: "Enter the folder password or your account password.",
+  });
+export type RemoveFolderPasswordInput = z.infer<typeof RemoveFolderPasswordSchema>;

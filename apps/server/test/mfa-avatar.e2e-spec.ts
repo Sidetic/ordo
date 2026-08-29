@@ -191,6 +191,36 @@ describe("MFA + avatars (e2e)", () => {
         .expect(401);
       expect(missing.body.error.code).toBe(ErrorCode.MFA_REQUIRED);
     });
+
+    it("requires MFA to remove a folder lock with the account password", async () => {
+      const { agent, secret } = await enrollTotp("folder-mfa@ordo.app");
+      const folder = await agent.post("/api/folders").send({ name: "Vault" }).expect(201);
+      await agent.post(`/api/folders/${folder.body.id}/password`).send({ password: "1234" }).expect(200);
+
+      const needsMfa = await agent
+        .delete(`/api/folders/${folder.body.id}/password`)
+        .send({ accountPassword: "supersecret" })
+        .expect(401);
+      expect(needsMfa.body.error.code).toBe(ErrorCode.MFA_REQUIRED);
+
+      await agent
+        .delete(`/api/folders/${folder.body.id}/password`)
+        .send({
+          accountPassword: "supersecret",
+          mfaCode: totpNow(secret, "folder-mfa@ordo.app"),
+        })
+        .expect(200);
+    });
+
+    it("removes a folder lock with the folder password even when MFA is on", async () => {
+      const { agent } = await enrollTotp("folder-pw@ordo.app");
+      const folder = await agent.post("/api/folders").send({ name: "Vault" }).expect(201);
+      await agent.post(`/api/folders/${folder.body.id}/password`).send({ password: "1234" }).expect(200);
+      await agent
+        .delete(`/api/folders/${folder.body.id}/password`)
+        .send({ folderPassword: "1234" })
+        .expect(200);
+    });
   });
 
   describe("MFA_REQUIRED", () => {

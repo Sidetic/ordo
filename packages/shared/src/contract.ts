@@ -19,7 +19,12 @@ import type {
   TotpConfirmDto,
   UserDto,
 } from "./types.js";
-import type { CreateFolderInput, UpdateFolderInput, UpdateReaderPreferencesInput } from "./schemas/index.js";
+import type {
+  CreateFolderInput,
+  RemoveFolderPasswordInput,
+  UpdateFolderInput,
+  UpdateReaderPreferencesInput,
+} from "./schemas/index.js";
 
 export const API_PREFIX = "/api";
 
@@ -316,7 +321,7 @@ export const FolderRoutes = {
   removePassword: {
     path: `${API_PREFIX}/folders/:id/password`,
     method: "DELETE",
-    body: {} as Empty,
+    body: {} as RemoveFolderPasswordInput,
     query: {} as Empty,
     params: {} as { id: string },
     response: {} as { success: true },

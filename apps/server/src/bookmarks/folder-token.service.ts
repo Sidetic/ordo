@@ -34,15 +34,19 @@ export class FolderTokenService {
     await this.prisma.folderToken.deleteMany({ where: { folderId } });
   }
 
-  /** Verify the folder password and issue a short-lived folder-scoped token. */
-  async unlock(folder: Folder, password: string): Promise<{ token: string; expiresIn: number }> {
+  async assertPassword(folder: Folder, password: string): Promise<void> {
     if (!folder.passwordHash) {
-      throw new AppError(ErrorCode.FORBIDDEN, "This folder is not protected");
+      throw new AppError(ErrorCode.FORBIDDEN, "This folder is not locked.");
     }
     const ok = await bcrypt.compare(password, folder.passwordHash);
     if (!ok) {
-      throw new AppError(ErrorCode.INVALID_FOLDER_PASSWORD, "Incorrect folder password");
+      throw new AppError(ErrorCode.INVALID_FOLDER_PASSWORD, "That password is incorrect.");
     }
+  }
+
+  /** Verify the folder password and issue a short-lived folder-scoped token. */
+  async unlock(folder: Folder, password: string): Promise<{ token: string; expiresIn: number }> {
+    await this.assertPassword(folder, password);
     const { token, hash } = this.tokens.generateFolderToken();
     await this.prisma.folderToken.create({
       data: {

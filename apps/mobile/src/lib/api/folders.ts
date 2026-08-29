@@ -5,6 +5,7 @@ import {
   FolderRoutes,
   buildPath,
   type CreateFolderInput,
+  type RemoveFolderPasswordInput,
   type UpdateFolderInput,
 } from "@ordo/shared";
 import { api } from "./client";
@@ -27,9 +28,10 @@ export const foldersApi = {
       { password },
     ),
 
-  removePassword: (id: string) =>
+  removePassword: (id: string, body: RemoveFolderPasswordInput) =>
     api.delete<typeof FolderRoutes.removePassword.response>(
       buildPath(FolderRoutes.removePassword.path, { id }),
+      { body },
     ),
 
   unlock: (id: string, password: string) =>

@@ -863,7 +863,10 @@ describe("Bookmarks & Folders (e2e)", () => {
       expect(ok.body.items).toHaveLength(2);
 
       // removing the password opens the folder again
-      await agent.delete(`/api/folders/${folder.body.id}/password`).expect(200);
+      await agent
+        .delete(`/api/folders/${folder.body.id}/password`)
+        .send({ folderPassword: "1234" })
+        .expect(200);
       await agent.get(`/api/bookmarks?folderId=${folder.body.id}`).expect(200);
     });
 
@@ -953,6 +956,33 @@ describe("Bookmarks & Folders (e2e)", () => {
 
       await agent.delete(`/api/folders/${folder.body.id}`).expect(200);
       expect((await agent.get("/api/folders").expect(200)).body).toHaveLength(0);
+    });
+
+    it("requires the folder password or account password to remove a lock", async () => {
+      const { agent } = await setup();
+      const folder = await agent.post("/api/folders").send({ name: "Vault" }).expect(201);
+      await agent.post(`/api/folders/${folder.body.id}/password`).send({ password: "1234" }).expect(200);
+
+      const missing = await agent.delete(`/api/folders/${folder.body.id}/password`).expect(400);
+      expect(missing.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+
+      const wrongFolder = await agent
+        .delete(`/api/folders/${folder.body.id}/password`)
+        .send({ folderPassword: "nope" })
+        .expect(403);
+      expect(wrongFolder.body.error.code).toBe(ErrorCode.INVALID_FOLDER_PASSWORD);
+
+      const wrongAccount = await agent
+        .delete(`/api/folders/${folder.body.id}/password`)
+        .send({ accountPassword: "wrongpassword" })
+        .expect(401);
+      expect(wrongAccount.body.error.code).toBe(ErrorCode.INVALID_CREDENTIALS);
+
+      await agent
+        .delete(`/api/folders/${folder.body.id}/password`)
+        .send({ accountPassword: "password123" })
+        .expect(200);
+      await agent.get(`/api/bookmarks?folderId=${folder.body.id}`).expect(200);
     });
   });
 });
