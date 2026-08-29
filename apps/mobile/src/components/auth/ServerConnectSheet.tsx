@@ -19,6 +19,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { FloatingPanel } from "../ui/FloatingPanel";
+import { PanelHeader } from "../ui/PanelHeader";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
@@ -201,31 +202,26 @@ export function ServerConnectSheet({
   return (
     <FloatingPanel visible={visible} onDismiss={confirming ? () => {} : onDismiss}>
       <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <View style={[styles.headerIcon, { backgroundColor: "rgba(79,125,166,0.14)", borderRadius: radius.lg }]}>
-          <Ionicons name="cloud-outline" size={20} color={palette.blue} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text variant="title2">Server URL</Text>
-          <Text variant="footnote" color="secondary" style={{ marginTop: 2 }}>
-            A health check runs before you switch.
-          </Text>
-        </View>
-      </View>
+      <PanelHeader
+        icon="cloud-outline"
+        iconColor={palette.blue}
+        iconBackground="rgba(79,125,166,0.14)"
+        title="Server URL"
+        subtitle="A health check runs before you switch."
+        titleVariant="title2"
+      />
 
-      <View style={{ marginTop: spacing[16] }}>
-        <Input
-          value={url}
-          onChangeText={setUrl}
-          placeholder="http://localhost:3000"
-          mono
-          keyboardType="url"
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoFocus
-          icon={<Ionicons name="link" size={15} color={palette.textTertiary} />}
-        />
-      </View>
+      <Input
+        value={url}
+        onChangeText={setUrl}
+        placeholder="http://localhost:3000"
+        mono
+        keyboardType="url"
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoFocus
+        icon={<Ionicons name="link" size={15} color={palette.textTertiary} />}
+      />
 
       {/* Recents fill the URL so the existing health check still has to pass. */}
       {recents.length > 0 ? (
@@ -314,8 +310,6 @@ export function ServerConnectSheet({
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "flex-start", gap: spacing[12] },
-  headerIcon: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
   recents: { marginTop: spacing[16], gap: spacing[8] },
   recentRow: {
     minHeight: 44,

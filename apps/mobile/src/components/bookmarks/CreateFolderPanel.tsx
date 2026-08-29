@@ -5,6 +5,7 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet, View, type TextInput } from "react-native";
 import { FloatingPanel } from "../ui/FloatingPanel";
+import { PanelHeader } from "../ui/PanelHeader";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
@@ -61,7 +62,7 @@ export function CreateFolderPanel({
       onShow={() => setTimeout(() => nameRef.current?.focus(), 100)}
     >
       <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <Text variant="title3" style={styles.title}>New folder</Text>
+        <PanelHeader title="New folder" />
         <Input
           ref={nameRef}
           label="Name"
@@ -84,7 +85,6 @@ export function CreateFolderPanel({
 }
 
 const styles = StyleSheet.create({
-  title: { marginBottom: spacing[16] },
   iconLabel: { marginTop: spacing[16], marginBottom: spacing[8] },
   actions: { gap: spacing[8], marginTop: spacing[20] },
 });

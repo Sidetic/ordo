@@ -2,6 +2,7 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { FloatingPanel } from "./ui/FloatingPanel";
+import { PanelHeader } from "./ui/PanelHeader";
 import { Button } from "./ui/Button";
 import { Text } from "./ui/Text";
 import { toast } from "./ui/toast-store";
@@ -26,27 +27,26 @@ export function NativeUpdateProgress() {
       onDismiss={downloading ? () => {} : update.dismissDownload}
       maxWidth={380}
     >
-      <View style={styles.header}>
-        <View style={[styles.icon, { backgroundColor: palette.accentSoft }]}>
-          <Ionicons name="phone-portrait-outline" size={22} color={palette.accent} />
-        </View>
-        <View style={styles.headerCopy}>
-          <Text variant="title1">
-            {downloading
-              ? "Downloading update"
-              : downloadFailed
-                ? "Download interrupted"
-                : "Ready to install"}
-          </Text>
-          <Text variant="footnote" color="secondary" style={styles.subtitle}>
-            {downloading
-              ? "Keep Ordo open while the new app version downloads."
-              : downloadFailed
-                ? "The app update couldn't be downloaded. Your current version is unchanged."
-                : `Ordo v${update.release?.version ?? ""} has downloaded.`}
-          </Text>
-        </View>
-      </View>
+      <PanelHeader
+        icon="phone-portrait-outline"
+        iconColor={palette.accent}
+        iconBackground={palette.accentSoft}
+        title={
+          downloading
+            ? "Downloading update"
+            : downloadFailed
+              ? "Download interrupted"
+              : "Ready to install"
+        }
+        subtitle={
+          downloading
+            ? "Keep Ordo open while the new app version downloads."
+            : downloadFailed
+              ? "The app update couldn't be downloaded. Your current version is unchanged."
+              : `Ordo v${update.release?.version ?? ""} has downloaded.`
+        }
+        titleVariant="title1"
+      />
 
       {downloading ? (
         <View style={styles.progressSection}>
@@ -104,17 +104,7 @@ export function NativeUpdateProgress() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "flex-start", gap: spacing[12] },
-  headerCopy: { flex: 1 },
-  icon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  subtitle: { marginTop: spacing[4] },
-  progressSection: { marginTop: spacing[24] },
+  progressSection: { marginTop: spacing[8] },
   progressTrack: { height: 8, borderRadius: radius.full, overflow: "hidden" },
   progressFill: { height: "100%", borderRadius: radius.full },
   progressMeta: {

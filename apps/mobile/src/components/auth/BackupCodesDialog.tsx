@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Modal, ScrollView, StyleSheet, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { Button } from "../ui/Button";
+import { PanelHeader } from "../ui/PanelHeader";
 import { Text } from "../ui/Text";
 import { toast } from "../ui/toast-store";
 import { downloadBackupCodes } from "../../lib/backup-codes-file";
@@ -65,17 +65,16 @@ export function BackupCodesDialog({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.header}>
-              <View style={[styles.icon, { backgroundColor: palette.accentSoft }]}>
-                <Ionicons name="key-outline" size={22} color={palette.accent} />
-              </View>
-              <Text variant="title1" align="center">
-                Save your backup codes
-              </Text>
-              <Text variant="body" color="secondary" align="center" style={styles.copy}>
-                Each code signs you in once. Download them now — they won't be shown again.
-              </Text>
-            </View>
+            <PanelHeader
+              icon="key-outline"
+              iconColor={palette.accent}
+              iconBackground={palette.accentSoft}
+              title="Save your backup codes"
+              subtitle="Each code signs you in once. Download them now — they won't be shown again."
+              titleVariant="title1"
+              subtitleVariant="body"
+              style={styles.header}
+            />
 
             {codes ? (
               <View
@@ -127,16 +126,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing[24],
     paddingBottom: spacing[16],
   },
-  header: { alignItems: "center" },
-  icon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius["2xl"],
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: spacing[16],
-  },
-  copy: { marginTop: spacing[8], maxWidth: 280 },
+  header: { marginBottom: 0 },
   grid: {
     marginTop: spacing[20],
     borderWidth: StyleSheet.hairlineWidth,

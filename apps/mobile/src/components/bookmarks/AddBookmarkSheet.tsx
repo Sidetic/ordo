@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { FloatingPanel } from "../ui/FloatingPanel";
+import { PanelHeader } from "../ui/PanelHeader";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
@@ -134,7 +135,7 @@ export function AddBookmarkSheet({
   return (
     <>
     <FloatingPanel visible={visible && !lockedFolderId} onDismiss={close}>
-      <Text variant="title3" style={styles.title}>Save bookmark</Text>
+      <PanelHeader title="Save bookmark" />
       {allowFolderSelection ? (
         <View style={styles.destinationRow}>
           <Text variant="label" color="tertiary">DESTINATION</Text>
@@ -190,7 +191,6 @@ export function AddBookmarkSheet({
 }
 
 const styles = StyleSheet.create({
-  title: { marginBottom: spacing[16] },
   destinationRow: {
     flexDirection: "row",
     alignItems: "center",

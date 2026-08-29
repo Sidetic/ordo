@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../src/components/ui/Header";
 import { FAB, FABLayer } from "../../src/components/ui/FAB";
 import { FloatingPanel } from "../../src/components/ui/FloatingPanel";
+import { PanelHeader } from "../../src/components/ui/PanelHeader";
 import { Button } from "../../src/components/ui/Button";
 import { Text } from "../../src/components/ui/Text";
 import { PressableScale } from "../../src/components/ui/PressableScale";
@@ -258,7 +259,7 @@ export default function BookmarksScreen() {
       </FABLayer>
 
       <FloatingPanel visible={createMenuOpen} onDismiss={() => setCreateMenuOpen(false)}>
-        <Text variant="title3" style={styles.createMenuTitle}>Create</Text>
+        <PanelHeader title="Create" />
         <View style={styles.createMenuActions}>
           <PressableScale
             accessibilityRole="button"
@@ -355,7 +356,6 @@ const styles = StyleSheet.create({
   bookmarksSection: { paddingTop: spacing[16] },
   emptyBookmarks: { minHeight: 300, justifyContent: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
-  createMenuTitle: { marginBottom: spacing[16] },
   createMenuActions: { gap: spacing[8] },
   createMenuAction: {
     minHeight: 64,

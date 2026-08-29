@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { FloatingPanel } from "../ui/FloatingPanel";
+import { PanelHeader } from "../ui/PanelHeader";
 import { Button } from "../ui/Button";
-import { Text } from "../ui/Text";
 import { SheetActionRow } from "../ui/SheetActionRow";
 import { toast } from "../ui/toast-store";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -40,13 +39,14 @@ export function BookmarkActionsSheet({
     <FloatingPanel visible={visible} onDismiss={onDismiss}>
       {mode === "delete" ? (
         <>
-          <View style={[styles.dangerIcon, { backgroundColor: palette.dangerSoft }]}>
-            <Ionicons name="trash-outline" size={24} color={palette.danger} />
-          </View>
-          <Text variant="title3" align="center">Delete this bookmark?</Text>
-          <Text variant="body" color="secondary" align="center" style={styles.confirmCopy}>
-            This bookmark will be permanently deleted.
-          </Text>
+          <PanelHeader
+            icon="trash-outline"
+            iconColor={palette.danger}
+            iconBackground={palette.dangerSoft}
+            title="Delete this bookmark?"
+            subtitle="This bookmark will be permanently deleted."
+            subtitleVariant="body"
+          />
           <View style={styles.actions}>
             <Button
               label="Delete bookmark"
@@ -63,7 +63,7 @@ export function BookmarkActionsSheet({
         </>
       ) : (
         <>
-          <Text variant="title3" numberOfLines={2} style={styles.title}>{bookmark.title || bookmark.url}</Text>
+          <PanelHeader title={bookmark.title || bookmark.url} numberOfLines={2} style={styles.title} />
           <SheetActionRow
             icon={bookmark.isRead ? "radio-button-off" : "checkmark-circle"}
             label={bookmark.isRead ? "Mark as unread" : "Mark as read"}
@@ -108,15 +108,5 @@ export function BookmarkActionsSheet({
 const styles = StyleSheet.create({
   title: { marginBottom: spacing[12] },
   menuCancel: { marginTop: spacing[8] },
-  dangerIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    alignSelf: "center",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: spacing[12],
-  },
-  confirmCopy: { marginTop: spacing[8] },
   actions: { gap: spacing[8], marginTop: spacing[20] },
 });

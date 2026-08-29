@@ -5,9 +5,9 @@
 import React, { useState } from "react";
 import { View } from "react-native";
 import { FloatingPanel } from "../ui/FloatingPanel";
+import { PanelHeader } from "../ui/PanelHeader";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
-import { Text } from "../ui/Text";
 import { EyeToggle } from "../ui/EyeToggle";
 import { useUnlockFolder } from "../../hooks/use-folders";
 import { useFolderTokenStore } from "../../store/folder-tokens";
@@ -58,10 +58,10 @@ export function LockPrompt({ visible, folderId, folderName, onDismiss, onUnlocke
 
   return (
     <FloatingPanel visible={visible} onDismiss={close}>
-      <Text variant="title3" style={{ marginBottom: spacing[4] }}>Unlock folder</Text>
-      <Text variant="footnote" color="secondary" style={{ marginBottom: spacing[16] }}>
-        Enter the password to unlock{folderName ? ` ${folderName}` : ""}.
-      </Text>
+      <PanelHeader
+        title="Unlock folder"
+        subtitle={`Enter the password to unlock${folderName ? ` ${folderName}` : ""}.`}
+      />
       <Input
         label="Password"
         value={password}

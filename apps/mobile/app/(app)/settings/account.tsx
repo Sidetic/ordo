@@ -13,8 +13,8 @@ import {
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { UserAvatar } from "../../../src/components/ui/UserAvatar";
 import { FloatingPanel } from "../../../src/components/ui/FloatingPanel";
+import { PanelHeader } from "../../../src/components/ui/PanelHeader";
 import { Button } from "../../../src/components/ui/Button";
-import { Text } from "../../../src/components/ui/Text";
 import { SheetActionRow } from "../../../src/components/ui/SheetActionRow";
 import { toast } from "../../../src/components/ui/toast-store";
 import { useAuthStore } from "../../../src/store/auth";
@@ -191,9 +191,7 @@ export default function AccountScreen() {
       </SettingsScrollView>
 
       <FloatingPanel visible={menuOpen} onDismiss={() => setMenuOpen(false)}>
-        <Text variant="title3" style={styles.menuTitle}>
-          Profile picture
-        </Text>
+        <PanelHeader title="Profile picture" style={styles.menuTitle} />
         <SheetActionRow
           icon="image-outline"
           label="Choose photo"

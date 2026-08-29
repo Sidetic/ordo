@@ -6,7 +6,7 @@ import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import { Button, type ButtonVariant } from "../ui/Button";
 import { FloatingPanel } from "../ui/FloatingPanel";
-import { Text } from "../ui/Text";
+import { PanelHeader } from "../ui/PanelHeader";
 import { type OtpStatus } from "../ui/OtpInput";
 import { errorMessage, isMfaInvalidError, isMfaRequiredError } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
@@ -86,12 +86,7 @@ export function MfaStepUpPanel({
 
   return (
     <FloatingPanel visible={visible} onDismiss={close}>
-      <Text variant="title3" style={{ marginBottom: spacing[4] }}>
-        {title}
-      </Text>
-      <Text variant="footnote" color="secondary" style={{ marginBottom: spacing[16] }}>
-        {description}
-      </Text>
+      <PanelHeader title={title} subtitle={description} />
       <MfaCodeField
         key={visible ? "open" : "closed"}
         value={code}

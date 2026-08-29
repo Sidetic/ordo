@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { FlatList, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { FloatingPanel } from "../ui/FloatingPanel";
+import { PanelHeader } from "../ui/PanelHeader";
 import { LockPrompt } from "./LockPrompt";
 import { Text } from "../ui/Text";
 import { PressableScale } from "../ui/PressableScale";
@@ -75,7 +76,7 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
   return (
     <>
       <FloatingPanel visible={visible && !lockedTarget} onDismiss={onDismiss}>
-      <Text variant="title3" style={{ marginBottom: spacing[16] }}>Move to folder</Text>
+      <PanelHeader title="Move to folder" />
       {error ? (
         <Text variant="footnote" color="danger" style={{ marginBottom: spacing[12] }}>
           {error}

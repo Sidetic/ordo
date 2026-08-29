@@ -2,7 +2,7 @@ import React from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Button, type ButtonVariant } from "./Button";
-import { Text } from "./Text";
+import { PanelHeader } from "./PanelHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { radius, spacing } from "../../theme/tokens";
 
@@ -71,17 +71,16 @@ export function ConfirmDialog({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.header}>
-              <View style={[styles.icon, { backgroundColor: iconBg }]}>
-                <Ionicons name={icon} size={22} color={iconColor} />
-              </View>
-              <Text variant="title1" align="center">
-                {title}
-              </Text>
-              <Text variant="body" color="secondary" align="center" style={styles.copy}>
-                {message}
-              </Text>
-            </View>
+            <PanelHeader
+              icon={icon}
+              iconColor={iconColor}
+              iconBackground={iconBg}
+              title={title}
+              subtitle={message}
+              titleVariant="title1"
+              subtitleVariant="body"
+              style={styles.header}
+            />
             {children ? <View style={styles.extra}>{children}</View> : null}
             <View style={styles.actions}>
               <Button
@@ -124,16 +123,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing[24],
     paddingBottom: spacing[16],
   },
-  header: { alignItems: "center" },
-  icon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius["2xl"],
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: spacing[16],
-  },
-  copy: { marginTop: spacing[8], maxWidth: 280 },
+  header: { marginBottom: 0 },
   extra: { marginTop: spacing[16] },
   actions: { gap: spacing[4], marginTop: spacing[20] },
 });

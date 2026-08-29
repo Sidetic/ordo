@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { DEFAULT_FOLDER_ICON, type FolderDto, type FolderIcon } from "@ordo/shared";
 import { FloatingPanel } from "../ui/FloatingPanel";
+import { PanelHeader } from "../ui/PanelHeader";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
@@ -202,18 +203,20 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     <FloatingPanel visible={visible && !!folder} onDismiss={onDismiss}>
       {folder && mode === "menu" ? (
         <>
-          <View style={styles.titleRow}>
-            <View style={[styles.titleIcon, { backgroundColor: palette.surfaceSecondary }]}>
-              <Ionicons name={folder.icon ?? DEFAULT_FOLDER_ICON} size={22} color={palette.accent} />
-            </View>
-            <View style={styles.titleBody}>
-              <Text variant="title3" numberOfLines={1}>{folder.name}</Text>
-              <Text variant="footnote" color="tertiary">
-                {folder.bookmarkCount} {folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}
-              </Text>
-            </View>
-            {folder.pinned ? <Ionicons name="pin" size={18} color={palette.accent} /> : null}
-          </View>
+          <PanelHeader
+            icon={folder.icon ?? DEFAULT_FOLDER_ICON}
+            iconColor={palette.accent}
+            iconBackground={palette.surfaceSecondary}
+            title={folder.name}
+            subtitle={`${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}`}
+            numberOfLines={1}
+            accessory={
+              folder.pinned ? (
+                <Ionicons name="pin" size={14} color={palette.accent} />
+              ) : null
+            }
+            style={styles.menuHeader}
+          />
           {error ? <Text variant="footnote" color="danger" style={styles.error}>{error}</Text> : null}
           <View>
             <SheetActionRow icon={folder.pinned ? "pin" : "pin-outline"} label={folder.pinned ? "Unpin folder" : "Pin folder"} onPress={doTogglePinned} />
@@ -232,7 +235,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
 
       {folder && mode === "rename" ? (
         <>
-          <Text variant="title3" style={styles.heading}>Rename folder</Text>
+          <PanelHeader title="Rename folder" />
           <Input label="Name" value={name} onChangeText={setName} autoFocus error={error || undefined} onSubmitEditing={doRename} />
           <View style={styles.actions}>
             <Button label="Save" block size="lg" onPress={doRename} loading={rename.isPending} />
@@ -243,8 +246,10 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
 
       {folder && mode === "password" ? (
         <>
-          <Text variant="title3">Lock folder</Text>
-          <Text variant="footnote" color="secondary" style={styles.copy}>A password will be required to view this folder.</Text>
+          <PanelHeader
+            title="Lock folder"
+            subtitle="A password will be required to view this folder."
+          />
           <Input
             label="Password"
             value={password}
@@ -264,13 +269,14 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
 
       {folder && mode === "removePassword" ? (
         <ScrollView keyboardShouldPersistTaps="handled">
-          <View style={[styles.dangerIcon, { backgroundColor: palette.dangerSoft }]}>
-            <Ionicons name="lock-open-outline" size={24} color={palette.danger} />
-          </View>
-          <Text variant="title3" align="center">Remove password?</Text>
-          <Text variant="body" color="secondary" align="center" style={styles.confirmCopy}>
-            This folder will no longer require a password to open.
-          </Text>
+          <PanelHeader
+            icon="lock-open-outline"
+            iconColor={palette.danger}
+            iconBackground={palette.dangerSoft}
+            title="Remove password?"
+            subtitle="This folder will no longer require a password to open."
+            subtitleVariant="body"
+          />
           <Input
             label="Folder password"
             value={password}
@@ -300,13 +306,14 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
 
       {folder && mode === "removePasswordAccount" ? (
         <ScrollView keyboardShouldPersistTaps="handled">
-          <View style={[styles.dangerIcon, { backgroundColor: palette.dangerSoft }]}>
-            <Ionicons name="lock-open-outline" size={24} color={palette.danger} />
-          </View>
-          <Text variant="title3" align="center">Remove password?</Text>
-          <Text variant="body" color="secondary" align="center" style={styles.confirmCopy}>
-            Enter your account password to remove this folder's lock.
-          </Text>
+          <PanelHeader
+            icon="lock-open-outline"
+            iconColor={palette.danger}
+            iconBackground={palette.dangerSoft}
+            title="Remove password?"
+            subtitle="Enter your account password to remove this folder's lock."
+            subtitleVariant="body"
+          />
           <Input
             label="Account password"
             value={accountPassword}
@@ -338,8 +345,10 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
 
       {folder && mode === "icon" ? (
         <>
-          <Text variant="title3">Choose an icon</Text>
-          <Text variant="footnote" color="secondary" style={styles.copy}>Pick an icon that makes this folder easy to spot.</Text>
+          <PanelHeader
+            title="Choose an icon"
+            subtitle="Pick an icon that makes this folder easy to spot."
+          />
           <FolderIconPicker value={icon} onChange={setIcon} />
           {error ? <Text variant="footnote" color="danger" style={styles.error}>{error}</Text> : null}
           <View style={styles.actions}>
@@ -351,15 +360,18 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
 
       {folder && mode === "delete" ? (
         <ScrollView keyboardShouldPersistTaps="handled">
-          <View style={[styles.dangerIcon, { backgroundColor: palette.dangerSoft }]}>
-            <Ionicons name="trash-outline" size={24} color={palette.danger} />
-          </View>
-          <Text variant="title3" align="center">Delete {folder.name}?</Text>
-          <Text variant="body" color="secondary" align="center" style={styles.confirmCopy}>
-            {folder.bookmarkCount > 0
-              ? `This will permanently delete the folder and its ${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}.`
-              : "This folder will be permanently deleted."}
-          </Text>
+          <PanelHeader
+            icon="trash-outline"
+            iconColor={palette.danger}
+            iconBackground={palette.dangerSoft}
+            title={`Delete ${folder.name}?`}
+            subtitle={
+              folder.bookmarkCount > 0
+                ? `This will permanently delete the folder and its ${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}.`
+                : "This folder will be permanently deleted."
+            }
+            subtitleVariant="body"
+          />
           {error ? <Text variant="footnote" color="danger" align="center" style={styles.error}>{error}</Text> : null}
           <View style={styles.actions}>
             <Button label="Delete folder" variant="danger" block size="lg" onPress={doDelete} loading={del.isPending} />
@@ -372,15 +384,9 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
 }
 
 const styles = StyleSheet.create({
-  titleRow: { flexDirection: "row", alignItems: "center", gap: spacing[12], marginBottom: spacing[8] },
-  titleIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  titleBody: { flex: 1 },
-  heading: { marginBottom: spacing[16] },
-  copy: { marginTop: spacing[4], marginBottom: spacing[16] },
+  menuHeader: { marginBottom: spacing[8] },
   error: { marginTop: spacing[10] },
   menuCancel: { marginTop: spacing[8] },
   actions: { gap: spacing[8], marginTop: spacing[20] },
-  dangerIcon: { width: 48, height: 48, borderRadius: 16, alignSelf: "center", alignItems: "center", justifyContent: "center", marginBottom: spacing[12] },
-  confirmCopy: { marginTop: spacing[8], marginBottom: spacing[16] },
-  forgot: { alignSelf: "flex-start", marginTop: spacing[10] },
+  forgot: { alignSelf: "center", marginTop: spacing[10] },
 });

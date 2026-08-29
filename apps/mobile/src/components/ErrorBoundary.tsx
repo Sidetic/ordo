@@ -93,9 +93,9 @@ export class ErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   root: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   card: { width: "100%", maxWidth: 360, alignItems: "stretch" },
-  title: { fontSize: 24, lineHeight: 30, fontWeight: "700" },
-  message: { marginTop: 8, fontSize: 16, lineHeight: 23 },
-  details: { marginTop: 12, color: "#D95D4F", fontSize: 12, lineHeight: 17 },
+  title: { fontSize: 24, lineHeight: 30, fontWeight: "700", textAlign: "center" },
+  message: { marginTop: 8, fontSize: 16, lineHeight: 23, textAlign: "center" },
+  details: { marginTop: 12, color: "#D95D4F", fontSize: 12, lineHeight: 17, textAlign: "center" },
   actions: { flexDirection: "row", gap: 10, marginTop: 24 },
   button: {
     flex: 1,

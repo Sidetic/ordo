@@ -37,6 +37,7 @@ import { EmptyState } from "../ui/EmptyState";
 import { Skeleton } from "../ui/Skeleton";
 import { PressableScale } from "../ui/PressableScale";
 import { FloatingPanel } from "../ui/FloatingPanel";
+import { PanelHeader } from "../ui/PanelHeader";
 import { SheetActionRow } from "../ui/SheetActionRow";
 import { FAB, FABLayer } from "../ui/FAB";
 import { ArticleHtml, type ArticleHeading } from "./ArticleHtml";
@@ -769,7 +770,7 @@ function ReaderPaneInner({
       <FloatingPanel visible={actionPanel !== null} onDismiss={() => setActionPanel(null)}>
         {actionPanel === "contents" ? (
           <>
-            <Text variant="title3" style={styles.actionsTitle}>Table of contents</Text>
+            <PanelHeader title="Table of contents" style={styles.actionsTitle} />
             <ScrollView style={styles.tocList} showsVerticalScrollIndicator={false}>
               {articleHeadings.map((heading) => (
                 <PressableScale
@@ -802,7 +803,7 @@ function ReaderPaneInner({
           </>
         ) : (
           <>
-            <Text variant="title3" style={styles.actionsTitle}>Article actions</Text>
+            <PanelHeader title="Article actions" style={styles.actionsTitle} />
             {hasHtml && articleHeadings.length >= 3 ? (
               <SheetActionRow
                 icon="list-outline"

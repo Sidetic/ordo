@@ -7,6 +7,7 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { FloatingPanel } from "../ui/FloatingPanel";
+import { PanelHeader } from "../ui/PanelHeader";
 import { Segmented } from "../ui/Segmented";
 import { SettingRow } from "../ui/SettingRow";
 import { Text } from "../ui/Text";
@@ -80,7 +81,7 @@ export function ReaderControlsSheet({
 }: ReaderControlsSheetProps) {
   return (
     <FloatingPanel visible={visible} onDismiss={onDismiss} maxWidth={420}>
-      <Text variant="title3" style={styles.title}>Reader settings</Text>
+      <PanelHeader title="Reader settings" style={styles.title} />
 
       <ControlGroup label="Text size" accessibilityHint="Changes the article text size.">
         <Segmented
