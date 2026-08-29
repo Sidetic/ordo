@@ -21,6 +21,7 @@ import { MoveSheet } from "../../../src/components/bookmarks/MoveSheet";
 import { LockPrompt } from "../../../src/components/bookmarks/LockPrompt";
 import { BookmarkActionsSheet } from "../../../src/components/bookmarks/BookmarkActionsSheet";
 import { FolderActionsSheet } from "../../../src/components/bookmarks/FolderActionsSheet";
+import { EditTagsSheet } from "../../../src/components/tags/EditTagsSheet";
 import { ReaderPane, ReaderPanePlaceholder } from "../../../src/components/reader/ReaderPane";
 import { useFolders } from "../../../src/hooks/queries";
 import {
@@ -62,6 +63,7 @@ export default function FolderDetailScreen() {
   const [addOpen, setAddOpen] = useState(false);
   const [moveTarget, setMoveTarget] = useState<BookmarkDto | null>(null);
   const [actionBm, setActionBm] = useState<BookmarkDto | null>(null);
+  const [editTagsBm, setEditTagsBm] = useState<BookmarkDto | null>(null);
   const [folderActions, setFolderActions] = useState(false);
 
   const protectedError = !!bookmarks.error && isFolderProtected(bookmarks.error);
@@ -293,6 +295,13 @@ export default function FolderDetailScreen() {
         onToggleRead={onToggleRead}
         onMove={(b) => setMoveTarget(b)}
         onDelete={onDelete}
+        onEditTags={setEditTagsBm}
+      />
+
+      <EditTagsSheet
+        visible={!!editTagsBm}
+        bookmark={editTagsBm}
+        onDismiss={() => setEditTagsBm(null)}
       />
 
       <MoveSheet

@@ -8,11 +8,15 @@ import { ActivityIndicator, Image, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { PressableScale } from "../ui/PressableScale";
 import { Text } from "../ui/Text";
+import { TagChip } from "../tags/TagChip";
 import { useTheme } from "../../theme/ThemeProvider";
 import { domainFromUrl, relativeTime } from "../../lib/format";
 import { opensBookmarkExternally } from "../../lib/bookmark-reader";
 import { radius, spacing } from "../../theme/tokens";
 import type { BookmarkDto } from "@ordo/shared";
+
+/** Compact tags shown inline on a row before overflow. */
+const MAX_ROW_TAGS = 3;
 
 export interface BookmarkRowProps {
   bookmark: BookmarkDto;
@@ -31,10 +35,15 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRow
   const [failedFavicon, setFailedFavicon] = React.useState<string | null>(null);
   const opensInBrowser = opensBookmarkExternally(bookmark);
   const isPending = bookmark.fetchStatus === "pending";
+  const hasSuggestions = bookmark.suggestedTags.length > 0;
+  const visibleTags = bookmark.tags.slice(0, MAX_ROW_TAGS);
+  const overflowCount = bookmark.tags.length - visibleTags.length;
   const accessibilityLabel = [
     title,
     domain,
     createdLabel,
+    ...bookmark.tags.map((t) => `Tag ${t.name}`),
+    hasSuggestions ? `${bookmark.suggestedTags.length} tag suggestions` : undefined,
     !bookmark.isRead ? "Unread" : undefined,
     isPending ? "Article processing" : undefined,
     opensInBrowser ? "Opens in browser" : undefined,
@@ -95,6 +104,27 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRow
             <Text variant="footnote" color="secondary" numberOfLines={1} style={styles.description}>
               {bookmark.description}
             </Text>
+          ) : null}
+          {bookmark.tags.length > 0 ? (
+            <View style={styles.tagRow}>
+              {visibleTags.map((tag) => (
+                <TagChip key={tag.id} name={tag.name} color={tag.color} compact />
+              ))}
+              {overflowCount > 0 ? (
+                <Text variant="caption" color="tertiary" style={styles.overflow}>
+                  +{overflowCount}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+          {hasSuggestions ? (
+            <View style={styles.suggestionRow}>
+              <Ionicons name="sparkles-outline" size={12} color={palette.accent} />
+              <Text variant="caption" color="accent">
+                {bookmark.suggestedTags.length} tag{" "}
+                {bookmark.suggestedTags.length === 1 ? "suggestion" : "suggestions"}
+              </Text>
+            </View>
           ) : null}
           <View style={styles.metaRow}>
             <Text variant="caption" color="tertiary" numberOfLines={1} style={styles.domain}>
@@ -183,6 +213,20 @@ const styles = StyleSheet.create({
   },
   content: { flex: 1, minWidth: 0 },
   description: { marginTop: spacing[4] },
+  tagRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: spacing[4],
+    marginTop: spacing[6],
+  },
+  overflow: { marginLeft: spacing[2] },
+  suggestionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[4],
+    marginTop: spacing[4],
+  },
   metaRow: { flexDirection: "row", alignItems: "center", gap: spacing[6], marginTop: spacing[8] },
   domain: { flexShrink: 1 },
   separator: { width: 3, height: 3, borderRadius: radius.full },

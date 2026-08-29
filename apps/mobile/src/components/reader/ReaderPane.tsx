@@ -43,6 +43,7 @@ import { FAB, FABLayer } from "../ui/FAB";
 import { ArticleHtml, type ArticleHeading } from "./ArticleHtml";
 import { Markdown } from "./Markdown";
 import { ReaderControlsSheet } from "./ReaderControlsSheet";
+import { EditTagsSheet } from "../tags/EditTagsSheet";
 import { READER_BODY_SIZE, resolveReaderFont } from "./reader-typography";
 import { ThemeOverrideProvider, useTheme } from "../../theme/ThemeProvider";
 import { resolveReaderPalette } from "../../theme/reader-theme";
@@ -173,6 +174,7 @@ function ReaderPaneInner({
 
   const [controlsOpen, setControlsOpen] = useState(false);
   const [actionPanel, setActionPanel] = useState<"actions" | "contents" | null>(null);
+  const [editTagsOpen, setEditTagsOpen] = useState(false);
   const [headingState, setHeadingState] = useState<{
     bookmarkId: string;
     headings: readonly ArticleHeading[];
@@ -767,6 +769,11 @@ function ReaderPaneInner({
         onUpdate={onUpdatePreferences}
         effectiveDark={effectiveDark}
       />
+      <EditTagsSheet
+        visible={editTagsOpen}
+        bookmark={bookmark ?? null}
+        onDismiss={() => setEditTagsOpen(false)}
+      />
       <FloatingPanel visible={actionPanel !== null} onDismiss={() => setActionPanel(null)}>
         {actionPanel === "contents" ? (
           <>
@@ -817,6 +824,14 @@ function ReaderPaneInner({
               onPress={() => {
                 setActionPanel(null);
                 handleShare();
+              }}
+            />
+            <SheetActionRow
+              icon="pricetags-outline"
+              label="Edit tags"
+              onPress={() => {
+                setActionPanel(null);
+                setEditTagsOpen(true);
               }}
             />
             <SheetActionRow

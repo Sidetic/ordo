@@ -23,7 +23,10 @@ import { FolderActionsSheet } from "../../src/components/bookmarks/FolderActions
 import { CreateFolderPanel } from "../../src/components/bookmarks/CreateFolderPanel";
 import { MoveSheet } from "../../src/components/bookmarks/MoveSheet";
 import { BookmarkRow } from "../../src/components/bookmarks/BookmarkRow";
+import { EditTagsSheet } from "../../src/components/tags/EditTagsSheet";
+import { TagChip } from "../../src/components/tags/TagChip";
 import { useFolders } from "../../src/hooks/use-folders";
+import { useTags } from "../../src/hooks/use-tags";
 import {
   useDeleteBookmark,
   useInfiniteBookmarks,
@@ -51,6 +54,7 @@ export default function BookmarksScreen() {
   const router = useRouter();
   const { visible: floatingNavigation, clearance: bottomClearance } = useFloatingDockMetrics();
   const folders = useFolders();
+  const tags = useTags();
   const bookmarks = useInfiniteBookmarks(null);
   const toggleRead = useToggleRead(null);
   const deleteBookmark = useDeleteBookmark(null);
@@ -64,6 +68,7 @@ export default function BookmarksScreen() {
   const [actionsFolder, setActionsFolder] = useState<FolderDto | null>(null);
   const [actionBookmark, setActionBookmark] = useState<BookmarkDto | null>(null);
   const [moveTarget, setMoveTarget] = useState<BookmarkDto | null>(null);
+  const [editTagsTarget, setEditTagsTarget] = useState<BookmarkDto | null>(null);
 
   const items = useMemo(() => flattenPages(bookmarks.data?.pages ?? []), [bookmarks.data]);
   const hasUnread = items.some((bookmark) => !bookmark.isRead);
@@ -162,6 +167,48 @@ export default function BookmarksScreen() {
         </PressableScale>
       )}
       <View style={styles.bookmarksSection}>
+        <SettingsSectionLabel compact>Tags</SettingsSectionLabel>
+        {tags.isLoading ? (
+          <Skeleton height={28} radiusKey="full" />
+        ) : (tags.data?.length ?? 0) > 0 ? (
+          <View style={styles.tagWrap}>
+            {tags.data!.slice(0, 8).map((tag) => (
+              <TagChip
+                key={tag.id}
+                name={tag.name}
+                color={tag.color}
+                count={tag.bookmarkCount}
+                onPress={() => router.push(`/tags/${tag.id}`)}
+                accessibilityLabel={`Show bookmarks tagged ${tag.name}`}
+              />
+            ))}
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel="All tags"
+              style={styles.allTagsBtn}
+              onPress={() => router.push("/tags")}
+            >
+              <Ionicons name="chevron-forward" size={14} color={palette.textTertiary} />
+              <Text variant="footnote" color="tertiary">All</Text>
+            </PressableScale>
+          </View>
+        ) : (
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel="Create a tag"
+            style={styles.noTagsRow}
+            onPress={() => router.push("/tags")}
+          >
+            <Ionicons name="pricetags-outline" size={16} color={palette.accent} />
+            <Text variant="footnote" color="secondary">
+              Organize across folders with tags
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color={palette.textFaint} />
+          </PressableScale>
+        )}
+      </View>
+
+      <View style={styles.bookmarksSectionHeader}>
         <SettingsSectionLabel compact>Bookmarks</SettingsSectionLabel>
       </View>
     </View>
@@ -312,6 +359,13 @@ export default function BookmarksScreen() {
         onToggleRead={onToggleRead}
         onMove={setMoveTarget}
         onDelete={onDelete}
+        onEditTags={setEditTagsTarget}
+      />
+
+      <EditTagsSheet
+        visible={!!editTagsTarget}
+        bookmark={editTagsTarget}
+        onDismiss={() => setEditTagsTarget(null)}
       />
 
       <MoveSheet
@@ -354,6 +408,29 @@ const styles = StyleSheet.create({
   },
   noFoldersCopy: { flex: 1 },
   bookmarksSection: { paddingTop: spacing[16] },
+  bookmarksSectionHeader: { paddingTop: spacing[20] },
+  tagWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: spacing[6],
+    paddingTop: spacing[4],
+    paddingBottom: spacing[8],
+  },
+  allTagsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[2],
+    paddingHorizontal: spacing[8],
+    paddingVertical: spacing[4],
+  },
+  noTagsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[8],
+    paddingVertical: spacing[6],
+    paddingBottom: spacing[10],
+  },
   emptyBookmarks: { minHeight: 300, justifyContent: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
   createMenuActions: { gap: spacing[8] },

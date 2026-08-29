@@ -9,6 +9,7 @@ import { PanelHeader } from "../ui/PanelHeader";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
+import { PressableScale } from "../ui/PressableScale";
 import { LockPrompt } from "./LockPrompt";
 import { CreateFolderPanel } from "./CreateFolderPanel";
 import {
@@ -17,6 +18,9 @@ import {
 } from "../settings/SettingsSelect";
 import { useCreateBookmark } from "../../hooks/use-bookmarks";
 import { useFolders } from "../../hooks/queries";
+import { useTags } from "../../hooks/use-tags";
+import { TagChip } from "../tags/TagChip";
+import { TagSelectList } from "../tags/TagSelectList";
 import { errorMessage, isFolderProtected } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
 import { toast } from "../ui/toast-store";
@@ -31,6 +35,8 @@ export interface AddBookmarkSheetProps {
   folderName?: string | null;
   allowFolderSelection?: boolean;
   initialUrl?: string;
+  /** Tags preselected for the new bookmark (e.g. from a tag view). */
+  initialTagIds?: string[];
 }
 
 const ROOT_DESTINATION = "__bookmarks__";
@@ -49,14 +55,18 @@ export function AddBookmarkSheet({
   folderName,
   allowFolderSelection = false,
   initialUrl,
+  initialTagIds = [],
 }: AddBookmarkSheetProps) {
   const { palette } = useTheme();
   const create = useCreateBookmark();
   const { data: folders } = useFolders();
+  const { data: tags } = useTags();
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   const [lockedFolderId, setLockedFolderId] = useState<string | null>(null);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [showTagPicker, setShowTagPicker] = useState(false);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(initialTagIds);
   const [selectedDestination, setSelectedDestination] = useState(folderId ?? ROOT_DESTINATION);
   const selectedFolderId = selectedDestination === ROOT_DESTINATION ? null : selectedDestination;
   const selectedFolder = folders?.find((folder) => folder.id === selectedFolderId);
@@ -87,13 +97,17 @@ export function AddBookmarkSheet({
     setSelectedDestination(folderId ?? ROOT_DESTINATION);
     setUrl(initialUrl ?? "");
     setError("");
-  }, [folderId, initialUrl, visible]);
+    setShowTagPicker(false);
+    setSelectedTagIds(initialTagIds);
+  }, [folderId, initialUrl, initialTagIds, visible]);
 
   const reset = () => {
     setUrl("");
     setError("");
     setLockedFolderId(null);
     setSelectedDestination(folderId ?? ROOT_DESTINATION);
+    setShowTagPicker(false);
+    setSelectedTagIds(initialTagIds);
   };
 
   const close = () => {
@@ -118,7 +132,7 @@ export function AddBookmarkSheet({
       return;
     }
     try {
-      await create.mutateAsync({ url: normalized, folderId: selectedFolderId });
+      await create.mutateAsync({ url: normalized, folderId: selectedFolderId, tagIds: selectedTagIds });
       haptics.success();
       toast.success(destination ? `Saved to ${destination}` : "Saved");
       close();
@@ -168,6 +182,54 @@ export function AddBookmarkSheet({
         returnKeyType="done"
       />
 
+      <View style={styles.tagsRow}>
+        <Text variant="label" color="tertiary">TAGS</Text>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={showTagPicker ? "Hide tag picker" : "Show tag picker"}
+          onPress={() => setShowTagPicker((v) => !v)}
+          hitSlop={8}
+        >
+          <Ionicons
+            name={showTagPicker ? "chevron-up" : "chevron-down"}
+            size={16}
+            color={palette.textTertiary}
+          />
+        </PressableScale>
+      </View>
+      {selectedTagIds.length > 0 ? (
+        <View style={styles.selectedTagWrap}>
+          {selectedTagIds.map((tagId) => {
+            const tag = tags?.find((t) => t.id === tagId);
+            if (!tag) return null;
+            return (
+              <TagChip
+                key={tagId}
+                name={tag.name}
+                color={tag.color}
+                selected
+                compact
+                onPress={() =>
+                  setSelectedTagIds((prev) => prev.filter((id) => id !== tagId))
+                }
+                accessibilityLabel={`Remove tag ${tag.name}`}
+              />
+            );
+          })}
+        </View>
+      ) : null}
+      {showTagPicker ? (
+        <TagSelectList
+          selectedIds={selectedTagIds}
+          onToggle={(tagId) =>
+            setSelectedTagIds((prev) =>
+              prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
+            )
+          }
+          maxHeight={200}
+        />
+      ) : null}
+
       <View style={styles.actions}>
         <Button label="Cancel" variant="secondary" onPress={close} style={styles.action} />
         <Button label="Save" onPress={submit} loading={create.isPending} style={styles.saveAction} />
@@ -200,6 +262,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: spacing[12],
     marginBottom: spacing[16],
+  },
+  tagsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing[14],
+    marginBottom: spacing[6],
+  },
+  selectedTagWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing[6],
+    marginBottom: spacing[8],
   },
   actions: {
     flexDirection: "row",

@@ -16,6 +16,7 @@ export interface BookmarkActionsSheetProps {
   onToggleRead: (bookmark: BookmarkDto) => void;
   onMove: (bookmark: BookmarkDto) => void;
   onDelete: (bookmark: BookmarkDto) => void;
+  onEditTags?: (bookmark: BookmarkDto) => void;
 }
 
 export function BookmarkActionsSheet({
@@ -25,6 +26,7 @@ export function BookmarkActionsSheet({
   onToggleRead,
   onMove,
   onDelete,
+  onEditTags,
 }: BookmarkActionsSheetProps) {
   const { palette } = useTheme();
   const [mode, setMode] = useState<"menu" | "delete">("menu");
@@ -80,6 +82,16 @@ export function BookmarkActionsSheet({
               onDismiss();
             }}
           />
+          {onEditTags ? (
+            <SheetActionRow
+              icon="pricetags-outline"
+              label="Edit tags"
+              onPress={() => {
+                onEditTags(bookmark);
+                onDismiss();
+              }}
+            />
+          ) : null}
           <SheetActionRow
             icon="open-outline"
             label="Open original"

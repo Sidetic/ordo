@@ -2,7 +2,7 @@
  * Global bookmark search (title, url, article text). Debounced + infinite.
  */
 import React, { useEffect, useMemo, useState } from "react";
-import { Linking, StyleSheet, View } from "react-native";
+import { Linking, ScrollView, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,8 +13,10 @@ import { EmptyState } from "../../src/components/ui/EmptyState";
 import { Button } from "../../src/components/ui/Button";
 import { BookmarkListSkeleton } from "../../src/components/ui/BookmarkListSkeleton";
 import { BookmarkRow } from "../../src/components/bookmarks/BookmarkRow";
+import { TagChip } from "../../src/components/tags/TagChip";
 import { ReaderPane, ReaderPanePlaceholder } from "../../src/components/reader/ReaderPane";
 import { useInfiniteSearch, useMarkBookmarkRead } from "../../src/hooks/use-bookmarks";
+import { useTags } from "../../src/hooks/use-tags";
 import { useResponsiveLayout } from "../../src/hooks/use-responsive-layout";
 import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metrics";
 import { useTheme } from "../../src/theme/ThemeProvider";
@@ -41,6 +43,8 @@ export default function SearchScreen() {
     : params.bookmark;
   const [input, setInput] = useState(routeQuery);
   const [q, setQ] = useState(routeQuery);
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const { data: allTags } = useTags();
 
   // Debounce the query (300ms) so typing stays smooth.
   useEffect(() => {
@@ -54,7 +58,7 @@ export default function SearchScreen() {
     return () => clearTimeout(t);
   }, [input, routeQuery, router]);
 
-  const search = useInfiniteSearch(q);
+  const search = useInfiniteSearch(q, tagFilter);
   const markRead = useMarkBookmarkRead();
   const items = useMemo(() => flattenPages(search.data?.pages ?? []), [search.data]);
 
@@ -80,6 +84,13 @@ export default function SearchScreen() {
       return;
     }
     router.push(`/reader/${b.id}`);
+  };
+
+  const toggleTag = (tagId: string) => {
+    haptics.selection();
+    setTagFilter((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
+    );
   };
 
   const listContentPadding = floatingNavigation
@@ -123,6 +134,24 @@ export default function SearchScreen() {
             icon={<Ionicons name="search-outline" size={18} color={palette.textTertiary} />}
             returnKeyType="search"
           />
+          {q && (allTags?.length ?? 0) > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tagRail}
+            >
+              {allTags!.map((tag) => (
+                <TagChip
+                  key={tag.id}
+                  name={tag.name}
+                  color={tag.color}
+                  selected={tagFilter.includes(tag.id)}
+                  onPress={() => toggleTag(tag.id)}
+                  accessibilityLabel={`Filter by ${tag.name}`}
+                />
+              ))}
+            </ScrollView>
+          ) : null}
         </View>
 
         {!q ? (
@@ -192,6 +221,7 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   content: { flex: 1, width: "100%" },
   searchWrap: { width: "100%", paddingBottom: spacing[12] },
+  tagRail: { paddingTop: spacing[10], gap: spacing[6] },
   stateFill: { flex: 1, alignItems: "center", justifyContent: "center" },
   singlePane: { flex: 1, width: "100%" },
   splitPane: { flex: 1, width: "100%", flexDirection: "row", gap: spacing[16], paddingBottom: spacing[8] },
