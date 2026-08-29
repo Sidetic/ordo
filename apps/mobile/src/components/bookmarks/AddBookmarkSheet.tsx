@@ -113,7 +113,7 @@ export function AddBookmarkSheet({
     try {
       new URL(normalized);
     } catch {
-      setError("That doesn't look like a valid URL.");
+      setError("Enter a valid URL.");
       return;
     }
     try {

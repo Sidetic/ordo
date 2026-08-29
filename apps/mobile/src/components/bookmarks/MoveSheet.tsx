@@ -88,7 +88,7 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
           data={destinations}
           keyExtractor={(d) => (isRootDestination(d) ? "root" : d.id)}
           renderItem={({ item }) => (
-            <PressableScale style={[styles.row, { borderBottomColor: palette.border }]} onPress={() => pick(item)}>
+            <PressableScale style={[styles.row, { borderBottomColor: palette.border }]} onPress={() => pick(item)} accessibilityRole="button" accessibilityLabel={isRootDestination(item) ? "Bookmarks" : item.name}>
               <Ionicons
                 name={isRootDestination(item) ? "bookmark-outline" : (item.icon ?? DEFAULT_FOLDER_ICON)}
                 size={20}

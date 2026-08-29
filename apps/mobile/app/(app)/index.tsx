@@ -33,6 +33,7 @@ import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metric
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { haptics } from "../../src/lib/haptics";
 import { toast } from "../../src/components/ui/toast-store";
+import { markedAsReadToast } from "../../src/lib/copy";
 import { errorMessage } from "../../src/lib/error-message";
 import { flattenPages } from "../../src/lib/api/query-keys";
 import { opensBookmarkExternally } from "../../src/lib/bookmark-reader";
@@ -82,7 +83,7 @@ export default function BookmarksScreen() {
   const onMarkAllRead = () => {
     haptics.medium();
     markAllRead.mutate(undefined, {
-      onSuccess: ({ updated }) => toast.success(`${updated} marked as read`),
+      onSuccess: ({ updated }) => toast.success(markedAsReadToast(updated)),
       onError: (cause) => toast.error(errorMessage(cause)),
     });
   };
@@ -113,6 +114,12 @@ export default function BookmarksScreen() {
     if (action === "folder") setCreateOpen(true);
   };
 
+  const createActionLabel = (action: CreateButtonAction) => {
+    if (action === "menu") return "Create";
+    if (action === "bookmark") return "Save bookmark";
+    return "New folder";
+  };
+
   const createActionDescription = (action: CreateButtonAction) => {
     if (action === "menu") return "show create choices";
     if (action === "bookmark") return "save a bookmark";
@@ -139,6 +146,9 @@ export default function BookmarksScreen() {
         </View>
       ) : (
         <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel="New folder"
+          accessibilityHint="Organize bookmarks into a folder."
           style={[styles.noFolders, { borderColor: palette.border, backgroundColor: palette.surface }]}
           onPress={() => setCreateOpen(true)}
         >
@@ -150,7 +160,9 @@ export default function BookmarksScreen() {
           <Ionicons name="add" size={20} color={palette.textTertiary} />
         </PressableScale>
       )}
-      <Text variant="caption" color="secondary" style={styles.bookmarksLabel}>BOOKMARKS</Text>
+      <View style={styles.bookmarksSection}>
+        <SettingsSectionLabel compact>Bookmarks</SettingsSectionLabel>
+      </View>
     </View>
   );
 
@@ -162,7 +174,13 @@ export default function BookmarksScreen() {
         maxWidth={layout.maxContentWidth}
         right={
           hasUnread ? (
-            <PressableScale style={styles.headerAction} onPress={onMarkAllRead} hitSlop={8}>
+            <PressableScale
+              style={styles.headerAction}
+              onPress={onMarkAllRead}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Mark all as read"
+            >
               <Ionicons name="checkmark-done" size={22} color={palette.accent} />
             </PressableScale>
           ) : undefined
@@ -227,6 +245,7 @@ export default function BookmarksScreen() {
             if (createButtonHoldAction !== "none") haptics.medium();
             runCreateAction(createButtonHoldAction);
           }}
+          accessibilityLabel={createActionLabel(createButtonTapAction)}
           accessibilityHint={
             createButtonHoldAction === "none"
               ? `Tap to ${createActionDescription(createButtonTapAction)}. Press and hold is disabled.`
@@ -243,6 +262,8 @@ export default function BookmarksScreen() {
         <View style={styles.createMenuActions}>
           <PressableScale
             accessibilityRole="button"
+            accessibilityLabel="Save bookmark"
+            accessibilityHint="Add a link to your library."
             style={[styles.createMenuAction, { backgroundColor: palette.surfaceSecondary }]}
             onPress={() => {
               setCreateMenuOpen(false);
@@ -252,12 +273,14 @@ export default function BookmarksScreen() {
             <Ionicons name="bookmark-outline" size={20} color={palette.accent} />
             <View style={styles.createMenuCopy}>
               <Text variant="bodyStrong">Save bookmark</Text>
-              <Text variant="footnote" color="tertiary">Add a link to your library</Text>
+              <Text variant="footnote" color="tertiary">Add a link to your library.</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
           </PressableScale>
           <PressableScale
             accessibilityRole="button"
+            accessibilityLabel="New folder"
+            accessibilityHint="Organize bookmarks into a folder."
             style={[styles.createMenuAction, { backgroundColor: palette.surfaceSecondary }]}
             onPress={() => {
               setCreateMenuOpen(false);
@@ -267,7 +290,7 @@ export default function BookmarksScreen() {
             <Ionicons name="folder-outline" size={20} color={palette.accent} />
             <View style={styles.createMenuCopy}>
               <Text variant="bodyStrong">New folder</Text>
-              <Text variant="footnote" color="tertiary">Organize bookmarks into a folder</Text>
+              <Text variant="footnote" color="tertiary">Organize bookmarks into a folder.</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
           </PressableScale>
@@ -329,7 +352,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[16],
   },
   noFoldersCopy: { flex: 1 },
-  bookmarksLabel: { paddingTop: spacing[16], paddingBottom: spacing[8] },
+  bookmarksSection: { paddingTop: spacing[16] },
   emptyBookmarks: { minHeight: 300, justifyContent: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
   createMenuTitle: { marginBottom: spacing[16] },

@@ -8,6 +8,7 @@ import { FloatingPanel } from "../ui/FloatingPanel";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
+import { EyeToggle } from "../ui/EyeToggle";
 import { useUnlockFolder } from "../../hooks/use-folders";
 import { useFolderTokenStore } from "../../store/folder-tokens";
 import { errorMessage } from "../../lib/error-message";
@@ -26,6 +27,7 @@ export function LockPrompt({ visible, folderId, folderName, onDismiss, onUnlocke
   const unlock = useUnlockFolder();
   const setToken = useFolderTokenStore((s) => s.set);
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
   const submit = async () => {
@@ -39,22 +41,24 @@ export function LockPrompt({ visible, folderId, folderName, onDismiss, onUnlocke
       setToken(folderId, res.token, res.expiresIn);
       haptics.success();
       setPassword("");
+      setShowPassword(false);
       onUnlocked();
     } catch (e) {
       haptics.error();
-      setError(errorMessage(e, "Incorrect password."));
+      setError(errorMessage(e, "That password is incorrect."));
     }
   };
 
   const close = () => {
     setPassword("");
+    setShowPassword(false);
     setError("");
     onDismiss();
   };
 
   return (
     <FloatingPanel visible={visible} onDismiss={close}>
-      <Text variant="title3" style={{ marginBottom: spacing[4] }}>Folder locked</Text>
+      <Text variant="title3" style={{ marginBottom: spacing[4] }}>Unlock folder</Text>
       <Text variant="footnote" color="secondary" style={{ marginBottom: spacing[16] }}>
         Enter the password to unlock{folderName ? ` ${folderName}` : ""}.
       </Text>
@@ -63,10 +67,11 @@ export function LockPrompt({ visible, folderId, folderName, onDismiss, onUnlocke
         value={password}
         onChangeText={setPassword}
         placeholder="Folder password"
-        secureTextEntry
+        secureTextEntry={!showPassword}
         autoFocus
         error={error || undefined}
         onSubmitEditing={submit}
+        rightAccessory={<EyeToggle visible={showPassword} onPress={() => setShowPassword((value) => !value)} />}
       />
       <View style={{ height: spacing[20] }} />
       <Button label="Unlock" block size="lg" onPress={submit} loading={unlock.isPending} />

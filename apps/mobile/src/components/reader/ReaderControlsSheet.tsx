@@ -110,7 +110,7 @@ export function ReaderControlsSheet({
         <SettingRow
           icon="contrast-outline"
           label="AMOLED black"
-          description={effectiveDark ? "Pure black surfaces while reading." : "Available when the dark theme is active."}
+          description={effectiveDark ? "Use pure black surfaces while reading." : "Available when dark mode is active."}
           right={
             <Toggle
               value={preferences.amoled && effectiveDark}

@@ -75,7 +75,7 @@ export function CreateFolderPanel({
         <Text variant="label" color="tertiary" style={styles.iconLabel}>ICON</Text>
         <FolderIconPicker value={icon} onChange={setIcon} />
         <View style={styles.actions}>
-          <Button label="Create" block size="lg" onPress={submit} loading={createFolder.isPending} />
+          <Button label="Create folder" block size="lg" onPress={submit} loading={createFolder.isPending} />
           <Button label="Cancel" variant="ghost" block onPress={close} />
         </View>
       </ScrollView>

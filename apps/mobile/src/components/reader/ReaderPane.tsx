@@ -33,9 +33,11 @@ import { Header } from "../ui/Header";
 import { ScreenContent } from "../ui/ScreenContent";
 import { Text } from "../ui/Text";
 import { Button } from "../ui/Button";
+import { EmptyState } from "../ui/EmptyState";
 import { Skeleton } from "../ui/Skeleton";
 import { PressableScale } from "../ui/PressableScale";
 import { FloatingPanel } from "../ui/FloatingPanel";
+import { SheetActionRow } from "../ui/SheetActionRow";
 import { FAB, FABLayer } from "../ui/FAB";
 import { ArticleHtml, type ArticleHeading } from "./ArticleHtml";
 import { Markdown } from "./Markdown";
@@ -621,17 +623,17 @@ function ReaderPaneInner({
         </ScreenContent>
       ) : !bookmark ? (
         <ScreenContent style={styles.stateCenter}>
-          <Text variant="title3">Couldn't load this bookmark</Text>
-          {detail.error ? (
-            <Text variant="body" color="secondary" style={{ marginTop: spacing[6], textAlign: "center" }}>
-              {errorMessage(detail.error)}
-            </Text>
-          ) : null}
-          <View style={{ height: spacing[16] }} />
-          <Button
-            label={embedded ? "Retry" : "Go back"}
-            variant="secondary"
-            onPress={embedded ? () => detail.refetch() : handleBack}
+          <EmptyState
+            icon="cloud-offline-outline"
+            title="Couldn't load this bookmark"
+            message={detail.error ? errorMessage(detail.error) : undefined}
+            action={
+              <Button
+                label={embedded ? "Retry" : "Go back"}
+                variant="secondary"
+                onPress={embedded ? () => detail.refetch() : handleBack}
+              />
+            }
           />
         </ScreenContent>
       ) : (
@@ -681,18 +683,13 @@ function ReaderPaneInner({
                 </View>
               ) : terminalExternal ? (
                 externalLaunchFailed ? (
-                  <View style={styles.inlineEmpty}>
-                    <Ionicons name="reader-outline" size={36} color={palette.textTertiary} />
-                    <Text
-                      variant="body"
-                      color="secondary"
-                      style={{ marginTop: spacing[12], textAlign: "center" }}
-                    >
-                      This page can&apos;t be shown in Ordo&apos;s reader.
-                    </Text>
-                    <View style={{ height: spacing[16] }} />
-                    <Button label="Open original" onPress={handleOpenOriginal} />
-                  </View>
+                  <EmptyState
+                    compact
+                    icon="reader-outline"
+                    title="Can't show this page"
+                    message="This page can't be shown in Ordo's reader."
+                    action={<Button label="Open original" onPress={handleOpenOriginal} />}
+                  />
                 ) : (
                   <View style={styles.inlineEmpty}>
                     <Skeleton width="100%" height={16} />
@@ -704,22 +701,18 @@ function ReaderPaneInner({
                   </View>
                 )
               ) : detailFetchFailed ? (
-                <View style={styles.inlineEmpty}>
-                  <Ionicons name="cloud-offline-outline" size={36} color={palette.textTertiary} />
-                  <Text
-                    variant="body"
-                    color="secondary"
-                    style={{ marginTop: spacing[12], textAlign: "center" }}
-                  >
-                    Couldn&apos;t load the article.
-                  </Text>
-                  <View style={{ height: spacing[16] }} />
-                  <Button
-                    label="Retry"
-                    variant="secondary"
-                    onPress={() => detail.refetch()}
-                  />
-                </View>
+                <EmptyState
+                  compact
+                  icon="cloud-offline-outline"
+                  title="Couldn't load the article"
+                  action={
+                    <Button
+                      label="Retry"
+                      variant="secondary"
+                      onPress={() => detail.refetch()}
+                    />
+                  }
+                />
               ) : waitingForHtml ? (
                 <View style={styles.inlineEmpty}>
                   <Skeleton width="100%" height={16} />
@@ -732,22 +725,17 @@ function ReaderPaneInner({
                   <Skeleton width="92%" height={16} style={{ marginTop: spacing[8] }} />
                   <Skeleton width="68%" height={16} style={{ marginTop: spacing[8] }} />
                   <Text variant="body" color="secondary" style={styles.preparingText}>
-                    Preparing this page for reading...
+                    Preparing this page for reading…
                   </Text>
                 </View>
               ) : (
-                <View style={styles.inlineEmpty}>
-                  <Ionicons name="reader-outline" size={36} color={palette.textTertiary} />
-                  <Text
-                    variant="body"
-                    color="secondary"
-                    style={{ marginTop: spacing[12], textAlign: "center" }}
-                  >
-                    No readable content was captured for this page.
-                  </Text>
-                  <View style={{ height: spacing[16] }} />
-                  <Button label="Open original" onPress={handleOpenOriginal} />
-                </View>
+                <EmptyState
+                  compact
+                  icon="reader-outline"
+                  title="No readable content"
+                  message="No readable content was captured for this page."
+                  action={<Button label="Open original" onPress={handleOpenOriginal} />}
+                />
                 )}
               </View>
             </ScreenContent>
@@ -781,7 +769,7 @@ function ReaderPaneInner({
       <FloatingPanel visible={actionPanel !== null} onDismiss={() => setActionPanel(null)}>
         {actionPanel === "contents" ? (
           <>
-            <Text variant="title3" style={styles.actionsTitle}>Contents</Text>
+            <Text variant="title3" style={styles.actionsTitle}>Table of contents</Text>
             <ScrollView style={styles.tocList} showsVerticalScrollIndicator={false}>
               {articleHeadings.map((heading) => (
                 <PressableScale
@@ -816,43 +804,28 @@ function ReaderPaneInner({
           <>
             <Text variant="title3" style={styles.actionsTitle}>Article actions</Text>
             {hasHtml && articleHeadings.length >= 3 ? (
-              <PressableScale
-                style={[styles.actionRow, { borderBottomColor: palette.border }]}
+              <SheetActionRow
+                icon="list-outline"
+                label="Table of contents"
                 onPress={() => setActionPanel("contents")}
-                accessibilityRole="button"
-                accessibilityLabel="Open table of contents"
-              >
-                <Ionicons name="list-outline" size={20} color={palette.text} />
-                <Text variant="body" style={styles.actionLabel}>Table of contents</Text>
-                <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
-              </PressableScale>
+              />
             ) : null}
-            <PressableScale
-              style={[styles.actionRow, { borderBottomColor: palette.border }]}
+            <SheetActionRow
+              icon="share-social-outline"
+              label="Share article"
               onPress={() => {
                 setActionPanel(null);
                 handleShare();
               }}
-              accessibilityRole="button"
-              accessibilityLabel={`Share ${displayTitle}`}
-            >
-              <Ionicons name="share-social-outline" size={20} color={palette.text} />
-              <Text variant="body" style={styles.actionLabel}>Share article</Text>
-              <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
-            </PressableScale>
-            <PressableScale
-              style={[styles.actionRow, { borderBottomColor: palette.border }]}
+            />
+            <SheetActionRow
+              icon="globe-outline"
+              label="Open original"
               onPress={() => {
                 setActionPanel(null);
                 handleOpenOriginal();
               }}
-              accessibilityRole="button"
-              accessibilityLabel="Open original in browser"
-            >
-              <Ionicons name="globe-outline" size={20} color={palette.text} />
-              <Text variant="body" style={styles.actionLabel}>Open original in browser</Text>
-              <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
-            </PressableScale>
+            />
             <Button
               label="Cancel"
               variant="ghost"
@@ -868,25 +841,14 @@ function ReaderPaneInner({
 }
 
 export function ReaderPanePlaceholder() {
-  const { palette } = useTheme();
-
   return (
-    <ScreenContent style={styles.stateCenter}>
-      <View
-        style={[
-          styles.placeholderIcon,
-          { backgroundColor: palette.surfaceSecondary, borderColor: palette.border },
-        ]}
-      >
-        <Ionicons name="reader-outline" size={28} color={palette.textTertiary} />
-      </View>
-      <Text variant="title3" align="center" style={{ marginTop: spacing[16] }}>
-        Select a bookmark
-      </Text>
-      <Text variant="body" color="secondary" align="center" style={{ marginTop: spacing[6] }}>
-        Choose a bookmark from the list to preview it here.
-      </Text>
-    </ScreenContent>
+    <View style={styles.stateCenter}>
+      <EmptyState
+        icon="reader-outline"
+        title="Select a bookmark"
+        message="Choose a bookmark from the list to preview it here."
+      />
+    </View>
   );
 }
 
@@ -901,14 +863,6 @@ const styles = StyleSheet.create({
   headerActions: { flexDirection: "row", alignItems: "center" },
   iconBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   actionsTitle: { marginBottom: spacing[12] },
-  actionRow: {
-    minHeight: 50,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[12],
-    paddingHorizontal: spacing[4],
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
   actionLabel: { flex: 1 },
   actionsCancel: { marginTop: spacing[8] },
   tocList: { maxHeight: 420 },
@@ -937,12 +891,4 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[32],
   },
   preparingText: { marginTop: spacing[16], textAlign: "center" },
-  placeholderIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
 });

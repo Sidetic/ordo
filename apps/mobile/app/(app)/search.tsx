@@ -10,6 +10,7 @@ import { Header } from "../../src/components/ui/Header";
 import { ScreenContent } from "../../src/components/ui/ScreenContent";
 import { Input } from "../../src/components/ui/Input";
 import { EmptyState } from "../../src/components/ui/EmptyState";
+import { Button } from "../../src/components/ui/Button";
 import { BookmarkListSkeleton } from "../../src/components/ui/BookmarkListSkeleton";
 import { BookmarkRow } from "../../src/components/bookmarks/BookmarkRow";
 import { ReaderPane, ReaderPanePlaceholder } from "../../src/components/reader/ReaderPane";
@@ -153,6 +154,7 @@ export default function SearchScreen() {
               icon="cloud-offline-outline"
               title="Couldn't search bookmarks"
               message={errorMessage(search.error)}
+              action={<Button label="Retry" onPress={() => search.refetch()} />}
             />
           </View>
         ) : items.length === 0 ? (

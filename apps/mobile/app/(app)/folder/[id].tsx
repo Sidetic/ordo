@@ -33,6 +33,7 @@ import { useResponsiveLayout } from "../../../src/hooks/use-responsive-layout";
 import { useTheme } from "../../../src/theme/ThemeProvider";
 import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
+import { markedAsReadToast } from "../../../src/lib/copy";
 import { errorMessage, isFolderProtected } from "../../../src/lib/error-message";
 import { flattenPages } from "../../../src/lib/api/query-keys";
 import { opensBookmarkExternally } from "../../../src/lib/bookmark-reader";
@@ -64,8 +65,9 @@ export default function FolderDetailScreen() {
   const [folderActions, setFolderActions] = useState(false);
 
   const protectedError = !!bookmarks.error && isFolderProtected(bookmarks.error);
+  const loadFailed = !!bookmarks.error && !protectedError && !bookmarks.data;
   const items = useMemo(() => flattenPages(bookmarks.data?.pages ?? []), [bookmarks.data]);
-  const isEmpty = !bookmarks.isLoading && !protectedError && items.length === 0;
+  const isEmpty = !bookmarks.isLoading && !protectedError && !loadFailed && items.length === 0;
   // Root isn't a folder row, so derive unread state from the loaded items.
   const hasUnread = folder ? folder.unreadCount > 0 : items.some((b) => !b.isRead);
 
@@ -113,7 +115,7 @@ export default function FolderDetailScreen() {
   const onMarkAllRead = () => {
     haptics.medium();
     markAll.mutate(undefined, {
-      onSuccess: (r) => toast.success(`${r.updated} marked as read`),
+      onSuccess: (r) => toast.success(markedAsReadToast(r.updated)),
       onError: (e) => toast.error(errorMessage(e)),
     });
   };
@@ -154,12 +156,26 @@ export default function FolderDetailScreen() {
         subtitle={folder ? `${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}` : undefined}
         showBack
         right={
-          hasUnread && !protectedError ? (
-            <PressableScale style={styles.iconBtn} scaleTo={0.85} onPress={onMarkAllRead} hitSlop={8}>
+          hasUnread && !protectedError && !loadFailed ? (
+            <PressableScale
+              style={styles.iconBtn}
+              scaleTo={0.85}
+              onPress={onMarkAllRead}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Mark all as read"
+            >
               <Ionicons name="checkmark-done" size={22} color={palette.accent} />
             </PressableScale>
           ) : folder ? (
-            <PressableScale style={styles.iconBtn} scaleTo={0.85} onPress={() => setFolderActions(true)} hitSlop={8}>
+            <PressableScale
+              style={styles.iconBtn}
+              scaleTo={0.85}
+              onPress={() => setFolderActions(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Folder actions"
+            >
               <Ionicons name="ellipsis-horizontal" size={22} color={palette.text} />
             </PressableScale>
           ) : undefined
@@ -179,6 +195,15 @@ export default function FolderDetailScreen() {
             folderName={folder?.name}
             onDismiss={() => router.back()}
             onUnlocked={() => bookmarks.refetch()}
+          />
+        </ScreenContent>
+      ) : loadFailed ? (
+        <ScreenContent maxWidth={layout.maxContentWidth} style={styles.center}>
+          <EmptyState
+            icon="cloud-offline-outline"
+            title="Couldn't load bookmarks"
+            message={errorMessage(bookmarks.error)}
+            action={<Button label="Retry" onPress={() => bookmarks.refetch()} />}
           />
         </ScreenContent>
       ) : isEmpty ? (
@@ -217,6 +242,7 @@ export default function FolderDetailScreen() {
               {listPane}
               <FAB
                 onPress={() => setAddOpen(true)}
+                accessibilityLabel="Save bookmark"
                 testID="add-bookmark-fab"
                 right={spacing[20]}
               />
@@ -241,10 +267,11 @@ export default function FolderDetailScreen() {
         </ScreenContent>
       )}
 
-      {!protectedError && !hasDetailPane ? (
+      {!protectedError && !loadFailed && !hasDetailPane ? (
         <FABLayer maxWidth={layout.maxContentWidth}>
           <FAB
             onPress={() => setAddOpen(true)}
+            accessibilityLabel="Save bookmark"
             testID="add-bookmark-fab"
             right={spacing[20]}
           />
