@@ -108,6 +108,8 @@ export function Header({
             scaleTo={0.85}
             onPress={handleBack}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
           >
             <Ionicons name="chevron-back" size={24} color={palette.text} />
           </PressableScale>

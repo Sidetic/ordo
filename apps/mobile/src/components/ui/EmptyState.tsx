@@ -11,12 +11,14 @@ export interface EmptyStateProps {
   title: string;
   message?: string;
   action?: React.ReactNode;
+  /** Tighter padding for inline use (e.g. under a reader article header). */
+  compact?: boolean;
 }
 
-export function EmptyState({ icon, title, message, action }: EmptyStateProps) {
+export function EmptyState({ icon, title, message, action, compact }: EmptyStateProps) {
   const { palette } = useTheme();
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, compact && styles.compact]}>
       <View style={[styles.iconCircle, { backgroundColor: palette.surfaceSecondary, borderColor: palette.border }]}>
         <Ionicons name={icon} size={26} color={palette.textTertiary} />
       </View>
@@ -40,6 +42,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: spacing[48],
     paddingHorizontal: spacing[32],
+  },
+  compact: {
+    paddingVertical: spacing[24],
+    paddingHorizontal: spacing[16],
   },
   iconCircle: { width: 60, height: 60, borderRadius: radius.lg, borderWidth: 1, alignItems: "center", justifyContent: "center" },
 });
