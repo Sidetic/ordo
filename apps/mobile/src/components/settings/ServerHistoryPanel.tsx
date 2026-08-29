@@ -1,181 +1,130 @@
 /**
- * Last-three server recents with an explicit health check before reconnect.
- * Tapping Reconnect probes in isolation; switching still requires confirm.
+ * Last-three server recents on the Server settings page.
+ * Tapping one fills the URL field so the existing health check still has to pass.
  */
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeIn } from "react-native-reanimated";
-import { SettingsSectionLabel } from "./SettingsPage";
-import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
-import { EmptyState } from "../ui/EmptyState";
+import { SettingsGroup } from "./SettingsPage";
 import { PressableScale } from "../ui/PressableScale";
-import { ServerProbeLog } from "../ui/ServerProbeLog";
 import { Text } from "../ui/Text";
 import { timeAgo } from "../../lib/format";
-import { hostOf, type ProbeStep } from "../../lib/server-probe";
-import {
-  schemeOf,
-  type ServerHistoryEntry,
-} from "../../lib/server-history";
+import { hostOf, normalizeServerUrl } from "../../lib/server-probe";
+import type { ServerHistoryEntry } from "../../lib/server-history";
 import { useTheme } from "../../theme/ThemeProvider";
 import { radius, spacing } from "../../theme/tokens";
 
 export function ServerHistoryPanel({
   entries,
-  probingUrl,
-  steps,
-  probing,
+  selectedUrl,
   busy,
-  onReconnect,
+  onSelect,
   onRemove,
-  onChangeServer,
 }: {
   entries: ServerHistoryEntry[];
-  probingUrl: string | null;
-  steps: ProbeStep[];
-  probing: boolean;
+  selectedUrl: string;
   busy: boolean;
-  onReconnect: (url: string) => void;
+  onSelect: (url: string) => void;
   onRemove: (url: string) => void;
-  onChangeServer: () => void;
 }) {
   const { palette } = useTheme();
+  if (entries.length === 0) return null;
 
-  if (entries.length === 0) {
-    return (
-      <EmptyState
-        compact
-        icon="time-outline"
-        title="No recent servers"
-        message="The last three servers you leave will show up here, so you can reconnect after a health check."
-        action={<Button label="Change server" onPress={onChangeServer} />}
-      />
-    );
-  }
+  const selectedOrigin = normalizeServerUrl(selectedUrl);
 
   return (
-    <View>
-      <SettingsSectionLabel compact>Recent servers</SettingsSectionLabel>
-      <View style={styles.list}>
-        {entries.map((entry, index) => {
-          const host = hostOf(entry.url);
-          const scheme = schemeOf(entry.url);
-          const active = probingUrl === entry.url;
-          const reconnectDisabled = busy || (probing && !active);
-          const removeDisabled = busy || probing;
+    <SettingsGroup
+      label="Recent servers"
+      footer="Picking one fills the URL below and runs a health check. Switching still signs you out."
+    >
+      {entries.map((entry, index) => {
+        const host = hostOf(entry.url);
+        const selected = selectedOrigin === entry.url;
 
-          return (
-            <View
-              key={entry.url}
-              style={[
-                styles.card,
-                {
-                  backgroundColor: active ? palette.accentSoft : palette.surface,
-                  borderColor: active ? palette.accent : palette.border,
-                },
-              ]}
+        return (
+          <View
+            key={entry.url}
+            style={[
+              styles.row,
+              { borderBottomColor: palette.border },
+              index === entries.length - 1 && styles.noDivider,
+              selected && { backgroundColor: palette.accentSoft },
+            ]}
+          >
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel={`Use recent server ${host}`}
+              accessibilityState={{ disabled: busy, selected }}
+              disabled={busy}
+              dim
+              onPress={() => onSelect(entry.url)}
+              style={styles.select}
             >
-              <View style={styles.cardHead}>
-                <View style={[styles.iconWrap, { backgroundColor: palette.surfaceSecondary }]}>
-                  <Ionicons
-                    name={active ? "pulse-outline" : "cloud-outline"}
-                    size={18}
-                    color={active ? palette.accent : palette.blue}
-                  />
-                </View>
-                <View style={styles.cardBody}>
-                  <View style={styles.titleRow}>
-                    <Text variant="bodyStrong" numberOfLines={1} style={styles.host}>
-                      {host}
-                    </Text>
-                    {scheme ? (
-                      <Badge tone={scheme === "https" ? "green" : "neutral"}>
-                        {scheme === "https" ? "HTTPS" : "HTTP"}
-                      </Badge>
-                    ) : null}
-                  </View>
-                  <Text variant="monoSmall" color="tertiary" numberOfLines={1}>
-                    {entry.url}
-                  </Text>
-                  <Text variant="footnote" color="tertiary">
-                    Last used {timeAgo(new Date(entry.lastConnectedAt).toISOString())}
-                  </Text>
-                </View>
-                <PressableScale
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove ${host} from history`}
-                  accessibilityState={{ disabled: removeDisabled }}
-                  hitSlop={8}
-                  disabled={removeDisabled}
-                  onPress={() => onRemove(entry.url)}
-                  style={[styles.remove, { opacity: removeDisabled ? 0.4 : 1 }]}
-                >
-                  <Ionicons name="close" size={18} color={palette.textTertiary} />
-                </PressableScale>
+              <View style={[styles.iconWrap, { backgroundColor: palette.surfaceSecondary }]}>
+                <Ionicons
+                  name={selected ? "radio-button-on" : "time-outline"}
+                  size={16}
+                  color={selected ? palette.accent : palette.blue}
+                />
               </View>
-
-              {active && probing ? (
-                <Text variant="caption" color="secondary" style={styles.probeHint}>
-                  Checking this server before switching
+              <View style={styles.body}>
+                <Text variant="body" numberOfLines={1} color={selected ? "accent" : "primary"}>
+                  {host}
                 </Text>
-              ) : null}
-              {active && (probing || steps.length > 0) ? (
-                <Animated.View entering={FadeIn.duration(180)}>
-                  <ServerProbeLog steps={steps} probing={probing} style={styles.probeLog} />
-                </Animated.View>
-              ) : null}
-
-              <Button
-                label={active && probing ? "Checking…" : "Reconnect"}
-                variant={index === 0 ? "primary" : "secondary"}
-                block
-                disabled={reconnectDisabled}
-                loading={active && probing}
-                onPress={() => onReconnect(entry.url)}
-                style={styles.reconnect}
-              />
-            </View>
-          );
-        })}
-      </View>
-      <Text variant="caption" color="tertiary" style={styles.footer}>
-        Ordo keeps the last three servers you leave. Reconnect always runs a health
-        check, then signs you out and restarts.
-      </Text>
-    </View>
+                <Text variant="footnote" color="tertiary" numberOfLines={1}>
+                  Last used {timeAgo(new Date(entry.lastConnectedAt).toISOString())}
+                </Text>
+              </View>
+            </PressableScale>
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${host} from history`}
+              accessibilityState={{ disabled: busy }}
+              hitSlop={8}
+              disabled={busy}
+              onPress={() => onRemove(entry.url)}
+              style={[styles.remove, { opacity: busy ? 0.4 : 1 }]}
+            >
+              <Ionicons name="close" size={18} color={palette.textTertiary} />
+            </PressableScale>
+          </View>
+        );
+      })}
+    </SettingsGroup>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { gap: spacing[10] },
-  card: {
-    borderWidth: 1,
-    borderRadius: radius["2xl"],
-    padding: spacing[14],
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  cardHead: { flexDirection: "row", alignItems: "flex-start", gap: spacing[12] },
+  noDivider: { borderBottomWidth: 0 },
+  select: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[12],
+    minHeight: 64,
+    paddingLeft: spacing[16],
+    paddingVertical: spacing[12],
+    borderRadius: radius.sm,
+  },
   iconWrap: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: radius.sm,
     alignItems: "center",
     justifyContent: "center",
   },
-  cardBody: { flex: 1, minWidth: 0, gap: spacing[2] },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: spacing[8] },
-  host: { flex: 1, minWidth: 0 },
+  body: { flex: 1, minWidth: 0, gap: spacing[2] },
   remove: {
-    width: 32,
-    height: 32,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -spacing[4],
-    marginRight: -spacing[4],
+    marginRight: spacing[4],
   },
-  probeHint: { marginTop: spacing[12], letterSpacing: 0.4 },
-  probeLog: { marginTop: spacing[12] },
-  reconnect: { marginTop: spacing[14] },
-  footer: { paddingHorizontal: spacing[4], paddingTop: spacing[12] },
 });

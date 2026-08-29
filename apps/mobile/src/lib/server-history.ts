@@ -70,14 +70,3 @@ export function visibleServerHistory(
     .filter((entry) => entry.url !== current)
     .slice(0, SERVER_HISTORY_LIMIT);
 }
-
-export function schemeOf(url: string): "https" | "http" | null {
-  try {
-    const protocol = new URL(url).protocol;
-    if (protocol === "https:") return "https";
-    if (protocol === "http:") return "http";
-    return null;
-  } catch {
-    return null;
-  }
-}

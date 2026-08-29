@@ -151,6 +151,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       );
     }
 
+    // SQLite DROP TABLE User runs an implicit DELETE FROM, which fires
+    // ON DELETE CASCADE on EmailVerificationToken / Session / etc. Foreign
+    // keys must be off on the *same* connection as the DROP. Prisma
+    // interactive $transaction can check out a different connection, so the
+    // PRAGMA would not apply and child rows disappear.
     await this.$executeRawUnsafe(`PRAGMA foreign_keys = OFF`);
     try {
       const select = (name: string, fallback = "NULL"): string =>
@@ -159,29 +164,24 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         ? `COALESCE(NULLIF("displayName", ''), "username")`
         : `"username"`;
 
-      await this.$transaction(
-        async (tx) => {
-          await tx.$executeRawUnsafe(`DROP TABLE IF EXISTS "User_migration"`);
-          await tx.$executeRawUnsafe(USER_MIGRATION_DDL);
-          await tx.$executeRawUnsafe(
-            `INSERT INTO "User_migration" (
-              "id", "displayName", "email", "passwordHash", "emailVerifiedAt", "pendingEmail",
-              "preferences", "totpSecretEnc", "totpEnabledAt", "avatarMime", "avatarUpdatedAt",
-              "avatarBytes", "createdAt", "updatedAt"
-            )
-            SELECT
-              "id", ${displayNameExpr}, "email", "passwordHash",
-              ${select("emailVerifiedAt")}, ${select("pendingEmail")},
-              ${select("preferences")}, ${select("totpSecretEnc")}, ${select("totpEnabledAt")},
-              ${select("avatarMime")}, ${select("avatarUpdatedAt")}, ${select("avatarBytes")},
-              "createdAt", "updatedAt"
-            FROM "User"`,
-          );
-          await tx.$executeRawUnsafe(`DROP TABLE "User"`);
-          await tx.$executeRawUnsafe(`ALTER TABLE "User_migration" RENAME TO "User"`);
-        },
-        { timeout: 120_000, maxWait: 10_000 },
+      await this.$executeRawUnsafe(`DROP TABLE IF EXISTS "User_migration"`);
+      await this.$executeRawUnsafe(USER_MIGRATION_DDL);
+      await this.$executeRawUnsafe(
+        `INSERT INTO "User_migration" (
+          "id", "displayName", "email", "passwordHash", "emailVerifiedAt", "pendingEmail",
+          "preferences", "totpSecretEnc", "totpEnabledAt", "avatarMime", "avatarUpdatedAt",
+          "avatarBytes", "createdAt", "updatedAt"
+        )
+        SELECT
+          "id", ${displayNameExpr}, "email", "passwordHash",
+          ${select("emailVerifiedAt")}, ${select("pendingEmail")},
+          ${select("preferences")}, ${select("totpSecretEnc")}, ${select("totpEnabledAt")},
+          ${select("avatarMime")}, ${select("avatarUpdatedAt")}, ${select("avatarBytes")},
+          "createdAt", "updatedAt"
+        FROM "User"`,
       );
+      await this.$executeRawUnsafe(`DROP TABLE "User"`);
+      await this.$executeRawUnsafe(`ALTER TABLE "User_migration" RENAME TO "User"`);
       this.logger.log("Migrated User.username to non-unique displayName");
     } finally {
       await this.$executeRawUnsafe(`PRAGMA foreign_keys = ON`);
