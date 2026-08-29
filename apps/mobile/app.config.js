@@ -43,6 +43,7 @@ module.exports = {
       "expo-image-picker",
       {
         photosPermission: "Allow Ordo to access your photos to set a profile picture.",
+        cameraPermission: "Allow Ordo to take a photo for your profile picture.",
       },
     ],
     [

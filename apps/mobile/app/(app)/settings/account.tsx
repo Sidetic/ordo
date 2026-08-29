@@ -1,7 +1,8 @@
 /** Account identity and security settings. */
 import React, { useState } from "react";
-import { Pressable } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
@@ -12,6 +13,10 @@ import {
 } from "../../../src/components/settings/SettingsPage";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { UserAvatar } from "../../../src/components/ui/UserAvatar";
+import { FloatingPanel } from "../../../src/components/ui/FloatingPanel";
+import { Button } from "../../../src/components/ui/Button";
+import { Text } from "../../../src/components/ui/Text";
+import { PressableScale } from "../../../src/components/ui/PressableScale";
 import { toast } from "../../../src/components/ui/toast-store";
 import { useAuthStore } from "../../../src/store/auth";
 import { useServerInfo } from "../../../src/hooks/queries";
@@ -20,6 +25,7 @@ import { errorMessage } from "../../../src/lib/error-message";
 import { formatDate } from "../../../src/lib/format";
 import { haptics } from "../../../src/lib/haptics";
 import { spacing } from "../../../src/theme/tokens";
+import { useTheme } from "../../../src/theme/ThemeProvider";
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -27,26 +33,19 @@ export default function AccountScreen() {
   const setUser = useAuthStore((s) => s.setUser);
   const { data: info } = useServerInfo();
   const [busy, setBusy] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const pickAvatar = async () => {
-    if (busy) return;
+  const afterSheet = (fn: () => void) => {
+    setMenuOpen(false);
+    setTimeout(fn, 280);
+  };
+
+  const uploadFromUri = async (uri: string) => {
     const maxBytes = info?.profilePictureMaxBytes ?? 2 * 1024 * 1024;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      toast.error("Photo library permission is required to set a profile picture.");
-      return;
-    }
-    const picked = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.9,
-    });
-    if (picked.canceled || !picked.assets[0]) return;
     setBusy(true);
     try {
       const square = await ImageManipulator.manipulateAsync(
-        picked.assets[0].uri,
+        uri,
         [{ resize: { width: 1024 } }],
         { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG },
       );
@@ -73,12 +72,67 @@ export default function AccountScreen() {
     }
   };
 
+  const choosePhoto = async () => {
+    if (busy) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      toast.error("Photo library permission is required to set a profile picture.");
+      return;
+    }
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.9,
+    });
+    if (picked.canceled || !picked.assets[0]) return;
+    await uploadFromUri(picked.assets[0].uri);
+  };
+
+  const takePhoto = async () => {
+    if (busy) return;
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      toast.error("Camera permission is required to take a profile picture.");
+      return;
+    }
+    const captured = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.9,
+    });
+    if (captured.canceled || !captured.assets[0]) return;
+    await uploadFromUri(captured.assets[0].uri);
+  };
+
+  const removePhoto = async () => {
+    if (busy || !user?.hasAvatar) return;
+    setBusy(true);
+    try {
+      const updated = await authApi.deleteAvatar();
+      setUser(updated);
+      haptics.success();
+      toast.success("Profile picture removed");
+    } catch (e) {
+      haptics.error();
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <SettingsPage title="Account">
       <SettingsScrollView>
         <Pressable
-          onPress={pickAvatar}
+          onPress={() => {
+            if (busy) return;
+            setMenuOpen(true);
+          }}
           disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel="Profile picture"
           style={{
             alignSelf: "center",
             paddingBottom: spacing[24],
@@ -137,6 +191,76 @@ export default function AccountScreen() {
           />
         </SettingsGroup>
       </SettingsScrollView>
+
+      <FloatingPanel visible={menuOpen} onDismiss={() => setMenuOpen(false)}>
+        <Text variant="title3" style={styles.menuTitle}>
+          Profile picture
+        </Text>
+        <ActionRow
+          icon="image-outline"
+          label="Choose photo"
+          onPress={() => afterSheet(() => void choosePhoto())}
+        />
+        <ActionRow
+          icon="camera-outline"
+          label="Take photo"
+          onPress={() => afterSheet(() => void takePhoto())}
+        />
+        {user?.hasAvatar ? (
+          <ActionRow
+            icon="trash-outline"
+            label="Remove photo"
+            tone="danger"
+            onPress={() => afterSheet(() => void removePhoto())}
+          />
+        ) : null}
+        <Button label="Cancel" variant="ghost" block onPress={() => setMenuOpen(false)} style={styles.menuCancel} />
+      </FloatingPanel>
     </SettingsPage>
   );
 }
+
+function ActionRow({
+  icon,
+  label,
+  tone,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  tone?: "danger";
+  onPress: () => void;
+}) {
+  const { palette } = useTheme();
+  const color = tone === "danger" ? palette.danger : palette.text;
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      style={[styles.row, { borderBottomColor: palette.border }]}
+      onPress={() => {
+        haptics.light();
+        onPress();
+      }}
+    >
+      <Ionicons name={icon} size={20} color={color} />
+      <Text variant="body" style={[styles.rowLabel, { color }]}>
+        {label}
+      </Text>
+      <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
+    </PressableScale>
+  );
+}
+
+const styles = StyleSheet.create({
+  menuTitle: { marginBottom: spacing[12] },
+  menuCancel: { marginTop: spacing[8] },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[12],
+    minHeight: 50,
+    paddingHorizontal: spacing[4],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  rowLabel: { flex: 1 },
+});
