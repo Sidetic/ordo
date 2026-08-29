@@ -1020,6 +1020,82 @@ describe("Bookmarks & Folders (e2e)", () => {
         .expect(200);
       expect(res.body.items).toHaveLength(1);
     });
+    it("suggests existing tags after extraction and honors accept/dismiss", async () => {
+      const { agent } = await setup();
+      const sample = await agent.post("/api/tags").send({ name: "sample" }).expect(201);
+      const article = await agent.post("/api/tags").send({ name: "article" }).expect(201);
+      const created = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/post" })
+        .expect(201);
+      expect(created.body.suggestedTags).toEqual([]);
+
+      // wait for extraction + suggestion generation (fake reader is fast)
+      let detail: { suggestedTags: Array<{ id: string }> } | undefined;
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        const res = await agent.get(`/api/bookmarks/${created.body.id}`).expect(200);
+        if (res.body.suggestedTags.length > 0) {
+          detail = res.body;
+          break;
+        }
+      }
+      expect(detail?.suggestedTags.map((t) => t.id).sort()).toEqual([article.body.id, sample.body.id].sort());
+
+      // accept "sample", dismiss "article"
+      const updated = await agent
+        .put(`/api/bookmarks/${created.body.id}/tags`)
+        .send({ tagIds: [sample.body.id], dismissedSuggestionIds: [article.body.id] })
+        .expect(200);
+      expect(updated.body.tags.map((t: { id: string }) => t.id)).toEqual([sample.body.id]);
+      expect(updated.body.suggestedTags).toEqual([]);
+
+      // a later re-extraction keeps the assignment and the dismissal
+      await ctx.prisma.bookmark.update({
+        where: { id: created.body.id },
+        data: { extractionVersion: null },
+      });
+      const { TagSuggestionService } = await import("../src/bookmarks/tag-suggestion.service.js");
+      await new TagSuggestionService(ctx.prisma).refresh(created.body.id);
+      const after = await agent.get(`/api/bookmarks/${created.body.id}`).expect(200);
+      expect(after.body.suggestedTags).toEqual([]);
+      expect(after.body.tags.map((t: { id: string }) => t.id)).toEqual([sample.body.id]);
+
+      // a brand-new bookmark gets fresh suggestions for both tags
+      const other = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/another" })
+        .expect(201);
+      let otherDetail: { suggestedTags: Array<{ id: string }> } | undefined;
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        const res = await agent.get(`/api/bookmarks/${other.body.id}`).expect(200);
+        if (res.body.suggestedTags.length > 0) {
+          otherDetail = res.body;
+          break;
+        }
+      }
+      expect(otherDetail?.suggestedTags.map((t) => t.id).sort()).toEqual([article.body.id, sample.body.id].sort());
+    });
+
+    it("does not create tags or backfill suggestions for existing bookmarks", async () => {
+      const { agent, userId } = await setup();
+      const created = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/post" })
+        .expect(201);
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const res = await agent.get(`/api/bookmarks/${created.body.id}`).expect(200);
+        if (res.body.fetchStatus !== "pending") break;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+
+      // creating a tag afterwards does not scan the existing bookmark
+      await agent.post("/api/tags").send({ name: "sample" }).expect(201);
+      const detail = await agent.get(`/api/bookmarks/${created.body.id}`).expect(200);
+      expect(detail.body.suggestedTags).toEqual([]);
+      expect(await ctx.prisma.tag.count({ where: { userId } })).toBe(1);
+    });
   });
 
   describe("search", () => {

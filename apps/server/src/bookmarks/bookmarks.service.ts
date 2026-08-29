@@ -14,6 +14,7 @@ import { AppError } from "../common/errors/app-error.js";
 import { ReaderService, UnsupportedContentError } from "./reader.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
 import { TagsService } from "./tags.service.js";
+import { TagSuggestionService } from "./tag-suggestion.service.js";
 import { toBookmarkDto, toBookmarkDetailDto } from "../common/mappers.js";
 import {
   clampLimit,
@@ -69,6 +70,7 @@ export class BookmarksService implements OnApplicationBootstrap {
     private readonly reader: ReaderService,
     private readonly access: FolderAccessService,
     private readonly tags: TagsService,
+    private readonly tagSuggestions: TagSuggestionService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -326,6 +328,9 @@ export class BookmarksService implements OnApplicationBootstrap {
           extractionVersion: EXTRACTION_VERSION,
         },
       });
+      // Suggestions derive from the freshly stored content; failures are
+      // logged and never affect the bookmark or its extraction status.
+      this.tagSuggestions.refreshSafely(bookmarkId);
     } catch (err) {
       // Typed rejections are stored as `unsupported` with the reason; anything
       // else (network, HTTP errors, parse crashes) is a plain failure.

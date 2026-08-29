@@ -18,7 +18,13 @@ describe("BookmarksService extraction refresh", () => {
       extract: jest.fn().mockRejectedValue(error),
       classifyShellText: (text: string) => classifier.classifyShellText(text),
     };
-    const service = new BookmarksService(prisma as never, reader as never, {} as never, {} as never);
+    const service = new BookmarksService(
+      prisma as never,
+      reader as never,
+      {} as never,
+      {} as never,
+      { refreshSafely: () => undefined } as never,
+    );
 
     return { prisma, service };
   }

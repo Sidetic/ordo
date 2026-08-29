@@ -9,6 +9,7 @@ import { FolderTokenService } from "./folder-token.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
 import { TagsController } from "./tags.controller.js";
 import { TagsService } from "./tags.service.js";
+import { TagSuggestionService } from "./tag-suggestion.service.js";
 
 @Module({
   imports: [AuthModule],
@@ -20,6 +21,7 @@ import { TagsService } from "./tags.service.js";
     FolderTokenService,
     FolderAccessService,
     TagsService,
+    TagSuggestionService,
   ],
 })
 export class BookmarksModule {}
