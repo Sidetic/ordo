@@ -1,7 +1,7 @@
 /**
  * Active sessions / devices list with per-session revoke (optimistic).
  */
-import React from "react";
+import React, { useState } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,6 +16,7 @@ import { Button } from "../../../src/components/ui/Button";
 import { Skeleton } from "../../../src/components/ui/Skeleton";
 import { EmptyState } from "../../../src/components/ui/EmptyState";
 import { PressableScale } from "../../../src/components/ui/PressableScale";
+import { ConfirmDialog } from "../../../src/components/ui/ConfirmDialog";
 import { useSessions } from "../../../src/hooks/queries";
 import { useRevokeSession } from "../../../src/hooks/use-auth-actions";
 import { useTheme } from "../../../src/theme/ThemeProvider";
@@ -71,12 +72,14 @@ export default function SessionsScreen() {
   const { width } = useWindowDimensions();
   const { data: sessions, isLoading, error, refetch } = useSessions();
   const revoke = useRevokeSession();
+  const [pendingRevoke, setPendingRevoke] = useState<SessionDto | null>(null);
 
-  const onRevoke = (s: SessionDto) => {
+  const onRevoke = (session: SessionDto) => {
     haptics.medium();
-    revoke.mutate(s.id, {
+    revoke.mutate(session.id, {
       onSuccess: () => toast.success("Session revoked"),
       onError: (e) => toast.error(errorMessage(e)),
+      onSettled: () => setPendingRevoke(null),
     });
   };
 
@@ -134,8 +137,10 @@ export default function SessionsScreen() {
               </View>
               {item.current ? null : (
                 <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel={`Revoke session on ${deviceLabel(item)}`}
                   style={[styles.revokeBtn, { borderColor: palette.danger }]}
-                  onPress={() => onRevoke(item)}
+                  onPress={() => setPendingRevoke(item)}
                 >
                   {revoke.isPending && revoke.variables === item.id ? (
                     <ActivityIndicator size="small" color={palette.danger} />
@@ -157,6 +162,27 @@ export default function SessionsScreen() {
           }
         />
       )}
+
+      <ConfirmDialog
+        visible={!!pendingRevoke}
+        onDismiss={() => {
+          if (revoke.isPending) return;
+          setPendingRevoke(null);
+        }}
+        icon="log-out-outline"
+        title="Revoke this session?"
+        message={
+          pendingRevoke
+            ? `${deviceLabel(pendingRevoke)} will be signed out and will need to sign in again.`
+            : ""
+        }
+        confirmLabel="Revoke"
+        loading={revoke.isPending}
+        dismissible={!revoke.isPending}
+        onConfirm={() => {
+          if (pendingRevoke) onRevoke(pendingRevoke);
+        }}
+      />
     </SettingsPage>
   );
 }
