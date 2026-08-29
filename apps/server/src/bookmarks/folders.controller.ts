@@ -18,6 +18,7 @@ import {
   type CreateFolderInput,
   type FolderDto,
   type RemoveFolderPasswordInput,
+  type SetFolderPasswordInput,
   type UpdateFolderInput,
 } from "@ordo/shared";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe.js";
@@ -71,9 +72,9 @@ export class FoldersController {
   async setPassword(
     @CurrentUser() user: AuthContext,
     @Param("id") id: string,
-    @Body(new ZodValidationPipe(SetFolderPasswordSchema)) body: { password: string },
+    @Body(new ZodValidationPipe(SetFolderPasswordSchema)) body: SetFolderPasswordInput,
   ): Promise<{ success: true }> {
-    await this.folders.setPassword(id, user.userId, body.password);
+    await this.folders.setPassword(id, user.userId, body);
     return { success: true };
   }
 

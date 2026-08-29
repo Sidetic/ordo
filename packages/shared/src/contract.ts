@@ -22,6 +22,7 @@ import type {
 import type {
   CreateFolderInput,
   RemoveFolderPasswordInput,
+  SetFolderPasswordInput,
   UpdateFolderInput,
   UpdateReaderPreferencesInput,
 } from "./schemas/index.js";
@@ -313,7 +314,7 @@ export const FolderRoutes = {
   setPassword: {
     path: `${API_PREFIX}/folders/:id/password`,
     method: "POST",
-    body: {} as { password: string },
+    body: {} as SetFolderPasswordInput,
     query: {} as Empty,
     params: {} as { id: string },
     response: {} as { success: true },

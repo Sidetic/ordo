@@ -75,6 +75,7 @@ export function toFolderDto(
     icon: normalizeFolderIcon(f.icon),
     pinned: f.pinned,
     protected: f.passwordHash !== null,
+    lockType: f.passwordHash === null ? null : (f.lockType ?? "password") as FolderDto["lockType"],
     bookmarkCount: counts.bookmarkCount,
     unreadCount: counts.unreadCount,
     createdAt: f.createdAt.toISOString(),

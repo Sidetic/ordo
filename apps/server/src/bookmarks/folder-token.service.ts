@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import bcrypt from "bcryptjs";
 import type { Folder } from "@prisma/client";
-import { ErrorCode, TOKEN_TTL } from "@ordo/shared";
+import { ErrorCode, TOKEN_TTL, type FolderLockType } from "@ordo/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { AppError } from "../common/errors/app-error.js";
 import { TokenService } from "../auth/token.service.js";
@@ -16,11 +16,11 @@ export class FolderTokenService {
     private readonly tokens: TokenService,
   ) {}
 
-  async setPassword(folderId: string, password: string): Promise<void> {
+  async setPassword(folderId: string, password: string, lockType: FolderLockType): Promise<void> {
     const passwordHash = await bcrypt.hash(password, FOLDER_BCRYPT_COST);
     await this.prisma.folder.update({
       where: { id: folderId },
-      data: { passwordHash },
+      data: { passwordHash, lockType },
     });
     // invalidate any outstanding tokens for this folder
     await this.prisma.folderToken.deleteMany({ where: { folderId } });
@@ -29,7 +29,7 @@ export class FolderTokenService {
   async removePassword(folderId: string): Promise<void> {
     await this.prisma.folder.update({
       where: { id: folderId },
-      data: { passwordHash: null },
+      data: { passwordHash: null, lockType: null },
     });
     await this.prisma.folderToken.deleteMany({ where: { folderId } });
   }

@@ -109,6 +109,8 @@ model Folder {
   icon         String       @default("folder-outline")
   pinned       Boolean      @default(false)
   passwordHash String?
+  /// device | pattern | pin | password; null for unlocked folders.
+  lockType     String?
   position     Int          @default(0)
   // Retained only so legacy default folders can be migrated safely on startup.
   isDefault    Boolean      @default(false)

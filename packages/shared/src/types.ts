@@ -38,6 +38,8 @@ export interface SessionDto {
 
 export type SessionDeviceType = "phone" | "tablet" | "desktop" | "tv" | "unknown";
 
+export type FolderLockType = "device" | "pattern" | "pin" | "password";
+
 /** Returned to mobile clients; web clients rely on cookies. */
 export interface AuthTokens {
   accessToken: string;
@@ -90,6 +92,7 @@ export interface FolderDto {
   icon: FolderIcon;
   pinned: boolean;
   protected: boolean;
+  lockType: FolderLockType | null;
   bookmarkCount: number;
   unreadCount: number;
   createdAt: string;

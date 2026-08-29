@@ -4,6 +4,7 @@ import type {
   CreateFolderInput,
   FolderDto,
   RemoveFolderPasswordInput,
+  SetFolderPasswordInput,
   UpdateFolderInput,
 } from "@ordo/shared";
 import { ErrorCode } from "@ordo/shared";
@@ -89,9 +90,9 @@ export class FoldersService {
     await this.prisma.folder.delete({ where: { id: folderId } });
   }
 
-  async setPassword(folderId: string, userId: string, password: string): Promise<void> {
+  async setPassword(folderId: string, userId: string, input: SetFolderPasswordInput): Promise<void> {
     await this.access.loadOwned(folderId, userId);
-    await this.folderTokens.setPassword(folderId, password);
+    await this.folderTokens.setPassword(folderId, input.password, input.lockType);
   }
 
   async removePassword(
