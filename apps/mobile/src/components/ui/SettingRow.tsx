@@ -14,6 +14,8 @@ export interface SettingRowProps {
   value?: string;
   onPress?: () => void;
   right?: React.ReactNode;
+  /** `column` (default) reserves the settings picker width so labels align. */
+  rightFit?: "column" | "content";
   destructive?: boolean;
   showChevron?: boolean;
   divider?: boolean;
@@ -26,6 +28,7 @@ export function SettingRow({
   value,
   onPress,
   right,
+  rightFit = "column",
   destructive,
   showChevron,
   divider = true,
@@ -43,14 +46,14 @@ export function SettingRow({
       ) : null}
       <View style={styles.body}>
         <Text
-          variant="body"
+          variant="bodyStrong"
           numberOfLines={1}
           style={{ color: destructive ? palette.danger : palette.text }}
         >
           {label}
         </Text>
         {description ? (
-          <Text variant="footnote" color="tertiary" style={styles.description}>
+          <Text variant="footnote" color="tertiary" numberOfLines={2} style={styles.description}>
             {description}
           </Text>
         ) : null}
@@ -60,7 +63,9 @@ export function SettingRow({
           {value}
         </Text>
       ) : null}
-      {right ? <View style={styles.trailing}>{right}</View> : null}
+      {right ? (
+        <View style={rightFit === "content" ? styles.trailingHug : styles.trailing}>{right}</View>
+      ) : null}
       {showChevron ? <Ionicons name="chevron-forward" size={16} color={palette.textFaint} /> : null}
     </View>
   );
@@ -80,6 +85,7 @@ const styles = StyleSheet.create({
   press: { borderRadius: radius.sm },
   row: {
     flexDirection: "row",
+    flexWrap: "nowrap",
     alignItems: "center",
     gap: spacing[12],
     minHeight: 64,
@@ -88,9 +94,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   noDivider: { borderBottomWidth: 0 },
-  iconWrap: { width: 28, height: 28, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  body: { flex: 1, minWidth: 0 },
+  iconWrap: {
+    width: 28, height: 28, alignItems: "center", justifyContent: "center",
+    flexShrink: 0, overflow: "hidden",
+  },
+  body: { flex: 1, flexBasis: 0, minWidth: 0 },
   description: { marginTop: spacing[2] },
   value: { maxWidth: layout.settingsControlWidth, flexShrink: 0 },
-  trailing: { flexShrink: 0 },
+  trailing: {
+    width: layout.settingsControlWidth,
+    flexGrow: 0,
+    flexShrink: 0,
+    alignItems: "flex-end",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  trailingHug: { flexShrink: 0 },
 });

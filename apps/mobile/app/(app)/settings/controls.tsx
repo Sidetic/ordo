@@ -17,14 +17,14 @@ import {
 } from "../../../src/store/settings";
 
 const tapOptions: readonly SettingsSelectOption<CreateButtonAction>[] = [
-  { value: "menu", label: "Show create menu", shortLabel: "Menu", icon: "apps-outline" },
+  { value: "menu", label: "Show create menu", shortLabel: "Show menu", icon: "apps-outline" },
   { value: "bookmark", label: "Save bookmark", shortLabel: "Bookmark", icon: "bookmark-outline" },
-  { value: "folder", label: "New folder", shortLabel: "Folder", icon: "folder-outline" },
+  { value: "folder", label: "New folder", icon: "folder-outline" },
 ];
 
 const holdOptions: readonly SettingsSelectOption<CreateButtonHoldAction>[] = [
   ...tapOptions,
-  { value: "none", label: "No action", shortLabel: "None", icon: "remove-circle-outline" },
+  { value: "none", label: "No action", icon: "remove-circle-outline" },
 ];
 
 export default function ControlsScreen() {

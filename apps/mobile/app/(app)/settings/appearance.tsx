@@ -90,7 +90,7 @@ export default function AppearanceScreen() {
             }
           />
           <SettingRow
-            icon="text-outline"
+            icon="list-outline"
             label="Show labels"
             description="Display destination names below navigation icons."
             right={<Toggle value={showNavigationLabels} onValueChange={setShowNavigationLabels} />}

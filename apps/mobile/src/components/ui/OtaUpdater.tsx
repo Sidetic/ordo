@@ -5,6 +5,7 @@ import { Button } from "./Button";
 import { SettingRow } from "./SettingRow";
 import { toast } from "./toast-store";
 import { useAppUpdate } from "../../hooks/use-app-update";
+import { layout } from "../../theme/tokens";
 
 export function OtaUpdateCard() {
   const update = useAppUpdate();
@@ -95,5 +96,5 @@ export function OtaUpdateCard() {
 }
 
 const styles = StyleSheet.create({
-  checkButton: { minWidth: 104 },
+  checkButton: { width: layout.settingsControlWidth },
 });

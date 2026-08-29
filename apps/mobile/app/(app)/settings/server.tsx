@@ -220,6 +220,7 @@ export default function ServerScreen() {
             label={hostOf(currentUrl)}
             description={currentUrl}
             value={connectionValue}
+            rightFit="content"
             right={
               <RefreshConnectionButton
                 refreshing={serverInfo.isFetching}

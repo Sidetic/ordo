@@ -137,11 +137,13 @@ export function SettingsSelect<T extends string>({
             pressed && styles.pressed,
           ]}
         >
-          {selected?.icon ? <Ionicons name={selected.icon} size={16} color={palette.textTertiary} /> : null}
-          <Text variant="subhead" numberOfLines={1} style={styles.triggerLabel}>
+          {selected?.icon ? (
+            <Ionicons name={selected.icon} size={16} color={palette.textTertiary} style={styles.triggerIcon} />
+          ) : null}
+          <Text variant="subhead" numberOfLines={1} ellipsizeMode="tail" style={styles.triggerLabel}>
             {selected?.shortLabel ?? selected?.label ?? value}
           </Text>
-          <Ionicons name="chevron-down" size={14} color={palette.textTertiary} />
+          <Ionicons name="chevron-down" size={14} color={palette.textTertiary} style={styles.triggerChevron} />
         </Pressable>
       </View>
 
@@ -177,18 +179,28 @@ export function SettingsSelect<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  anchor: { flexShrink: 0 },
+  anchor: {
+    width: layout.settingsControlWidth,
+    minWidth: layout.settingsControlWidth,
+    maxWidth: layout.settingsControlWidth,
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   trigger: {
     width: layout.settingsControlWidth,
     minHeight: 36,
     flexDirection: "row",
     alignItems: "center",
+    alignSelf: "stretch",
     gap: spacing[6],
     paddingHorizontal: spacing[10],
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radius.md,
+    overflow: "hidden",
   },
-  triggerLabel: { flex: 1, minWidth: 0 },
+  triggerIcon: { flexShrink: 0 },
+  triggerChevron: { flexShrink: 0 },
+  triggerLabel: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
   pressed: { opacity: 0.72 },
   modalRoot: { flex: 1 },
   menu: {
