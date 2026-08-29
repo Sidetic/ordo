@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_TAGS_PER_BOOKMARK } from "../constants.js";
 
 const url = z
   .string()
@@ -16,6 +17,7 @@ const folderId = z.string().min(1, { message: "Choose a folder." }).nullish();
 export const CreateBookmarkSchema = z.object({
   url,
   folderId,
+  tagIds: z.array(z.string().min(1)).max(MAX_TAGS_PER_BOOKMARK).optional(),
 });
 export type CreateBookmarkInput = z.infer<typeof CreateBookmarkSchema>;
 

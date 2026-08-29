@@ -1,5 +1,5 @@
 /** Entity & response shapes shared between server and mobile client. */
-import type { FolderIcon } from "./constants.js";
+import type { FolderIcon, TagColor } from "./constants.js";
 
 export interface UserDto {
   id: string;
@@ -99,6 +99,18 @@ export interface FolderDto {
   updatedAt: string;
 }
 
+export interface TagSummaryDto {
+  id: string;
+  name: string;
+  color: TagColor;
+}
+
+export interface TagDto extends TagSummaryDto {
+  bookmarkCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type FetchStatus = "pending" | "ok" | "unsupported" | "failed";
 
 /**
@@ -139,6 +151,8 @@ export interface BookmarkDto {
   readProgress: number;
   completedAt: string | null;
   isRead: boolean;
+  tags: TagSummaryDto[];
+  suggestedTags: TagSummaryDto[];
   createdAt: string;
   updatedAt: string;
 }

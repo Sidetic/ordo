@@ -33,6 +33,10 @@ export const ErrorCode = {
   BOOKMARK_NOT_FOUND: "bookmark_not_found",
   FETCH_FAILED: "fetch_failed",
 
+  // tags
+  TAG_NOT_FOUND: "tag_not_found",
+  TAG_ALREADY_EXISTS: "tag_already_exists",
+
   // generic
   VALIDATION_ERROR: "validation_error",
   NOT_FOUND: "not_found",

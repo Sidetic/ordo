@@ -15,6 +15,7 @@ import type {
   MfaStatusDto,
   ServerInfoDto,
   SessionDto,
+  TagDto,
   TotpBeginDto,
   TotpConfirmDto,
   UserDto,
@@ -25,6 +26,9 @@ import type {
   SetFolderPasswordInput,
   UpdateFolderInput,
   UpdateReaderPreferencesInput,
+  CreateTagInput,
+  UpdateBookmarkTagsInput,
+  UpdateTagInput,
 } from "./schemas/index.js";
 
 export const API_PREFIX = "/api";
@@ -337,12 +341,48 @@ export const FolderRoutes = {
   },
 } satisfies Record<string, RouteDef>;
 
+// ---------- Tags ----------
+export const TagRoutes = {
+  list: {
+    path: `${API_PREFIX}/tags`,
+    method: "GET",
+    body: {} as Empty,
+    query: {} as Empty,
+    params: {} as Empty,
+    response: {} as TagDto[],
+  },
+  create: {
+    path: `${API_PREFIX}/tags`,
+    method: "POST",
+    body: {} as CreateTagInput,
+    query: {} as Empty,
+    params: {} as Empty,
+    response: {} as TagDto,
+  },
+  update: {
+    path: `${API_PREFIX}/tags/:id`,
+    method: "PATCH",
+    body: {} as UpdateTagInput,
+    query: {} as Empty,
+    params: {} as { id: string },
+    response: {} as TagDto,
+  },
+  remove: {
+    path: `${API_PREFIX}/tags/:id`,
+    method: "DELETE",
+    body: {} as Empty,
+    query: {} as Empty,
+    params: {} as { id: string },
+    response: {} as { success: true },
+  },
+} satisfies Record<string, RouteDef>;
+
 // ---------- Bookmarks ----------
 export const BookmarkRoutes = {
   create: {
     path: `${API_PREFIX}/bookmarks`,
     method: "POST",
-    body: {} as { url: string; folderId?: string | null },
+    body: {} as { url: string; folderId?: string | null; tagIds?: string[] },
     query: {} as Empty,
     params: {} as Empty,
     response: {} as BookmarkDto,
@@ -351,7 +391,7 @@ export const BookmarkRoutes = {
     path: `${API_PREFIX}/bookmarks`,
     method: "GET",
     body: {} as Empty,
-    query: {} as { folderId?: string | null; cursor?: string; limit?: number },
+    query: {} as { folderId?: string | null; scope?: "all"; tagIds?: string; cursor?: string; limit?: number },
     params: {} as Empty,
     response: {} as CursorPage<BookmarkDto>,
   },
@@ -359,7 +399,7 @@ export const BookmarkRoutes = {
     path: `${API_PREFIX}/bookmarks/search`,
     method: "GET",
     body: {} as Empty,
-    query: {} as { q: string; cursor?: string; limit?: number },
+    query: {} as { q: string; tagIds?: string; cursor?: string; limit?: number },
     params: {} as Empty,
     response: {} as CursorPage<BookmarkDto>,
   },
@@ -386,6 +426,14 @@ export const BookmarkRoutes = {
     query: {} as Empty,
     params: {} as { id: string },
     response: {} as { success: true },
+  },
+  updateTags: {
+    path: `${API_PREFIX}/bookmarks/:id/tags`,
+    method: "PUT",
+    body: {} as UpdateBookmarkTagsInput,
+    query: {} as Empty,
+    params: {} as { id: string },
+    response: {} as BookmarkDto,
   },
   markAllRead: {
     path: `${API_PREFIX}/bookmarks/mark-all-read`,

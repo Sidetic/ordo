@@ -10,6 +10,8 @@ export const DEVICE_TYPE_HEADER = "x-device-type";
 
 /** Header carrying the short-lived folder unlock token. */
 export const FOLDER_TOKEN_HEADER = "x-folder-token";
+/** Header carrying comma-separated folder unlock tokens for global queries. */
+export const FOLDER_TOKENS_HEADER = "x-folder-tokens";
 
 /** Header carrying the opaque refresh token when not using cookies. */
 export const REFRESH_TOKEN_HEADER = "x-refresh-token";
@@ -83,6 +85,32 @@ export const EXTRACTION_VERSION = 4;
 
 /** readProgress at or above this fraction marks a bookmark read/completed. */
 export const READ_COMPLETION_THRESHOLD = 0.98;
+
+export const TAG_NAME_MAX_LENGTH = 40;
+export const MAX_TAGS_PER_BOOKMARK = 20;
+export const MAX_TAG_SUGGESTIONS = 3;
+
+/** Stable semantic keys; clients resolve them against their current theme. */
+export const TAG_COLORS = [
+  "slate",
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "blue",
+  "indigo",
+  "violet",
+  "pink",
+] as const;
+export type TagColor = (typeof TAG_COLORS)[number];
+export const DEFAULT_TAG_COLOR: TagColor = "blue";
+
+export function normalizeTagColor(value: unknown): TagColor {
+  return typeof value === "string" && (TAG_COLORS as readonly string[]).includes(value)
+    ? (value as TagColor)
+    : DEFAULT_TAG_COLOR;
+}
 
 /** Icon used when a folder is created without an explicit icon. */
 export const DEFAULT_FOLDER_ICON = "folder-outline";
@@ -169,4 +197,5 @@ export const QUERY = {
   LIMIT: "limit",
   SEARCH: "q",
   FOLDER_ID: "folderId",
+  TAG_IDS: "tagIds",
 } as const;
