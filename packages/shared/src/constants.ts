@@ -191,6 +191,38 @@ export function normalizeFolderIcon(value: unknown): FolderIcon {
     : DEFAULT_FOLDER_ICON;
 }
 
+/** Import / export tuning. Limits are part of the public contract. */
+export const IMPORT_EXPORT = {
+  /** Maximum accepted import upload size (multipart file). */
+  MAX_FILE_BYTES: 50 * 1024 * 1024,
+  /** Staged import jobs (and their results) expire after this much idle time. */
+  JOB_TTL_MS: 60 * 60 * 1000,
+  /** How often the server sweeps expired import jobs. */
+  SWEEP_MS: 10 * 60 * 1000,
+  /** Bookmark rows per database write batch during import. */
+  BATCH_SIZE: 500,
+  /** Cap on invalid-row samples returned with a preview or result. */
+  MAX_INVALID_SAMPLES: 20,
+  /** Max length of a folder name (matches the folder create schema). */
+  FOLDER_NAME_MAX: 100,
+  /** Max length of an imported bookmark title; longer titles are truncated. */
+  TITLE_MAX: 500,
+  /** Separator used when flattening nested source folders into Ordo names. */
+  FOLDER_PATH_SEPARATOR: " / ",
+} as const;
+
+/** Import file formats the server can detect and parse. */
+export const IMPORT_FORMATS = ["ordo-json", "netscape-html", "csv"] as const;
+export type ImportFormat = (typeof IMPORT_FORMATS)[number];
+
+/** Export file formats. */
+export const EXPORT_FORMATS = ["json", "html", "csv"] as const;
+export type ExportFormat = (typeof EXPORT_FORMATS)[number];
+
+/** What to do when an imported URL already exists in the account. */
+export const DUPLICATE_POLICIES = ["skip", "update", "copy"] as const;
+export type DuplicatePolicy = (typeof DUPLICATE_POLICIES)[number];
+
 /** Query param keys. */
 export const QUERY = {
   CURSOR: "cursor",

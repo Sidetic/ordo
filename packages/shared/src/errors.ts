@@ -37,6 +37,13 @@ export const ErrorCode = {
   TAG_NOT_FOUND: "tag_not_found",
   TAG_ALREADY_EXISTS: "tag_already_exists",
 
+  // import / export
+  IMPORT_NOT_FOUND: "import_not_found",
+  IMPORT_INVALID_STATE: "import_invalid_state",
+  IMPORT_FILE_TOO_LARGE: "import_file_too_large",
+  IMPORT_UNSUPPORTED_FORMAT: "import_unsupported_format",
+  IMPORT_PARSE_FAILED: "import_parse_failed",
+
   // generic
   VALIDATION_ERROR: "validation_error",
   NOT_FOUND: "not_found",

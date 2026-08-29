@@ -21,14 +21,17 @@ import type {
   UserDto,
 } from "./types.js";
 import type {
+  CommitImportInput,
   CreateFolderInput,
+  ExportRequestInput,
+  ImportJobDto,
   RemoveFolderPasswordInput,
   SetFolderPasswordInput,
+  UpdateBookmarkTagsInput,
   UpdateFolderInput,
   UpdateReaderPreferencesInput,
-  CreateTagInput,
-  UpdateBookmarkTagsInput,
   UpdateTagInput,
+  CreateTagInput,
 } from "./schemas/index.js";
 
 export const API_PREFIX = "/api";
@@ -454,6 +457,55 @@ export const ServerRoutes = {
     query: {} as Empty,
     params: {} as Empty,
     response: {} as ServerInfoDto,
+  },
+} satisfies Record<string, RouteDef>;
+
+// ---------- Import / Export ----------
+export const ImportExportRoutes = {
+  /** Multipart upload (field "file"); parsing runs as a staged background job. */
+  uploadImport: {
+    path: `${API_PREFIX}/import-export/import`,
+    method: "POST",
+    body: {} as Empty,
+    query: {} as Empty,
+    params: {} as Empty,
+    response: {} as { jobId: string },
+  },
+  /** Poll a staged import job; includes the preview once parsed. */
+  getImport: {
+    path: `${API_PREFIX}/import-export/import/:id`,
+    method: "GET",
+    body: {} as Empty,
+    query: {} as Empty,
+    params: {} as { id: string },
+    response: {} as ImportJobDto,
+  },
+  /** Confirm a previewed import with a duplicate policy + failure semantics. */
+  commitImport: {
+    path: `${API_PREFIX}/import-export/import/:id/commit`,
+    method: "POST",
+    body: {} as CommitImportInput,
+    query: {} as Empty,
+    params: {} as { id: string },
+    response: {} as ImportJobDto,
+  },
+  /** Discard a staged (or finished) import job. */
+  cancelImport: {
+    path: `${API_PREFIX}/import-export/import/:id`,
+    method: "DELETE",
+    body: {} as Empty,
+    query: {} as Empty,
+    params: {} as { id: string },
+    response: {} as { success: true },
+  },
+  /** Export the library (or one folder) as a file download. */
+  export: {
+    path: `${API_PREFIX}/import-export/export`,
+    method: "POST",
+    body: {} as ExportRequestInput,
+    query: {} as Empty,
+    params: {} as Empty,
+    response: {} as Empty, // binary file stream
   },
 } satisfies Record<string, RouteDef>;
 
