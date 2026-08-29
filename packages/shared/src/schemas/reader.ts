@@ -23,7 +23,7 @@ export const DEFAULT_READER_PREFERENCES: ReaderPreferences = {
 /** Partial patch: only the provided fields are updated. */
 export const UpdateReaderPreferencesSchema = ReaderPreferencesSchema.partial()
   .refine((value) => Object.keys(value).length > 0, {
-    message: "Provide at least one preference to update",
+    message: "Provide at least one preference to update.",
   });
 export type UpdateReaderPreferencesInput = z.infer<typeof UpdateReaderPreferencesSchema>;
 

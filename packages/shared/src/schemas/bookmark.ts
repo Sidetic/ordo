@@ -3,15 +3,15 @@ import { z } from "zod";
 const url = z
   .string()
   .trim()
-  .min(1, { message: "URL is required" })
-  .url({ message: "Enter a valid URL" })
+  .min(1, { message: "Enter a URL." })
+  .url({ message: "Enter a valid URL." })
   .max(2048);
 
 /**
  * Target folder for a bookmark. Omitted or `null` means the bookmark is
  * "unfiled" (it lives outside every folder).
  */
-const folderId = z.string().min(1, { message: "Folder is required" }).nullish();
+const folderId = z.string().min(1, { message: "Choose a folder." }).nullish();
 
 export const CreateBookmarkSchema = z.object({
   url,
@@ -27,14 +27,14 @@ export const UpdateBookmarkSchema = z
     /** Reading position within the article, 0..1 (>= 0.98 completes it). */
     readProgress: z
       .number()
-      .min(0, { message: "readProgress must be between 0 and 1" })
-      .max(1, { message: "readProgress must be between 0 and 1" })
+      .min(0, { message: "Reading progress must be between 0 and 1." })
+      .max(1, { message: "Reading progress must be between 0 and 1." })
       .optional(),
   })
   .refine(
     (v) => v.folderId !== undefined || v.isRead !== undefined || v.readProgress !== undefined,
     {
-      message: "Provide at least one field to update",
+      message: "Provide at least one field to update.",
     },
   );
 export type UpdateBookmarkInput = z.infer<typeof UpdateBookmarkSchema>;

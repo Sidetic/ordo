@@ -5,33 +5,33 @@ const email = z
   .string()
   .trim()
   .toLowerCase()
-  .email({ message: "Enter a valid email" })
+  .email({ message: "Enter a valid email." })
   .max(254);
 const password = z
   .string()
-  .min(8, { message: "Password must be at least 8 characters" })
+  .min(8, { message: "Password must be at least 8 characters." })
   .max(256);
 const displayName = z
   .string()
   .trim()
-  .min(1, { message: "Enter a display name" })
-  .max(64, { message: "Display name must be 64 characters or fewer" });
+  .min(1, { message: "Enter a display name." })
+  .max(64, { message: "Display name must be 64 characters or fewer." });
 const optionalMfaCode = z
   .string()
   .trim()
-  .min(1, { message: "Enter your authenticator or backup code" })
+  .min(1, { message: "Enter your authenticator or backup code." })
   .max(32)
   .optional();
 const requiredMfaCode = z
   .string()
   .trim()
-  .min(1, { message: "Enter your authenticator or backup code" })
+  .min(1, { message: "Enter your authenticator or backup code." })
   .max(32);
 const totpCode = z
   .string()
   .trim()
   .regex(new RegExp(`^\\d{${MFA.TOTP_DIGITS}}$`), {
-    message: `Enter the ${MFA.TOTP_DIGITS}-digit code`,
+    message: `Enter the ${MFA.TOTP_DIGITS}-digit code.`,
   });
 const challengeToken = z.string().trim().min(1).max(256);
 
@@ -62,7 +62,7 @@ const emailOtp = z
   .string()
   .trim()
   .regex(new RegExp(`^\\d{${EMAIL_OTP.LENGTH}}$`), {
-    message: `Enter the ${EMAIL_OTP.LENGTH}-digit code`,
+    message: `Enter the ${EMAIL_OTP.LENGTH}-digit code.`,
   });
 
 export const VerifyEmailSchema = z.object({
@@ -90,7 +90,7 @@ export const ChangePasswordSchema = z
     mfaCode: optionalMfaCode,
   })
   .refine((data) => data.currentPassword !== data.newPassword, {
-    message: "New password must be different from your current password",
+    message: "New password must be different from your current password.",
     path: ["newPassword"],
   });
 export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
@@ -99,7 +99,7 @@ export const DELETE_ACCOUNT_CONFIRMATION = "DELETE MY ACCOUNT";
 export const DeleteAccountSchema = z.object({
   currentPassword: password,
   confirmation: z.string().refine((value) => value === DELETE_ACCOUNT_CONFIRMATION, {
-    message: `Type ${DELETE_ACCOUNT_CONFIRMATION} exactly`,
+    message: `Type ${DELETE_ACCOUNT_CONFIRMATION} exactly.`,
   }),
   mfaCode: optionalMfaCode,
 });
@@ -124,7 +124,11 @@ export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
 
 export const LoginMfaSchema = z.object({
   challengeToken,
-  code: z.string().trim().min(1).max(32),
+  code: z
+    .string()
+    .trim()
+    .min(1, { message: "Enter your authenticator or backup code." })
+    .max(32),
 });
 export type LoginMfaInput = z.infer<typeof LoginMfaSchema>;
 
