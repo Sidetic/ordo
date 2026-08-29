@@ -50,6 +50,14 @@ export class RateLimitInterceptor implements NestInterceptor {
         if (userId) this.rateLimit.consumeBookmarkCreate(userId);
         return;
       }
+      case "folder-unlock": {
+        const userId = req.user?.userId;
+        const folderId = req.params.id;
+        if (userId && typeof folderId === "string") {
+          this.rateLimit.consumeFolderUnlock(userId, folderId);
+        }
+        return;
+      }
       case "mfa-verify":
         this.rateLimit.consumeMfaVerify(ip);
         return;

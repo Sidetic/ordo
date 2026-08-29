@@ -185,6 +185,18 @@ describe("RateLimitService", () => {
     expect(() => limiter.consumeBookmarkCreate("user-2")).not.toThrow();
   });
 
+  it("limits folder unlocks per user and folder", () => {
+    const limiter = service();
+    for (let i = 0; i < RATE_LIMIT.folderUnlockUser.limit; i++) {
+      expect(() => limiter.consumeFolderUnlock("user-1", "folder-1")).not.toThrow();
+    }
+    expectLimited(
+      () => limiter.consumeFolderUnlock("user-1", "folder-1"),
+      "folder unlock attempts",
+    );
+    expect(() => limiter.consumeFolderUnlock("user-1", "folder-2")).not.toThrow();
+  });
+
   it("resetAll drops every bucket", () => {
     const limiter = service();
     for (let i = 0; i < RATE_LIMIT.registerIp.limit; i++) {
