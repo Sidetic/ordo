@@ -14,6 +14,7 @@ import { Text } from "../ui/Text";
 import { PressableScale } from "../ui/PressableScale";
 import { TagChip } from "./TagChip";
 import { TagSelectList } from "./TagSelectList";
+import { CreateTagPanel } from "./CreateTagPanel";
 import { useUpdateBookmarkTags } from "../../hooks/use-tags";
 import { errorMessage } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
@@ -31,12 +32,14 @@ export function EditTagsSheet({ visible, onDismiss, bookmark }: EditTagsSheetPro
   const updateTags = useUpdateBookmarkTags();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [dismissed, setDismissed] = useState<string[]>([]);
+  const [createTagOpen, setCreateTagOpen] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (visible && bookmark) {
       setSelectedIds(bookmark.tags.map((t) => t.id));
       setDismissed([]);
+      setCreateTagOpen(false);
       setError("");
     }
   }, [visible, bookmark]);
@@ -93,8 +96,9 @@ export function EditTagsSheet({ visible, onDismiss, bookmark }: EditTagsSheetPro
     .filter((t): t is { id: string; name: string; color: TagSummaryDto["color"] } => t !== null);
 
   return (
-    <FloatingPanel visible={visible} onDismiss={onDismiss}>
-      <PanelHeader title="Edit tags" />
+    <>
+      <FloatingPanel visible={visible} onDismiss={onDismiss}>
+        <PanelHeader title="Edit tags" />
 
       {assigned.length > 0 ? (
         <ScrollView
@@ -148,7 +152,12 @@ export function EditTagsSheet({ visible, onDismiss, bookmark }: EditTagsSheetPro
 
       <View style={styles.section}>
         <Text variant="label" color="tertiary">ALL TAGS</Text>
-        <TagSelectList selectedIds={selectedIds} onToggle={toggle} extraTags={bookmark.tags} />
+        <TagSelectList
+          selectedIds={selectedIds}
+          onToggle={toggle}
+          extraTags={bookmark.tags}
+          onRequestCreateTag={() => setCreateTagOpen(true)}
+        />
       </View>
 
       {error ? (
@@ -166,7 +175,14 @@ export function EditTagsSheet({ visible, onDismiss, bookmark }: EditTagsSheetPro
           style={{ flex: 1.4 }}
         />
       </View>
-    </FloatingPanel>
+      </FloatingPanel>
+      {/* Sibling of the edit sheet: nested modals are not supported on Android. */}
+      <CreateTagPanel
+        visible={visible && createTagOpen}
+        onDismiss={() => setCreateTagOpen(false)}
+        onCreated={(tag) => toggle(tag.id)}
+      />
+    </>
   );
 }
 

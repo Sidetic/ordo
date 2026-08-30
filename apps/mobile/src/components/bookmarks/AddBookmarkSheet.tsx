@@ -21,6 +21,7 @@ import { useFolders } from "../../hooks/queries";
 import { useTags } from "../../hooks/use-tags";
 import { TagChip } from "../tags/TagChip";
 import { TagSelectList } from "../tags/TagSelectList";
+import { CreateTagPanel } from "../tags/CreateTagPanel";
 import { errorMessage, isFolderProtected } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
 import { toast } from "../ui/toast-store";
@@ -41,6 +42,8 @@ export interface AddBookmarkSheetProps {
 
 const ROOT_DESTINATION = "__bookmarks__";
 const NEW_FOLDER_DESTINATION = "__new_folder__";
+/** Stable identity so the sheet's reset effect doesn't fire on parent renders. */
+const NO_TAGS: string[] = [];
 
 /** Display name for the save destination; unfiled bookmarks land in "Bookmarks". */
 function destinationLabel(folderId: string | null, folderName?: string | null): string | null {
@@ -55,7 +58,7 @@ export function AddBookmarkSheet({
   folderName,
   allowFolderSelection = false,
   initialUrl,
-  initialTagIds = [],
+  initialTagIds = NO_TAGS,
 }: AddBookmarkSheetProps) {
   const { palette } = useTheme();
   const create = useCreateBookmark();
@@ -65,6 +68,7 @@ export function AddBookmarkSheet({
   const [error, setError] = useState("");
   const [lockedFolderId, setLockedFolderId] = useState<string | null>(null);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [createTagOpen, setCreateTagOpen] = useState(false);
   const [showTagPicker, setShowTagPicker] = useState(false);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(initialTagIds);
   const [selectedDestination, setSelectedDestination] = useState(folderId ?? ROOT_DESTINATION);
@@ -227,6 +231,7 @@ export function AddBookmarkSheet({
             )
           }
           maxHeight={200}
+          onRequestCreateTag={() => setCreateTagOpen(true)}
         />
       ) : null}
 
@@ -250,6 +255,12 @@ export function AddBookmarkSheet({
       visible={createFolderOpen}
       onDismiss={() => setCreateFolderOpen(false)}
       onCreated={(folder) => setSelectedDestination(folder.id)}
+    />
+    {/* Sibling of the save sheet: nested modals are not supported on Android. */}
+    <CreateTagPanel
+      visible={createTagOpen}
+      onDismiss={() => setCreateTagOpen(false)}
+      onCreated={(tag) => setSelectedTagIds((prev) => [...prev, tag.id])}
     />
     </>
   );

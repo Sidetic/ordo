@@ -9,9 +9,7 @@ import { type TagColor } from "@ordo/shared";
 import { Text } from "../ui/Text";
 import { Input } from "../ui/Input";
 import { PressableScale } from "../ui/PressableScale";
-import { CreateTagPanel } from "./CreateTagPanel";
-import { useTags } from "../../hooks/use-tags";
-import { useCreateTag } from "../../hooks/use-tags";
+import { useTags, useCreateTag } from "../../hooks/use-tags";
 import { useTheme } from "../../theme/ThemeProvider";
 import { spacing } from "../../theme/tokens";
 import { tagColorValue } from "../../lib/tag-colors";
@@ -25,6 +23,12 @@ export interface TagSelectListProps {
   extraTags?: Array<{ id: string; name: string; color: TagColor }>;
   maxHeight?: number;
   autoCreate?: boolean;
+  /**
+   * Opens the caller's "New tag" panel. The panel must be rendered OUTSIDE any
+   * FloatingPanel/Modal hosting this list — Android does not support nested
+   * modals, and mounting one here blanks the hosting sheet.
+   */
+  onRequestCreateTag?: () => void;
 }
 
 export function TagSelectList({
@@ -33,13 +37,13 @@ export function TagSelectList({
   extraTags = [],
   maxHeight,
   autoCreate = true,
+  onRequestCreateTag,
 }: TagSelectListProps) {
   const { palette } = useTheme();
   const { height } = useResponsiveLayout();
   const { data: catalogue } = useTags();
   const create = useCreateTag();
   const [query, setQuery] = useState("");
-  const [createOpen, setCreateOpen] = useState(false);
 
   const tags = useMemo(() => {
     const known = new Map<string, { id: string; name: string; color: TagColor }>();
@@ -64,7 +68,7 @@ export function TagSelectList({
       const tag = await create.mutateAsync({ name });
       onToggle(tag.id);
     } catch {
-      // CreateTagPanel surfaces errors; the inline quick-create is best-effort.
+      // Best-effort quick create; failures surface via the host sheet's toast.
     }
   };
 
@@ -124,7 +128,7 @@ export function TagSelectList({
               accessibilityRole="button"
               accessibilityLabel="New tag"
               style={styles.row}
-              onPress={() => setCreateOpen(true)}
+              onPress={() => onRequestCreateTag?.()}
             >
               <View style={[styles.dot, { backgroundColor: palette.accent }]} />
               <Text variant="body" color="accent">
@@ -134,11 +138,6 @@ export function TagSelectList({
             </PressableScale>
           ) : null
         }
-      />
-      <CreateTagPanel
-        visible={createOpen}
-        onDismiss={() => setCreateOpen(false)}
-        onCreated={(tag) => onToggle(tag.id)}
       />
     </View>
   );
