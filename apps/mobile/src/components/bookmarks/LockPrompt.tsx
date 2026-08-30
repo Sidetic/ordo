@@ -109,9 +109,8 @@ export function LockPrompt({
   useEffect(() => {
     if (!active || lockType !== "device" || deviceAttempted.current) return;
     deviceAttempted.current = true;
+    // Once per open; the button remains for a manual retry.
     void submitDeviceLock();
-    // Intentionally once per open — user can retry with the button.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, lockType, folderId]);
 
   const close = () => {
