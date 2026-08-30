@@ -1213,6 +1213,59 @@ describe("Bookmarks & Folders (e2e)", () => {
       await agent.get(`/api/bookmarks?folderId=${folder.body.id}`).expect(200);
     });
 
+    it("stores and reports the lock type for PIN, pattern, and legacy requests", async () => {
+      const { agent } = await setup();
+      const folder = await agent.post("/api/folders").send({ name: "Typed" }).expect(201);
+
+      // legacy request without lockType → password
+      await agent
+        .post(`/api/folders/${folder.body.id}/password`)
+        .send({ password: "1234" })
+        .expect(200);
+      let listed = await agent.get("/api/folders").expect(200);
+      expect(listed.body.find((f: { id: string }) => f.id === folder.body.id).lockType).toBe(
+        "password",
+      );
+
+      // PIN lock round-trip
+      await agent
+        .post(`/api/folders/${folder.body.id}/password`)
+        .send({ password: "4321", lockType: "pin" })
+        .expect(200);
+      listed = await agent.get("/api/folders").expect(200);
+      expect(listed.body.find((f: { id: string }) => f.id === folder.body.id).lockType).toBe("pin");
+      const pinUnlock = await agent
+        .post(`/api/folders/${folder.body.id}/unlock`)
+        .send({ password: "4321" })
+        .expect(200);
+      expect(pinUnlock.body.token).toBeTruthy();
+
+      // pattern lock round-trip + removal with the account password
+      await agent
+        .post(`/api/folders/${folder.body.id}/password`)
+        .send({ password: "0-1-4-8", lockType: "pattern" })
+        .expect(200);
+      listed = await agent.get("/api/folders").expect(200);
+      expect(listed.body.find((f: { id: string }) => f.id === folder.body.id).lockType).toBe(
+        "pattern",
+      );
+      const patternUnlock = await agent
+        .post(`/api/folders/${folder.body.id}/unlock`)
+        .send({ password: "0-1-4-8" })
+        .expect(200);
+      expect(patternUnlock.body.token).toBeTruthy();
+
+      // removal with the account password (setup() registers "password123")
+      await agent
+        .delete(`/api/folders/${folder.body.id}/password`)
+        .send({ accountPassword: "password123" })
+        .expect(200);
+      listed = await agent.get("/api/folders").expect(200);
+      const finalFolder = listed.body.find((f: { id: string }) => f.id === folder.body.id);
+      expect(finalFolder.protected).toBe(false);
+      expect(finalFolder.lockType).toBeNull();
+    });
+
     it("does not gate unfiled bookmarks on any folder token", async () => {
       const { agent } = await setup();
       const created = await agent

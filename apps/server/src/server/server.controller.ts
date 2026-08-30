@@ -24,6 +24,7 @@ export class ServerController {
       profilePictureMaxBytes: this.cfg.profilePictureMaxBytes,
       avatarAllowAnimated: this.cfg.avatarAllowAnimated,
       mfaRequired: this.cfg.mfaRequired,
+      folderLockTypes: true,
     };
   }
 }

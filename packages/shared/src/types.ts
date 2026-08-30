@@ -178,6 +178,8 @@ export interface ServerInfoDto {
   profilePictureMaxBytes: number;
   avatarAllowAnimated: boolean;
   mfaRequired: boolean;
+  /** True when the server persists folder lock types (pattern/PIN/device). */
+  folderLockTypes: boolean;
 }
 
 export interface ApiError {

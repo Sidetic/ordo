@@ -143,6 +143,7 @@ describe("Auth (e2e)", () => {
         smtpConfigured: false,
         mfaRequired: false,
         avatarAllowAnimated: false,
+        folderLockTypes: true,
       });
       expect(res.body.profilePictureMaxBytes).toBe(2 * 1024 * 1024);
     });
