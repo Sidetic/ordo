@@ -310,11 +310,14 @@ export default function AppLayout() {
       {/* Hidden detail routes */}
       <Tabs.Screen name="folder/[id]" options={hiddenOptions} />
       <Tabs.Screen name="reader/[id]" options={hiddenOptions} />
+      <Tabs.Screen name="tags/index" options={hiddenOptions} />
+      <Tabs.Screen name="tags/[id]" options={hiddenOptions} />
       <Tabs.Screen name="settings/sessions" options={hiddenOptions} />
       <Tabs.Screen name="settings/about" options={hiddenOptions} />
       <Tabs.Screen name="settings/account" options={hiddenOptions} />
       <Tabs.Screen name="settings/appearance" options={hiddenOptions} />
       <Tabs.Screen name="settings/controls" options={hiddenOptions} />
+      <Tabs.Screen name="settings/data" options={hiddenOptions} />
       <Tabs.Screen name="settings/server" options={hiddenOptions} />
       <Tabs.Screen name="settings/display-name" options={formScreenOptions} />
       <Tabs.Screen name="settings/security" options={formScreenOptions} />
