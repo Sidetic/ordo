@@ -1,4 +1,5 @@
 /** Data: export the library to a file, import from Ordo/HTML/CSV exports. */
+import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
@@ -34,6 +35,12 @@ const POLICY_OPTIONS: ReadonlyArray<{ value: DuplicatePolicy; label: string }> =
   { value: "copy", label: "Add copies" },
 ];
 
+const FORMAT_HINTS: Record<ExportFormat, string> = {
+  json: "Everything — folders, tags, and read state. Best for Ordo backups and moving servers.",
+  html: "The browser bookmark format. Best for importing into Chrome, Firefox, or Safari.",
+  csv: "Plain columns, one bookmark per row. Best for spreadsheets and Raindrop.io.",
+};
+
 type Phase = "idle" | "uploading" | "active";
 
 export default function DataScreen() {
@@ -63,6 +70,26 @@ export default function DataScreen() {
     scope === "library"
       ? protectedFolders.filter((f) => !tokenStore.get(f.id))
       : protectedFolders.filter((f) => f.id === scope && !tokenStore.get(f.id));
+
+  const scopeName =
+    scope === "library"
+      ? "library"
+      : (folders.find((f) => f.id === scope)?.name.split(" / ").pop() ?? "folder");
+
+  const radio = (selected: boolean) => (
+    <Ionicons
+      name={selected ? "checkmark-circle" : "ellipse-outline"}
+      size={22}
+      color={selected ? palette.accent : palette.textFaint}
+    />
+  );
+
+  const exportFooter =
+    lockedInScope.length > 0
+      ? scope === "library"
+        ? `Excluded from the library export until unlocked: ${lockedInScope.map((f) => f.name).join(", ")}. Tap a locked folder to unlock it.`
+        : `This folder is locked. Tap it above to unlock, then export again.`
+      : undefined;
 
   // --- export ---
 
@@ -326,42 +353,59 @@ export default function DataScreen() {
   return (
     <SettingsPage title="Data">
       <SettingsScrollView>
-        <SettingsGroup
-          label="Export"
-          compact
-          footer={
-            scope === "library" && lockedInScope.length > 0
-              ? `${lockedInScope.length} locked folder${lockedInScope.length === 1 ? "" : "s"} will be excluded. Unlock to include.`
-              : undefined
-          }
-        >
-          <View style={styles.pad}>
-            <Segmented options={FORMAT_OPTIONS} value={format} onChange={setFormat} />
-          </View>
+        <SettingsGroup label="Export" compact footer={exportFooter}>
+          <Text variant="caption" color="secondary" style={styles.sectionCaption}>
+            WHAT TO EXPORT
+          </Text>
           <SettingRow
             icon="library-outline"
             label="Entire library"
-            description="Every unlocked folder plus unfiled bookmarks"
-            value={scope === "library" ? "Selected" : undefined}
+            description="All folders below, plus unfiled bookmarks"
+            right={radio(scope === "library")}
             onPress={() => setScope("library")}
           />
-          {folders.map((folder) => (
-            <SettingRow
-              key={folder.id}
-              icon={folder.protected ? "lock-closed-outline" : "folder-outline"}
-              label={folder.name}
-              description={`${folder.bookmarkCount} bookmarks`}
-              value={scope === folder.id ? "Selected" : undefined}
-              onPress={() => {
-                setScope(folder.id);
-                if (folder.protected && !tokenStore.get(folder.id)) setUnlockTarget(folder);
-              }}
-              divider={false}
-            />
-          ))}
+          {folders.map((folder) => {
+            const unlocked = !folder.protected || Boolean(tokenStore.get(folder.id));
+            if (!unlocked) {
+              return (
+                <SettingRow
+                  key={folder.id}
+                  icon="lock-closed-outline"
+                  label={folder.name}
+                  description="Locked — excluded until unlocked"
+                  value="Unlock"
+                  onPress={() => setUnlockTarget(folder)}
+                  divider={false}
+                />
+              );
+            }
+            return (
+              <SettingRow
+                key={folder.id}
+                icon={folder.protected ? "lock-open-outline" : "folder-outline"}
+                label={folder.name}
+                description={
+                  folder.protected
+                    ? `${folder.bookmarkCount} bookmarks · unlocked`
+                    : `${folder.bookmarkCount} bookmarks`
+                }
+                right={radio(scope === folder.id)}
+                onPress={() => setScope(folder.id)}
+                divider={false}
+              />
+            );
+          })}
           <View style={styles.pad}>
+            <Text variant="caption" color="secondary" style={styles.labelGap}>
+              FILE FORMAT
+            </Text>
+            <Segmented options={FORMAT_OPTIONS} value={format} onChange={setFormat} />
+            <Text variant="footnote" color="tertiary" style={styles.tightTop}>
+              {FORMAT_HINTS[format]}
+            </Text>
+            <View style={styles.rowGap} />
             <Button
-              label={`Export as ${format.toUpperCase()}`}
+              label={`Export ${scopeName} as ${format.toUpperCase()}`}
               block
               size="lg"
               loading={exportMutation.isPending}
@@ -398,5 +442,6 @@ const styles = StyleSheet.create({
   smallGap: { height: spacing[8] },
   tightTop: { marginTop: spacing[4] },
   labelGap: { marginBottom: spacing[8] },
+  sectionCaption: { paddingTop: spacing[14], paddingHorizontal: spacing[16] },
   lockedBox: { marginTop: spacing[12] },
 });
