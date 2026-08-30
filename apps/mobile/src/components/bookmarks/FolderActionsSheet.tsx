@@ -30,6 +30,7 @@ import {
   useRenameFolder,
   useUpdateFolder,
 } from "../../hooks/use-folders";
+import { useServerInfo } from "../../hooks/queries";
 import { useFolderTokenStore } from "../../store/folder-tokens";
 
 type Mode = "menu" | "rename" | "lockChoice" | "lockCredential" | "icon" | "delete" | "removePassword" | "removePasswordAccount";
@@ -43,6 +44,9 @@ export interface FolderActionsSheetProps {
 
 export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: FolderActionsSheetProps) {
   const { palette } = useTheme();
+  const serverInfo = useServerInfo();
+  /** Older servers drop lockType and silently store every lock as a password. */
+  const lockTypesSupported = serverInfo.data?.folderLockTypes === true;
   const rename = useRenameFolder();
   const update = useUpdateFolder();
   const del = useDeleteFolder();
@@ -354,10 +358,19 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
             subtitle="Choose how you want to unlock this folder."
           />
           {error ? <Text variant="footnote" color="danger" style={styles.error}>{error}</Text> : null}
+          {serverInfo.data && !lockTypesSupported ? (
+            <Text variant="footnote" color="tertiary" style={styles.staleServer}>
+              Update your Ordo server to use pattern, PIN, and device locks.
+            </Text>
+          ) : null}
           <View>
-            <SheetActionRow icon="finger-print-outline" label="Device lock" onPress={doSetDeviceLock} />
-            <SheetActionRow icon="apps-outline" label="Pattern" onPress={() => { setLockType("pattern"); showMode("lockCredential"); }} />
-            <SheetActionRow icon="keypad-outline" label="PIN" onPress={() => { setLockType("pin"); showMode("lockCredential"); }} />
+            {lockTypesSupported ? (
+              <>
+                <SheetActionRow icon="finger-print-outline" label="Device lock" onPress={doSetDeviceLock} />
+                <SheetActionRow icon="apps-outline" label="Pattern" onPress={() => { setLockType("pattern"); showMode("lockCredential"); }} />
+                <SheetActionRow icon="keypad-outline" label="PIN" onPress={() => { setLockType("pin"); showMode("lockCredential"); }} />
+              </>
+            ) : null}
             <SheetActionRow icon="text-outline" label="Text password" onPress={() => { setLockType("password"); showMode("lockCredential"); }} />
           </View>
           <Button label="Cancel" variant="ghost" block disabled={removing} onPress={() => showMode("menu")} style={styles.menuCancel} />
@@ -541,4 +554,5 @@ const styles = StyleSheet.create({
   actions: { gap: spacing[8], marginTop: spacing[20] },
   forgot: { alignSelf: "center", marginTop: spacing[10] },
   confirmInput: { marginTop: spacing[12] },
+  staleServer: { marginTop: spacing[10] },
 });

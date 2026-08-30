@@ -196,7 +196,10 @@ export default function FolderDetailScreen() {
             folderId={folderId ?? ""}
             folderName={folder?.name}
             lockType={folder?.lockType}
-            onDismiss={() => router.back()}
+            onDismiss={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace({ pathname: "/folder/[id]", params: { id: "root" } });
+            }}
             onUnlocked={() => bookmarks.refetch()}
           />
         </ScreenContent>
