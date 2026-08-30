@@ -10,7 +10,7 @@ import {
 import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser, type AuthContext } from "../common/decorators/current-user.decorator.js";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe.js";
-import { getFolderTokens } from "../common/utils/folder-tokens.js";
+import { getPresentedFolderTokens } from "../common/utils/folder-tokens.js";
 import { TagsService } from "./tags.service.js";
 
 @UseGuards(AuthGuard)
@@ -23,7 +23,7 @@ export class TagsController {
     @CurrentUser() user: AuthContext,
     @Req() req: Request,
   ): Promise<TagDto[]> {
-    return this.tags.list(user.userId, getFolderTokens(req));
+    return this.tags.list(user.userId, getPresentedFolderTokens(req));
   }
 
   @Post()

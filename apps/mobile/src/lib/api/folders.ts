@@ -30,9 +30,9 @@ export const foldersApi = {
     ),
 
   removePassword: (id: string, body: RemoveFolderPasswordInput) =>
-    api.delete<typeof FolderRoutes.removePassword.response>(
+    api.post<typeof FolderRoutes.removePassword.response>(
       buildPath(FolderRoutes.removePassword.path, { id }),
-      { body },
+      body,
     ),
 
   unlock: (id: string, password: string) =>

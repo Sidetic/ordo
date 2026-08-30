@@ -1,11 +1,12 @@
 /**
  * Folder detail: cursor-paginated bookmark list with infinite scroll.
- * Handles protected folders (unlock prompt → token cached → retry),
- * optimistic toggle/delete/move, mark-all-read, and folder actions.
+ * Handles protected folders (locked empty state → user taps Unlock → token
+ * cached → list loads), optimistic toggle/delete/move, mark-all-read, and
+ * folder actions.
  */
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Linking, StyleSheet, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../../src/components/ui/Header";
@@ -24,6 +25,7 @@ import { FolderActionsSheet } from "../../../src/components/bookmarks/FolderActi
 import { EditTagsSheet } from "../../../src/components/tags/EditTagsSheet";
 import { ReaderPane, ReaderPanePlaceholder } from "../../../src/components/reader/ReaderPane";
 import { useFolders } from "../../../src/hooks/queries";
+import { useFolderUnlocked } from "../../../src/hooks/use-folders";
 import {
   useInfiniteBookmarks,
   useToggleRead,
@@ -52,10 +54,15 @@ export default function FolderDetailScreen() {
   const isRoot = routeId === "root";
   const folderId = isRoot || !routeId ? null : routeId;
 
-  const { data: folders } = useFolders();
+  const { data: folders, isLoading: foldersLoading } = useFolders();
   const folder = useMemo(() => folders?.find((f) => f.id === folderId), [folders, folderId]);
+  const unlocked = useFolderUnlocked(folderId);
+  const locked = Boolean(folderId && !foldersLoading && folder?.protected && !unlocked);
 
-  const bookmarks = useInfiniteBookmarks(folderId, !!routeId);
+  const bookmarks = useInfiniteBookmarks(
+    folderId,
+    !!routeId && !locked && !(Boolean(folderId) && foldersLoading),
+  );
   const toggleRead = useToggleRead(folderId);
   const deleteBm = useDeleteBookmark(folderId);
   const markAll = useMarkAllRead(folderId);
@@ -65,11 +72,23 @@ export default function FolderDetailScreen() {
   const [actionBm, setActionBm] = useState<BookmarkDto | null>(null);
   const [editTagsBm, setEditTagsBm] = useState<BookmarkDto | null>(null);
   const [folderActions, setFolderActions] = useState(false);
+  const [unlockOpen, setUnlockOpen] = useState(false);
 
-  const protectedError = !!bookmarks.error && isFolderProtected(bookmarks.error);
-  const loadFailed = !!bookmarks.error && !protectedError && !bookmarks.data;
+  useEffect(() => {
+    setUnlockOpen(false);
+  }, [folderId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => setUnlockOpen(false);
+    }, []),
+  );
+
+  const protectedError = !!bookmarks.error && isFolderProtected(bookmarks.error) && !unlocked;
+  const showLocked = locked || protectedError;
+  const loadFailed = !!bookmarks.error && !showLocked && !bookmarks.data;
   const items = useMemo(() => flattenPages(bookmarks.data?.pages ?? []), [bookmarks.data]);
-  const isEmpty = !bookmarks.isLoading && !protectedError && !loadFailed && items.length === 0;
+  const isEmpty = !foldersLoading && !bookmarks.isLoading && !showLocked && !loadFailed && items.length === 0;
   // Root isn't a folder row, so derive unread state from the loaded items.
   const hasUnread = folder ? folder.unreadCount > 0 : items.some((b) => !b.isRead);
 
@@ -158,49 +177,42 @@ export default function FolderDetailScreen() {
         subtitle={folder ? `${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}` : undefined}
         showBack
         right={
-          hasUnread && !protectedError && !loadFailed ? (
-            <PressableScale
-              style={styles.iconBtn}
-              scaleTo={0.85}
-              onPress={onMarkAllRead}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Mark all as read"
-            >
-              <Ionicons name="checkmark-done" size={22} color={palette.accent} />
-            </PressableScale>
-          ) : folder ? (
-            <PressableScale
-              style={styles.iconBtn}
-              scaleTo={0.85}
-              onPress={() => setFolderActions(true)}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Folder actions"
-            >
-              <Ionicons name="ellipsis-horizontal" size={22} color={palette.text} />
-            </PressableScale>
+          folder ? (
+            <View style={styles.headerActions}>
+              {hasUnread && !showLocked && !loadFailed ? (
+                <PressableScale
+                  style={styles.iconBtn}
+                  scaleTo={0.85}
+                  onPress={onMarkAllRead}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Mark all as read"
+                >
+                  <Ionicons name="checkmark-done" size={22} color={palette.accent} />
+                </PressableScale>
+              ) : null}
+              <PressableScale
+                style={styles.iconBtn}
+                scaleTo={0.85}
+                onPress={() => setFolderActions(true)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Folder actions"
+              >
+                <Ionicons name="ellipsis-horizontal" size={22} color={palette.text} />
+              </PressableScale>
+            </View>
           ) : undefined
         }
       />
 
-      {protectedError ? (
+      {showLocked ? (
         <ScreenContent maxWidth={layout.maxContentWidth} style={styles.center}>
           <EmptyState
             icon="lock-closed-outline"
             title="This folder is locked"
             message="Unlock this folder to view its bookmarks."
-          />
-          <LockPrompt
-            visible={protectedError && !!folderId && !!folder}
-            folderId={folderId ?? ""}
-            folderName={folder?.name}
-            lockType={folder?.lockType}
-            onDismiss={() => {
-              if (router.canGoBack()) router.back();
-              else router.replace({ pathname: "/folder/[id]", params: { id: "root" } });
-            }}
-            onUnlocked={() => bookmarks.refetch()}
+            action={<Button label="Unlock" onPress={() => setUnlockOpen(true)} />}
           />
         </ScreenContent>
       ) : loadFailed ? (
@@ -221,7 +233,7 @@ export default function FolderDetailScreen() {
             action={<Button onPress={() => setAddOpen(true)} label="Save bookmark" />}
           />
         </ScreenContent>
-      ) : bookmarks.isLoading ? (
+      ) : bookmarks.isLoading || (Boolean(folderId) && foldersLoading) ? (
         <ScreenContent
           maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth}
           style={styles.content}
@@ -273,7 +285,7 @@ export default function FolderDetailScreen() {
         </ScreenContent>
       )}
 
-      {!protectedError && !loadFailed && !hasDetailPane ? (
+      {!showLocked && !loadFailed && !hasDetailPane ? (
         <FABLayer maxWidth={layout.maxContentWidth}>
           <FAB
             onPress={() => setAddOpen(true)}
@@ -324,12 +336,22 @@ export default function FolderDetailScreen() {
           router.replace("/");
         }}
       />
+
+      <LockPrompt
+        visible={unlockOpen && showLocked}
+        folderId={folderId ?? ""}
+        folderName={folder?.name}
+        lockType={folder?.lockType}
+        onDismiss={() => setUnlockOpen(false)}
+        onUnlocked={() => setUnlockOpen(false)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   iconBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  headerActions: { flexDirection: "row", alignItems: "center" },
   content: { flex: 1, width: "100%" },
   center: { flex: 1, width: "100%", justifyContent: "center" },
   singlePane: { flex: 1, width: "100%" },

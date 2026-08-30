@@ -75,7 +75,7 @@ describe("ExportService", () => {
 
   it("json export emits a valid envelope and excludes locked folders without tokens", async () => {
     const { service } = setup();
-    const file = await service.export("u1", { format: "json", folderId: null }, null, []);
+    const file = await service.export("u1", { format: "json", folderId: null }, []);
     const body = JSON.parse(await readAll(file.stream));
 
     expect(body.format).toBe("ordo-export");
@@ -99,7 +99,7 @@ describe("ExportService", () => {
       tokenHash: where.tokenHash,
     }));
 
-    const file = await service.export("u1", { format: "json", folderId: null }, null, ["tok-priv"]);
+    const file = await service.export("u1", { format: "json", folderId: null }, ["tok-priv"]);
     expect(tokens.hash).toHaveBeenCalledWith("tok-priv");
     const body = JSON.parse(await readAll(file.stream));
     expect(body.folders.map((f: { name: string }) => f.name)).toEqual(["Public", "Private"]);
@@ -109,7 +109,7 @@ describe("ExportService", () => {
   it("single-folder export enforces the folder token", async () => {
     const { service } = setup();
     await expect(
-      service.export("u1", { format: "json", folderId: "f2" }, null, []),
+      service.export("u1", { format: "json", folderId: "f2" }, []),
     ).rejects.toMatchObject({
       response: expect.objectContaining({ code: "folder_protected" }),
     });
@@ -117,7 +117,7 @@ describe("ExportService", () => {
 
   it("html export writes Netscape structure with folder sections", async () => {
     const { service } = setup();
-    const file = await service.export("u1", { format: "html", folderId: null }, null, []);
+    const file = await service.export("u1", { format: "html", folderId: null }, []);
     const body = await readAll(file.stream);
 
     expect(body).toContain("<!DOCTYPE NETSCAPE-Bookmark-file-1>");
@@ -129,7 +129,7 @@ describe("ExportService", () => {
 
   it("csv export writes the Ordo profile header and rows", async () => {
     const { service } = setup();
-    const file = await service.export("u1", { format: "csv", folderId: null }, null, []);
+    const file = await service.export("u1", { format: "csv", folderId: null }, []);
     const body = await readAll(file.stream);
 
     const lines = body.trimEnd().split("\n");

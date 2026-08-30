@@ -4,13 +4,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { foldersApi } from "../lib/api/folders";
 import { queryClient } from "../lib/query-client";
-import { qk } from "../lib/api/query-keys";
+import { qk, tagsAnyAccess } from "../lib/api/query-keys";
 import { errorMessage, isFolderProtected } from "../lib/error-message";
 import { toast } from "../components/ui/toast-store";
+import { useFolderTokenStore } from "../store/folder-tokens";
 import {
   normalizeFolderIcon,
   type CreateFolderInput,
   type FolderDto,
+  type FolderLockType,
   type UpdateFolderInput,
 } from "@ordo/shared";
 
@@ -37,6 +39,12 @@ function sortFolders(folders: FolderDto[]) {
 }
 
 export { useFolders } from "./queries";
+
+export function useFolderUnlocked(folderId: string | null | undefined): boolean {
+  const revision = useFolderTokenStore((s) => s.accessRevision);
+  void revision;
+  return Boolean(folderId && useFolderTokenStore.getState().get(folderId));
+}
 
 export function useCreateFolder() {
   const qc = useQueryClient();
@@ -123,12 +131,28 @@ export interface FolderActionResult {
   error?: string;
 }
 
-/** Unlock a protected folder and cache the token. Returns success + message. */
+/** Unlock a protected folder and cache the token before any refetch runs. */
 export function useUnlockFolder() {
   return useMutation({
-    mutationFn: ({ id, password }: { id: string; password: string }) =>
-      foldersApi.unlock(id, password),
+    mutationFn: async ({ id, password }: { id: string; password: string }) => {
+      const result = await foldersApi.unlock(id, password);
+      useFolderTokenStore.getState().set(id, result.token, result.expiresIn);
+      return result;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+      void queryClient.invalidateQueries({ queryKey: tagsAnyAccess });
+    },
   });
+}
+
+export function patchFolderLock(
+  id: string,
+  lock: { protected: boolean; lockType: FolderLockType | null },
+) {
+  queryClient.setQueryData<FolderDto[]>(qk.folders, (old) =>
+    (old ?? []).map((folder) => (folder.id === id ? { ...folder, ...lock } : folder)),
+  );
 }
 
 /** Generic folder mutation runner that surfaces a toast on failure. */

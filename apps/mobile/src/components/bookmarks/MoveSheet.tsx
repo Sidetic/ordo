@@ -11,6 +11,7 @@ import { Text } from "../ui/Text";
 import { PressableScale } from "../ui/PressableScale";
 import { useFolders } from "../../hooks/queries";
 import { useMoveBookmark } from "../../hooks/use-bookmarks";
+import { useFolderTokenStore } from "../../store/folder-tokens";
 import { errorMessage, isFolderProtected } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
 import { toast } from "../ui/toast-store";
@@ -59,6 +60,10 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
     const toFolderId = isRootDestination(destination) ? null : destination.id;
     const name = isRootDestination(destination) ? "Bookmarks" : destination.name;
     setError("");
+    if (!isRootDestination(destination) && destination.protected && !useFolderTokenStore.getState().get(destination.id)) {
+      setLockedTarget(destination);
+      return;
+    }
     haptics.light();
     try {
       await move.mutateAsync({ id: bookmark.id, toFolderId });

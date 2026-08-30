@@ -48,28 +48,30 @@ export default function DataScreen() {
   const qc = useQueryClient();
   const { data: folders = [] } = useFolders();
 
+  const accessRevision = useFolderTokenStore((s) => s.accessRevision);
+  const tokenFor = (id: string) => {
+    void accessRevision;
+    return useFolderTokenStore.getState().get(id);
+  };
+
   const [format, setFormat] = useState<ExportFormat>("json");
   const [scope, setScope] = useState<string>("library");
-  const [unlockTarget, setUnlockTarget] = useState<FolderDto | null>(null);
+  const [unlockTarget, setUnlockTarget] = useState<{ folder: FolderDto; source: "export" | "import" } | null>(null);
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [jobId, setJobId] = useState<string | null>(null);
   const [policy, setPolicy] = useState<DuplicatePolicy>("skip");
   const [atomic, setAtomic] = useState(true);
 
-  const tokenStore = useFolderTokenStore();
-
   const protectedFolders = useMemo(() => folders.filter((f) => f.protected), [folders]);
 
   const tokensFor = (ids: string[]): string[] =>
-    ids
-      .map((id) => tokenStore.get(id))
-      .filter((t): t is string => Boolean(t));
+    ids.map((id) => tokenFor(id)).filter((t): t is string => Boolean(t));
 
   const lockedInScope =
     scope === "library"
-      ? protectedFolders.filter((f) => !tokenStore.get(f.id))
-      : protectedFolders.filter((f) => f.id === scope && !tokenStore.get(f.id));
+      ? protectedFolders.filter((f) => !tokenFor(f.id))
+      : protectedFolders.filter((f) => f.id === scope && !tokenFor(f.id));
 
   const scopeName =
     scope === "library"
@@ -313,8 +315,8 @@ export default function DataScreen() {
                 key={f.id}
                 icon="lock-closed-outline"
                 label={f.name}
-                onPress={() => setUnlockTarget(f)}
-                value={tokenStore.get(f.id) ? "Unlocked" : undefined}
+                onPress={() => setUnlockTarget({ folder: f, source: "import" })}
+                value={tokenFor(f.id) ? "Unlocked" : undefined}
                 divider={false}
               />
             ))}
@@ -365,7 +367,7 @@ export default function DataScreen() {
             onPress={() => setScope("library")}
           />
           {folders.map((folder) => {
-            const unlocked = !folder.protected || Boolean(tokenStore.get(folder.id));
+            const unlocked = !folder.protected || Boolean(tokenFor(folder.id));
             if (!unlocked) {
               return (
                 <SettingRow
@@ -374,7 +376,7 @@ export default function DataScreen() {
                   label={folder.name}
                   description="Locked — excluded until unlocked"
                   value="Unlock"
-                  onPress={() => setUnlockTarget(folder)}
+                  onPress={() => setUnlockTarget({ folder, source: "export" })}
                   divider={false}
                 />
               );
@@ -421,12 +423,14 @@ export default function DataScreen() {
 
       <LockPrompt
         visible={unlockTarget !== null}
-        folderId={unlockTarget?.id ?? ""}
-        folderName={unlockTarget?.name}
-        lockType={unlockTarget?.lockType ?? "password"}
+        folderId={unlockTarget?.folder.id ?? ""}
+        folderName={unlockTarget?.folder.name}
+        lockType={unlockTarget?.folder.lockType ?? "password"}
         onDismiss={() => setUnlockTarget(null)}
         onUnlocked={() => {
+          const target = unlockTarget;
           setUnlockTarget(null);
+          if (target?.source === "export") setScope(target.folder.id);
           toast.success("Folder unlocked");
         }}
       />

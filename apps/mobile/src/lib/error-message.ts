@@ -65,6 +65,15 @@ export function isFolderProtected(err: unknown): boolean {
   return err instanceof ApiClientError && err.code === ErrorCode.FOLDER_PROTECTED;
 }
 
+/** Folder id from a FOLDER_PROTECTED error, when the server included it. */
+export function folderProtectedId(err: unknown): string | null {
+  if (!isFolderProtected(err) || !(err instanceof ApiClientError)) return null;
+  const details = err.details;
+  if (!details || typeof details !== "object" || !("folderId" in details)) return null;
+  const id = (details as { folderId?: unknown }).folderId;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
 /** Server asked for a TOTP/backup code after the rest of the action was accepted. */
 export function isMfaRequiredError(err: unknown): boolean {
   return err instanceof ApiClientError && err.code === ErrorCode.MFA_REQUIRED;

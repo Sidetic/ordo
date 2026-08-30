@@ -1,6 +1,7 @@
 /** Unlock prompt for device, pattern, PIN, and text folder locks. */
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { View } from "react-native";
+import { useFocusEffect } from "expo-router";
 import type { FolderLockType } from "@ordo/shared";
 import { FloatingPanel } from "../ui/FloatingPanel";
 import { PanelHeader } from "../ui/PanelHeader";
@@ -10,7 +11,6 @@ import { Text } from "../ui/Text";
 import { EyeToggle } from "../ui/EyeToggle";
 import { PatternInput } from "./PatternInput";
 import { useUnlockFolder } from "../../hooks/use-folders";
-import { useFolderTokenStore } from "../../store/folder-tokens";
 import { getDeviceLockCredential } from "../../lib/device-folder-lock";
 import { errorMessage } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
@@ -34,11 +34,19 @@ export function LockPrompt({
   onUnlocked,
 }: LockPromptProps) {
   const unlock = useUnlockFolder();
-  const setToken = useFolderTokenStore((state) => state.set);
+  const [focused, setFocused] = useState(true);
   const [password, setPassword] = useState("");
   const [pattern, setPattern] = useState<number[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const deviceAttempted = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
 
   const reset = () => {
     setPassword("");
@@ -47,17 +55,16 @@ export function LockPrompt({
     setError("");
   };
 
-  React.useEffect(() => {
+  const active = visible && focused && Boolean(folderId);
+
+  useEffect(() => {
     if (!visible) return;
-    setPassword("");
-    setPattern([]);
-    setShowPassword(false);
-    setError("");
+    reset();
+    deviceAttempted.current = false;
   }, [visible, folderId, lockType]);
 
   const finishUnlock = async (credential: string) => {
-    const result = await unlock.mutateAsync({ id: folderId, password: credential });
-    setToken(folderId, result.token, result.expiresIn);
+    await unlock.mutateAsync({ id: folderId, password: credential });
     haptics.success();
     reset();
     onUnlocked();
@@ -88,15 +95,24 @@ export function LockPrompt({
       return;
     }
     if (!credential) {
-      setError("This device no longer has the folder key. Remove the lock with your account password.");
+      setError("This device no longer has the folder key. Remove the lock from the folder menu with your account password.");
       return;
     }
     try {
       await finishUnlock(credential);
     } catch (cause) {
+      haptics.error();
       setError(errorMessage(cause));
     }
   };
+
+  useEffect(() => {
+    if (!active || lockType !== "device" || deviceAttempted.current) return;
+    deviceAttempted.current = true;
+    void submitDeviceLock();
+    // Intentionally once per open — user can retry with the button.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, lockType, folderId]);
 
   const close = () => {
     reset();
@@ -104,16 +120,17 @@ export function LockPrompt({
   };
 
   const methodName = lockType === "pin" ? "PIN" : lockType === "pattern" ? "pattern" : "password";
+  const where = folderName ? ` ${folderName}` : " this folder";
 
   return (
-    <FloatingPanel visible={visible} onDismiss={close}>
+    <FloatingPanel visible={active} onDismiss={close}>
       <PanelHeader
         icon={lockType === "device" ? "finger-print-outline" : "lock-open-outline"}
         title="Unlock folder"
         subtitle={
           lockType === "device"
-            ? `Use your device lock to unlock${folderName ? ` ${folderName}` : " this folder"}.`
-            : `Enter the ${methodName} to unlock${folderName ? ` ${folderName}` : ""}.`
+            ? `Use your device lock to unlock${where}.`
+            : `Enter the ${methodName} to unlock${where}.`
         }
       />
       {lockType === "device" ? (
@@ -131,6 +148,8 @@ export function LockPrompt({
           autoFocus
           error={error || undefined}
           onSubmitEditing={submit}
+          autoCapitalize="none"
+          autoCorrect={false}
           rightAccessory={<EyeToggle visible={showPassword} onPress={() => setShowPassword((value) => !value)} />}
         />
       )}

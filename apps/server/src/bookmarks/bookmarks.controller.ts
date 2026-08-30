@@ -27,8 +27,7 @@ import {
   CurrentUser,
   type AuthContext,
 } from "../common/decorators/current-user.decorator.js";
-import { getFolderToken } from "../common/utils/request.js";
-import { getFolderTokens } from "../common/utils/folder-tokens.js";
+import { getPresentedFolderTokens } from "../common/utils/folder-tokens.js";
 import { BookmarksService } from "./bookmarks.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
 import { RateLimit } from "../common/rate-limit/rate-limit.decorator.js";
@@ -50,7 +49,7 @@ export class BookmarksController {
   ): Promise<BookmarkDto> {
     // A missing/null folderId stores the bookmark as unfiled.
     const folder = body.folderId
-      ? await this.access.requireFolder(body.folderId, user.userId, getFolderToken(req))
+      ? await this.access.requireFolder(body.folderId, user.userId, getPresentedFolderTokens(req))
       : null;
     return this.bookmarks.create(user.userId, folder, body.url, body.tagIds);
   }
@@ -66,15 +65,16 @@ export class BookmarksController {
     @Req() req: Request,
   ): Promise<CursorPage<BookmarkDto>> {
     // Without a folderId only the user's unfiled bookmarks are listed.
+    const tokens = getPresentedFolderTokens(req);
     const folder = folderId
-      ? await this.access.requireFolder(folderId, user.userId, getFolderToken(req))
+      ? await this.access.requireFolder(folderId, user.userId, tokens)
       : null;
     return this.bookmarks.list(user.userId, folder, {
       cursor,
       limit: limit ? parseInt(limit, 10) : undefined,
       scopeAll: scope === "all",
       tagIds: this.parseTagIds(rawTagIds),
-      folderTokens: getFolderTokens(req),
+      folderTokens: tokens,
     });
   }
 
@@ -91,7 +91,7 @@ export class BookmarksController {
       cursor,
       limit: limit ? parseInt(limit, 10) : undefined,
       tagIds: this.parseTagIds(rawTagIds),
-      folderTokens: getFolderTokens(req),
+      folderTokens: getPresentedFolderTokens(req),
     });
   }
 
@@ -101,7 +101,7 @@ export class BookmarksController {
     @Param("id") id: string,
     @Req() req: Request,
   ): Promise<BookmarkDto & { contentHtml: string | null }> {
-    return this.bookmarks.detail(user.userId, id, getFolderToken(req));
+    return this.bookmarks.detail(user.userId, id, getPresentedFolderTokens(req));
   }
 
   @Patch(":id")
@@ -115,7 +115,7 @@ export class BookmarksController {
     },
     @Req() req: Request,
   ): Promise<BookmarkDto> {
-    return this.bookmarks.update(user.userId, id, body, getFolderToken(req));
+    return this.bookmarks.update(user.userId, id, body, getPresentedFolderTokens(req));
   }
 
   @Delete(":id")
@@ -125,7 +125,7 @@ export class BookmarksController {
     @Param("id") id: string,
     @Req() req: Request,
   ): Promise<{ success: true }> {
-    await this.bookmarks.remove(user.userId, id, getFolderToken(req));
+    await this.bookmarks.remove(user.userId, id, getPresentedFolderTokens(req));
     return { success: true };
   }
 
@@ -144,7 +144,7 @@ export class BookmarksController {
       id,
       body.tagIds,
       body.dismissedSuggestionIds,
-      getFolderToken(req),
+      getPresentedFolderTokens(req),
     );
   }
 
@@ -157,7 +157,7 @@ export class BookmarksController {
   ): Promise<{ updated: number }> {
     // Without a folderId (or with null) only unfiled bookmarks are targeted.
     const folder = body.folderId
-      ? await this.access.requireFolder(body.folderId, user.userId, getFolderToken(req))
+      ? await this.access.requireFolder(body.folderId, user.userId, getPresentedFolderTokens(req))
       : null;
     const updated = await this.bookmarks.markAllRead(user.userId, folder);
     return { updated };

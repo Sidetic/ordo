@@ -18,6 +18,7 @@ import {
 } from "../settings/SettingsSelect";
 import { useCreateBookmark } from "../../hooks/use-bookmarks";
 import { useFolders } from "../../hooks/queries";
+import { useFolderTokenStore } from "../../store/folder-tokens";
 import { useTags } from "../../hooks/use-tags";
 import { TagChip } from "../tags/TagChip";
 import { TagSelectList } from "../tags/TagSelectList";
@@ -101,6 +102,7 @@ export function AddBookmarkSheet({
     setSelectedDestination(folderId ?? ROOT_DESTINATION);
     setUrl(initialUrl ?? "");
     setError("");
+    setLockedFolderId(null);
     setShowTagPicker(false);
     setSelectedTagIds(initialTagIds);
   }, [folderId, initialUrl, initialTagIds, visible]);
@@ -134,6 +136,13 @@ export function AddBookmarkSheet({
     } catch {
       setError("Enter a valid URL.");
       return;
+    }
+    if (selectedFolderId && !useFolderTokenStore.getState().get(selectedFolderId)) {
+      const dest = folders?.find((folder) => folder.id === selectedFolderId);
+      if (dest?.protected) {
+        setLockedFolderId(selectedFolderId);
+        return;
+      }
     }
     try {
       await create.mutateAsync({ url: normalized, folderId: selectedFolderId, tagIds: selectedTagIds });

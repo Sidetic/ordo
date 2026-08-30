@@ -42,6 +42,24 @@ function prune(map: FolderTokenMap): FolderTokenMap {
   return changed ? next : map;
 }
 
+let pruneScheduled = false;
+
+function schedulePrune() {
+  if (pruneScheduled) return;
+  pruneScheduled = true;
+  queueMicrotask(() => {
+    pruneScheduled = false;
+    const current = useFolderTokenStore.getState().tokens;
+    const next = prune(current);
+    if (next === current) return;
+    useFolderTokenStore.setState((s) => ({
+      tokens: next,
+      accessRevision: s.accessRevision + 1,
+    }));
+    void secureSet(StorageKeys.FOLDER_TOKENS, next);
+  });
+}
+
 export const useFolderTokenStore = create<FolderTokenState>((set, get) => ({
   tokens: {},
   accessRevision: 0,
@@ -53,15 +71,24 @@ export const useFolderTokenStore = create<FolderTokenState>((set, get) => ({
 
   get: (folderId) => {
     const entry = get().tokens[folderId];
-    if (!entry || entry.expiresAt <= now()) return null;
+    if (!entry) return null;
+    if (entry.expiresAt <= now()) {
+      schedulePrune();
+      return null;
+    }
     return entry.token;
   },
 
   liveTokens: () => {
     const t = now();
-    return Object.values(get().tokens)
-      .filter((entry) => entry.expiresAt > t)
-      .map((entry) => entry.token);
+    const live: string[] = [];
+    let expired = false;
+    for (const entry of Object.values(get().tokens)) {
+      if (entry.expiresAt > t) live.push(entry.token);
+      else expired = true;
+    }
+    if (expired) schedulePrune();
+    return live;
   },
 
   set: (folderId, token, expiresInSec) => {

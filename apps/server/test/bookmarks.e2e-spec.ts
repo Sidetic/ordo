@@ -1161,6 +1161,7 @@ describe("Bookmarks & Folders (e2e)", () => {
         .get(`/api/bookmarks?folderId=${folder.body.id}`)
         .expect(403);
       expect(blocked.body.error.code).toBe(ErrorCode.FOLDER_PROTECTED);
+      expect(blocked.body.error.details).toEqual({ folderId: folder.body.id });
 
       // wrong password
       const wrong = await agent
@@ -1379,6 +1380,56 @@ describe("Bookmarks & Folders (e2e)", () => {
         .send({ accountPassword: "password123" })
         .expect(200);
       await agent.get(`/api/bookmarks?folderId=${folder.body.id}`).expect(200);
+    });
+
+    it("removes a lock via POST /password/remove with the account password", async () => {
+      const { agent } = await setup();
+      const folder = await agent.post("/api/folders").send({ name: "Vault" }).expect(201);
+      await agent.post(`/api/folders/${folder.body.id}/password`).send({ password: "1234" }).expect(200);
+
+      await agent
+        .post(`/api/folders/${folder.body.id}/password/remove`)
+        .send({ accountPassword: "wrongpassword" })
+        .expect(401);
+
+      await agent
+        .post(`/api/folders/${folder.body.id}/password/remove`)
+        .send({ accountPassword: "password123" })
+        .expect(200);
+      await agent.get(`/api/bookmarks?folderId=${folder.body.id}`).expect(200);
+    });
+
+    it("moves a bookmark between two locked folders when both tokens are presented", async () => {
+      const { agent } = await setup();
+      const source = await agent.post("/api/folders").send({ name: "Source" }).expect(201);
+      const dest = await agent.post("/api/folders").send({ name: "Dest" }).expect(201);
+      const created = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/x", folderId: source.body.id })
+        .expect(201);
+
+      await agent.post(`/api/folders/${source.body.id}/password`).send({ password: "aaaa" }).expect(200);
+      await agent.post(`/api/folders/${dest.body.id}/password`).send({ password: "bbbb" }).expect(200);
+
+      const tokenA = (
+        await agent.post(`/api/folders/${source.body.id}/unlock`).send({ password: "aaaa" }).expect(200)
+      ).body.token;
+      const tokenB = (
+        await agent.post(`/api/folders/${dest.body.id}/unlock`).send({ password: "bbbb" }).expect(200)
+      ).body.token;
+
+      await agent
+        .patch(`/api/bookmarks/${created.body.id}`)
+        .set("x-folder-token", tokenA)
+        .send({ folderId: dest.body.id })
+        .expect(403);
+
+      const moved = await agent
+        .patch(`/api/bookmarks/${created.body.id}`)
+        .set("x-folder-tokens", `${tokenA},${tokenB}`)
+        .send({ folderId: dest.body.id })
+        .expect(200);
+      expect(moved.body.folderId).toBe(dest.body.id);
     });
   });
 });

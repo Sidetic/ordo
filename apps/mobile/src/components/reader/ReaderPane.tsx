@@ -44,6 +44,7 @@ import { ArticleHtml, type ArticleHeading } from "./ArticleHtml";
 import { Markdown } from "./Markdown";
 import { ReaderControlsSheet } from "./ReaderControlsSheet";
 import { EditTagsSheet } from "../tags/EditTagsSheet";
+import { LockPrompt } from "../bookmarks/LockPrompt";
 import { READER_BODY_SIZE, resolveReaderFont } from "./reader-typography";
 import { ThemeOverrideProvider, useTheme } from "../../theme/ThemeProvider";
 import { resolveReaderPalette } from "../../theme/reader-theme";
@@ -52,10 +53,11 @@ import { queryClient } from "../../lib/query-client";
 import { bookmarksApi } from "../../lib/api/bookmarks";
 import { findBookmarkInCache, updateBookmarkEverywhere } from "../../lib/cache-helpers";
 import { useBookmarkDetail, useToggleRead } from "../../hooks/use-bookmarks";
+import { useFolders } from "../../hooks/queries";
 import { useReaderPreferences } from "../../hooks/use-reader-preferences";
 import { useSettingsStore } from "../../store/settings";
 import { domainFromUrl, formatDate } from "../../lib/format";
-import { errorMessage } from "../../lib/error-message";
+import { errorMessage, folderProtectedId, isFolderProtected } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
 import { layout, spacing } from "../../theme/tokens";
 
@@ -139,8 +141,6 @@ function ReaderPaneInner({
     () => (bookmarkId ? findBookmarkInCache(queryClient, bookmarkId) : undefined),
     [bookmarkId],
   );
-  // HTML is detail-only, so successful rows always fetch the detail; rows the
-  // list already knows are unsupported/failed skip the fetch and hand off.
   const cachedTerminal =
     cached?.fetchStatus === "unsupported" || cached?.fetchStatus === "failed";
   const detail = useBookmarkDetail(
@@ -148,10 +148,14 @@ function ReaderPaneInner({
     !!bookmarkId && !cachedTerminal,
     cached?.folderId,
   );
+  const { data: folders } = useFolders();
+  const protectedDetail = isFolderProtected(detail.error);
+  const lockedFolderId = folderProtectedId(detail.error) ?? cached?.folderId ?? null;
+  const lockedFolder = folders?.find((folder) => folder.id === lockedFolderId);
 
-  const bookmark = detail.data ?? cached;
+  const bookmark = protectedDetail ? undefined : detail.data ?? cached;
   const loading = !!bookmarkId && !bookmark && detail.isLoading;
-  const hasHtml = !!detail.data?.contentHtml;
+  const hasHtml = !protectedDetail && !!detail.data?.contentHtml;
   // Compatibility: pre-versioning rows may only carry Markdown; current-version
   // content renders exclusively from detail HTML.
   const legacyMarkdown =
@@ -183,6 +187,7 @@ function ReaderPaneInner({
   const [externalLaunchFailed, setExternalLaunchFailed] = useState(false);
   const [articleWidth, setArticleWidth] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [unlockOpen, setUnlockOpen] = useState(false);
 
   const toggleRead = useToggleRead(bookmark?.folderId ?? null);
   const markedRef = useRef<string | null>(null);
@@ -190,11 +195,12 @@ function ReaderPaneInner({
   // Auto-mark read on open — filed and unfiled (folderId null) alike.
   // Completion is driven by reading progress, never by opening.
   useEffect(() => {
+    if (protectedDetail) return;
     if (bookmark && !bookmark.isRead && markedRef.current !== bookmark.id) {
       markedRef.current = bookmark.id;
       toggleRead.mutate({ id: bookmark.id, isRead: true });
     }
-  }, [bookmark?.id, bookmark?.isRead]);
+  }, [bookmark?.id, bookmark?.isRead, protectedDetail]);
 
   const domain = bookmark ? bookmark.domain || domainFromUrl(bookmark.url) : "";
   const displayTitle = bookmark
@@ -624,6 +630,19 @@ function ReaderPaneInner({
           <Skeleton width="100%" height={16} style={{ marginTop: spacing[8] }} />
           <Skeleton width="65%" height={16} style={{ marginTop: spacing[8] }} />
         </ScreenContent>
+      ) : protectedDetail ? (
+        <ScreenContent style={styles.stateCenter}>
+          <EmptyState
+            icon="lock-closed-outline"
+            title="This folder is locked"
+            message="Unlock the folder to read this bookmark."
+            action={
+              lockedFolderId ? (
+                <Button label="Unlock" onPress={() => setUnlockOpen(true)} />
+              ) : undefined
+            }
+          />
+        </ScreenContent>
       ) : !bookmark ? (
         <ScreenContent style={styles.stateCenter}>
           <EmptyState
@@ -852,6 +871,17 @@ function ReaderPaneInner({
           </>
         )}
       </FloatingPanel>
+      <LockPrompt
+        visible={unlockOpen && protectedDetail}
+        folderId={lockedFolderId ?? ""}
+        folderName={lockedFolder?.name}
+        lockType={lockedFolder?.lockType}
+        onDismiss={() => setUnlockOpen(false)}
+        onUnlocked={() => {
+          setUnlockOpen(false);
+          void detail.refetch();
+        }}
+      />
     </View>
   );
 }

@@ -169,7 +169,7 @@ export class BookmarksService implements OnApplicationBootstrap {
   async detail(
     userId: string,
     bookmarkId: string,
-    folderToken: string | null,
+    tokens: readonly string[],
   ): Promise<BookmarkDto & { contentHtml: string | null }> {
     const bookmark = await this.prisma.bookmark.findFirst({
       where: { id: bookmarkId, userId },
@@ -181,7 +181,7 @@ export class BookmarksService implements OnApplicationBootstrap {
     if (!bookmark) throw new AppError(ErrorCode.BOOKMARK_NOT_FOUND, "This bookmark no longer exists.");
     // Enforce protection on the owning folder (unfiled bookmarks have none).
     if (bookmark.folderId) {
-      await this.access.requireFolder(bookmark.folderId, userId, folderToken);
+      await this.access.requireFolder(bookmark.folderId, userId, tokens);
     }
     return toBookmarkDetailDto(bookmark);
   }
@@ -190,7 +190,7 @@ export class BookmarksService implements OnApplicationBootstrap {
     userId: string,
     bookmarkId: string,
     changes: { folderId?: string | null; isRead?: boolean; readProgress?: number },
-    folderToken: string | null,
+    tokens: readonly string[],
   ): Promise<BookmarkDto> {
     const bookmark = await this.prisma.bookmark.findFirst({
       where: { id: bookmarkId, userId },
@@ -199,7 +199,7 @@ export class BookmarksService implements OnApplicationBootstrap {
 
     // If the current folder is protected, require a valid token to mutate it.
     if (bookmark.folderId) {
-      await this.access.requireFolder(bookmark.folderId, userId, folderToken);
+      await this.access.requireFolder(bookmark.folderId, userId, tokens);
     }
 
     const data: {
@@ -229,7 +229,7 @@ export class BookmarksService implements OnApplicationBootstrap {
         data.folderId = null;
       } else if (changes.folderId !== bookmark.folderId) {
         // target folder must exist & be owned; if protected, the token must cover it.
-        await this.access.requireFolder(changes.folderId, userId, folderToken);
+        await this.access.requireFolder(changes.folderId, userId, tokens);
         data.folderId = changes.folderId;
       }
     }
@@ -245,14 +245,14 @@ export class BookmarksService implements OnApplicationBootstrap {
   async remove(
     userId: string,
     bookmarkId: string,
-    folderToken: string | null,
+    tokens: readonly string[],
   ): Promise<void> {
     const bookmark = await this.prisma.bookmark.findFirst({
       where: { id: bookmarkId, userId },
     });
     if (!bookmark) throw new AppError(ErrorCode.BOOKMARK_NOT_FOUND, "This bookmark no longer exists.");
     if (bookmark.folderId) {
-      await this.access.requireFolder(bookmark.folderId, userId, folderToken);
+      await this.access.requireFolder(bookmark.folderId, userId, tokens);
     }
     await this.prisma.bookmark.delete({ where: { id: bookmarkId } });
   }
@@ -262,7 +262,7 @@ export class BookmarksService implements OnApplicationBootstrap {
     bookmarkId: string,
     tagIds: string[],
     dismissedSuggestionIds: string[],
-    folderToken: string | null,
+    tokens: readonly string[],
   ): Promise<BookmarkDto> {
     const bookmark = await this.prisma.bookmark.findFirst({
       where: { id: bookmarkId, userId },
@@ -270,7 +270,7 @@ export class BookmarksService implements OnApplicationBootstrap {
     });
     if (!bookmark) throw new AppError(ErrorCode.BOOKMARK_NOT_FOUND, "This bookmark no longer exists.");
     if (bookmark.folderId) {
-      await this.access.requireFolder(bookmark.folderId, userId, folderToken);
+      await this.access.requireFolder(bookmark.folderId, userId, tokens);
     }
     await this.tags.requireOwnedIds(userId, [...tagIds, ...dismissedSuggestionIds]);
 

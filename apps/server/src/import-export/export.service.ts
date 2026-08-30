@@ -75,7 +75,6 @@ export class ExportService {
   async export(
     userId: string,
     input: ExportRequestInput,
-    folderToken: string | null,
     folderTokens: string[],
   ): Promise<ExportFile> {
     const folders = await this.prisma.folder.findMany({
@@ -88,17 +87,19 @@ export class ExportService {
     let scopedFolderId: string | null = null;
 
     if (input.folderId) {
-      // Single-folder export: enforce protection with the standard header.
       const folder = folders.find((f) => f.id === input.folderId);
       if (!folder) throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "This folder no longer exists.");
       if (folder.passwordHash) {
-        const ok = folderToken ? await this.folderUnlocked(folder.id, [folderToken]) : false;
-        if (!ok) throw new AppError(ErrorCode.FOLDER_PROTECTED, "This folder is locked.");
+        const ok = await this.folderUnlocked(folder.id, folderTokens);
+        if (!ok) {
+          throw new AppError(ErrorCode.FOLDER_PROTECTED, "This folder is locked.", {
+            folderId: folder.id,
+          });
+        }
       }
       includedFolderIds = [folder.id];
       scopedFolderId = folder.id;
     } else {
-      // Whole library: protected folders join only with a valid token each.
       includedFolderIds = [];
       for (const folder of folders) {
         if (!folder.passwordHash) {

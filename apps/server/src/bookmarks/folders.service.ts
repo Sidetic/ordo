@@ -111,7 +111,7 @@ export class FoldersService {
       if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found.");
       const ok = await bcrypt.compare(input.accountPassword ?? "", user.passwordHash);
       if (!ok) {
-        throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect password.");
+        throw new AppError(ErrorCode.INVALID_CREDENTIALS, "Incorrect account password.");
       }
     }
     await this.folderTokens.removePassword(folderId);

@@ -264,15 +264,13 @@ async function request<T>(
   if (auth && tokens?.accessToken) {
     headers.authorization = `Bearer ${tokens.accessToken}`;
   }
+  const liveFolderTokens = useFolderTokenStore.getState().liveTokens();
+  if (liveFolderTokens.length > 0) {
+    headers[FOLDER_TOKENS_HEADER] = liveFolderTokens.join(",");
+  }
   if (options.folderId) {
     const folderToken = useFolderTokenStore.getState().get(options.folderId);
     if (folderToken) headers[FOLDER_TOKEN_HEADER] = folderToken;
-  }
-  if (options.folderTokens) {
-    // Global queries span the library; send every live unlock token so
-    // protected-folder content is included only while actually unlocked.
-    const all = useFolderTokenStore.getState().liveTokens();
-    if (all.length > 0) headers[FOLDER_TOKENS_HEADER] = all.join(",");
   }
   const init: RequestInit = { method: options.method ?? "GET", headers, signal: options.signal };
   if (options.formData) {

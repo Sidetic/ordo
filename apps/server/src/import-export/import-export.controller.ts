@@ -35,10 +35,9 @@ import {
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe.js";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser, type AuthContext } from "../common/decorators/current-user.decorator.js";
-import { getFolderToken } from "../common/utils/request.js";
+import { getPresentedFolderTokens } from "../common/utils/folder-tokens.js";
 import { AppError } from "../common/errors/app-error.js";
 import { RateLimit } from "../common/rate-limit/rate-limit.decorator.js";
-import { getFolderTokens } from "../common/utils/folder-tokens.js";
 import { ImportService } from "./import.service.js";
 import { ExportService } from "./export.service.js";
 
@@ -90,7 +89,7 @@ export class ImportExportController {
     @Body(new ZodValidationPipe(CommitImportSchema)) body: CommitImportInput,
     @Req() req: Request,
   ): Promise<ImportJobDto> {
-    return this.imports.commit(user.userId, id, body, getFolderTokens(req));
+    return this.imports.commit(user.userId, id, body, getPresentedFolderTokens(req));
   }
 
   @Delete("import/:id")
@@ -111,12 +110,7 @@ export class ImportExportController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
-    const file = await this.exports.export(
-      user.userId,
-      body,
-      getFolderToken(req),
-      getFolderTokens(req),
-    );
+    const file = await this.exports.export(user.userId, body, getPresentedFolderTokens(req));
     res.setHeader("content-type", file.contentType);    res.setHeader("content-disposition", `attachment; filename="${file.filename}"`);
     return new StreamableFile(file.stream);
   }
