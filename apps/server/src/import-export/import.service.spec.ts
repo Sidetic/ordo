@@ -24,6 +24,32 @@ function entry(overrides: Partial<ParsedEntry> = {}): ParsedEntry {
 
 const INPUT: CommitImportInput = { duplicatePolicy: "skip", atomic: true };
 
+/** Typed stand-in for the prisma client so mock inference cannot go circular. */
+type MockedImportPrisma = {
+  importJob: Record<
+    "findFirst" | "findUnique" | "create" | "update" | "updateMany" | "deleteMany",
+    jest.Mock
+  >;
+  bookmark: Record<"findMany" | "createMany" | "update" | "updateMany", jest.Mock>;
+  folder: { findMany: jest.Mock; aggregate: jest.Mock; create: jest.Mock };
+  tag: { findMany: jest.Mock; create: jest.Mock };
+  bookmarkTag: { findMany: jest.Mock; createMany: jest.Mock };
+  folderToken: { findUnique: jest.Mock };
+  $transaction: (fn: (tx: unknown) => Promise<unknown>) => Promise<unknown>;
+};
+
+/** The JSON.parse'd ImportResultDto the commit writes back to the job row. */
+interface ImportResultLike {
+  imported: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  foldersCreated: number;
+  atomic: boolean;
+  duplicatePolicy: string;
+  failures: Array<{ line: number; reason: string; url: string | null }>;
+}
+
 describe("ImportService.commit", () => {
   function setup() {
     const existingBookmarks = [
@@ -40,7 +66,7 @@ describe("ImportService.commit", () => {
     ];
     const existingFolders = [{ id: "f1", name: "Reading", passwordHash: null }];
 
-    const prisma = {
+    const prisma: MockedImportPrisma = {
       importJob: {
         findFirst: jest.fn(),
         findUnique: jest.fn(),
@@ -58,9 +84,14 @@ describe("ImportService.commit", () => {
       folder: {
         findMany: jest.fn().mockResolvedValue(existingFolders),
         aggregate: jest.fn().mockResolvedValue({ _max: { position: 3 } }),
-        create: jest.fn(({ data }) => Promise.resolve({ id: `new-${data.name}`, ...data })),
+        create: jest.fn(({ data }: { data: { name: string } & Record<string, unknown> }) =>
+          Promise.resolve({ id: `new-${data.name}`, ...data })),
       },
-      tag: { findMany: jest.fn().mockResolvedValue([]), create: jest.fn(({ data }) => Promise.resolve({ id: `tag-${data.name}`, ...data })) },
+      tag: {
+        findMany: jest.fn().mockResolvedValue([]),
+        create: jest.fn(({ data }: { data: { name: string } & Record<string, unknown> }) =>
+          Promise.resolve({ id: `tag-${data.name}`, ...data })),
+      },
       bookmarkTag: {
         findMany: jest.fn().mockResolvedValue([]),
         createMany: jest.fn().mockResolvedValue({ count: 0 }),
@@ -76,7 +107,7 @@ describe("ImportService.commit", () => {
       entries: ParsedEntry[],
       folders: Array<{ name: string }> = [],
       input: CommitImportInput = INPUT,
-    ) => {
+    ): Promise<ImportResultLike> => {
       const fullJob = {
         id: "j1",
         status: "committing",
@@ -97,11 +128,12 @@ describe("ImportService.commit", () => {
       // runCommit is fire-and-forget; drain the microtask queue.
       await new Promise((resolve) => setTimeout(resolve, 0));
       const resultCall = prisma.importJob.update.mock.calls.find(
-        (call) => (call[0] as { data: { result?: string } }).data?.result !== undefined,
+        (call: unknown[]) => (call[0] as { data: { result?: string } }).data?.result !== undefined,
       );
-      return resultCall
-        ? JSON.parse((resultCall[0] as { data: { result: string } }).data.result)
-        : null;
+      if (!resultCall) throw new Error("commit did not record a result");
+      return JSON.parse(
+        (resultCall[0] as { data: { result: string } }).data.result,
+      ) as ImportResultLike;
     };
 
     return { prisma, service, run };
