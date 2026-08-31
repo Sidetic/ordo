@@ -92,6 +92,7 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
           folderName={lockedTarget.name}
           lockType={lockedTarget.lockType}
           pinLength={lockedTarget.pinLength}
+          autoPromptDevice
           onCancel={() => setLockedTarget(null)}
           onUnlocked={() => {
             const target = lockedTarget;

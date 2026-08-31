@@ -178,6 +178,7 @@ export function AddBookmarkSheet({
             folderName={lockedFolder?.name}
             lockType={lockedFolder?.lockType}
             pinLength={lockedFolder?.pinLength}
+            autoPromptDevice
             onCancel={() => setLockedFolderId(null)}
             onUnlocked={() => {
               setLockedFolderId(null);

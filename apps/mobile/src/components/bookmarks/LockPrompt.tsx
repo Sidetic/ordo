@@ -36,6 +36,11 @@ export interface UnlockFormProps {
   /** When set, shows a ghost action that backs out of unlock (not the whole screen). */
   onCancel?: () => void;
   cancelLabel?: string;
+  /**
+   * Present the OS device-lock prompt as soon as this form is shown.
+   * Off by default so locking a folder does not immediately ask to unlock it.
+   */
+  autoPromptDevice?: boolean;
 }
 
 export interface LockPromptProps extends UnlockFormProps {
@@ -58,6 +63,7 @@ export function UnlockForm({
   onUnlocked,
   onCancel,
   cancelLabel = "Cancel",
+  autoPromptDevice = false,
 }: UnlockFormProps) {
   const { palette } = useTheme();
   const unlock = useUnlockFolder();
@@ -171,11 +177,11 @@ export function UnlockForm({
   };
 
   useEffect(() => {
-    if (!folderId || !focused || lockType !== "device" || deviceAttempted.current) return;
+    if (!autoPromptDevice || !folderId || !focused || lockType !== "device" || deviceAttempted.current) return;
     if (Platform.OS === "web") return;
     deviceAttempted.current = true;
     void submitDeviceLock();
-  }, [focused, lockType, folderId]);
+  }, [autoPromptDevice, focused, lockType, folderId]);
 
   const isPassword = lockType !== "device" && lockType !== "pattern" && lockType !== "pin";
   const knownPinLength = pinLength === 4 || pinLength === 6;
@@ -330,6 +336,7 @@ export function LockPrompt({
           folderName={folderName}
           lockType={lockType}
           pinLength={pinLength}
+          autoPromptDevice
           onUnlocked={onUnlocked}
           onCancel={close}
         />
