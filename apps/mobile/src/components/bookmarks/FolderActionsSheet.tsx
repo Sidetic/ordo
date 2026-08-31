@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { DEFAULT_FOLDER_ICON, type FolderDto, type FolderIcon, type FolderLockType } from "@ordo/shared";
+import { DEFAULT_FOLDER_ICON, type FolderDto, type FolderIcon, type FolderLockType, type FolderPinLength } from "@ordo/shared";
 import { FloatingPanel } from "../ui/FloatingPanel";
 import { PanelHeader } from "../ui/PanelHeader";
 import { Input } from "../ui/Input";
@@ -10,6 +10,8 @@ import { Text } from "../ui/Text";
 import { SheetActionRow } from "../ui/SheetActionRow";
 import { EyeToggle } from "../ui/EyeToggle";
 import { PressableScale } from "../ui/PressableScale";
+import { Segmented } from "../ui/Segmented";
+import { OtpInput } from "../ui/OtpInput";
 import { FolderIconPicker } from "./FolderIconPicker";
 import { PatternInput } from "./PatternInput";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -59,6 +61,8 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
   const [lockType, setLockType] = useState<FolderLockType>("password");
   const [pattern, setPattern] = useState<number[]>([]);
   const [savedPattern, setSavedPattern] = useState<number[]>([]);
+  const [pinLength, setPinLength] = useState<FolderPinLength>(4);
+  const [savedPin, setSavedPin] = useState("");
   const [deviceLockAvailable, setDeviceLockAvailable] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [accountPassword, setAccountPassword] = useState("");
@@ -79,6 +83,8 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     setLockType("password");
     setPattern([]);
     setSavedPattern([]);
+    setPinLength(4);
+    setSavedPin("");
     setShowPassword(false);
     setAccountPassword("");
     setShowAccountPassword(false);
@@ -95,7 +101,17 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
       setConfirmPassword("");
       setPattern([]);
       setSavedPattern([]);
+      setSavedPin("");
+      setPinLength(4);
       setShowPassword(false);
+    }
+    if (nextMode === "removePassword" && folderRef.current?.lockType === "pin") {
+      setPinLength(folderRef.current.pinLength === 6 ? 6 : 4);
+      setPassword("");
+    }
+    if (nextMode === "lockCredential") {
+      setSavedPin("");
+      setPinLength(4);
     }
     if (nextMode !== "removePasswordAccount") {
       setAccountPassword("");
@@ -145,10 +161,11 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     }
   };
 
-  const doSetCredential = async (patternOverride?: number[]) => {
+  const doSetCredential = async (patternOverride?: number[], pinOverride?: string) => {
     if (!folder) return;
     const nodes = patternOverride ?? pattern;
-    const credential = lockType === "pattern" ? nodes.join("-") : password;
+    const pin = pinOverride ?? password;
+    const credential = lockType === "pattern" ? nodes.join("-") : lockType === "pin" ? pin : password;
     if (lockType === "pattern") {
       if (nodes.length < 4) {
         setError("Connect at least 4 dots.");
@@ -166,25 +183,37 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
         return;
       }
     }
-    if (lockType === "pin" && !/^\d{4,12}$/.test(password)) {
-      setError("Use a 4 to 12 digit PIN.");
-      return;
-    }
-    if (lockType === "pin" && password !== confirmPassword) {
-      setError("PINs do not match.");
-      return;
+    if (lockType === "pin") {
+      if (pin.length !== pinLength) {
+        setError(`Enter a ${pinLength}-digit PIN.`);
+        return;
+      }
+      if (!savedPin) {
+        setSavedPin(pin);
+        setPassword("");
+        setError("");
+        return;
+      }
+      if (savedPin !== pin) {
+        setError("PINs do not match. Try again.");
+        return;
+      }
     }
     if (lockType === "password" && password.length < 4) {
       setError("Use at least 4 characters.");
       return;
     }
-    if ((lockType === "password" || lockType === "pin") && password !== confirmPassword) {
-      setError(lockType === "pin" ? "PINs do not match." : "Passwords do not match.");
+    if (lockType === "password" && password !== confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
     try {
       await foldersApi.setPassword(folder.id, { password: credential, lockType });
-      patchFolderLock(folder.id, { protected: true, lockType });
+      patchFolderLock(folder.id, {
+        protected: true,
+        lockType,
+        pinLength: lockType === "pin" ? pinLength : null,
+      });
       clearToken(folder.id);
       invalidateBookmarks();
       haptics.success();
@@ -226,7 +255,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
 
   const finishRemoved = () => {
     if (!folder) return;
-    patchFolderLock(folder.id, { protected: false, lockType: null });
+    patchFolderLock(folder.id, { protected: false, lockType: null, pinLength: null });
     clearToken(folder.id);
     invalidateBookmarks();
     haptics.success();
@@ -264,11 +293,17 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     }
   };
 
-  const removeWithFolderPassword = async (patternOverride?: number[]) => {
+  const removeWithFolderPassword = async (patternOverride?: number[], pinOverride?: string) => {
     if (!folder || removing) return;
     const lockKind = folder.lockType ?? "password";
     const nodes = patternOverride ?? pattern;
-    const credential = lockKind === "pattern" ? nodes.join("-") : password;
+    const pin = pinOverride ?? password;
+    const credential =
+      lockKind === "pattern" ? nodes.join("-") : lockKind === "pin" ? pin : password;
+    if (lockKind === "pin" && pin.length !== pinLength) {
+      setError(`Enter the ${pinLength}-digit PIN.`);
+      return;
+    }
     if (!credential || (lockKind === "pattern" && nodes.length < 4)) {
       setError(lockKind === "pattern" ? "Connect at least 4 dots." : `Enter the folder ${lockKind === "pin" ? "PIN" : "password"}.`);
       return;
@@ -393,8 +428,20 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
       {folder && mode === "lockCredential" ? (
         <>
           <PanelHeader
-            title={lockType === "pattern" ? (savedPattern.length ? "Confirm pattern" : "Set a pattern") : lockType === "pin" ? "Set a PIN" : "Set a password"}
-            subtitle={lockType === "pattern" ? (savedPattern.length ? "Draw the same pattern again." : "Draw a pattern connecting at least 4 dots.") : lockType === "pin" ? "Use 4 to 12 digits." : "Use at least 4 characters."}
+            title={
+              lockType === "pattern"
+                ? (savedPattern.length ? "Confirm pattern" : "Set a pattern")
+                : lockType === "pin"
+                  ? (savedPin ? "Confirm PIN" : "Set a PIN")
+                  : "Set a password"
+            }
+            subtitle={
+              lockType === "pattern"
+                ? (savedPattern.length ? "Draw the same pattern again." : "Draw a pattern connecting at least 4 dots.")
+                : lockType === "pin"
+                  ? (savedPin ? "Enter the same PIN again." : "Choose 4 or 6 digits.")
+                  : "Use at least 4 characters."
+            }
           />
           {lockType === "pattern" ? (
             <>
@@ -410,14 +457,44 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
               />
               {error ? <Text variant="footnote" color="danger" align="center">{error}</Text> : null}
             </>
+          ) : lockType === "pin" ? (
+            <View>
+              {savedPin ? null : (
+                <Segmented
+                  options={[
+                    { value: "4", label: "4 digits" },
+                    { value: "6", label: "6 digits" },
+                  ]}
+                  value={String(pinLength) as "4" | "6"}
+                  onChange={(value) => {
+                    setPinLength(value === "6" ? 6 : 4);
+                    setPassword("");
+                    setError("");
+                  }}
+                />
+              )}
+              <OtpInput
+                key={`${pinLength}-${savedPin ? "confirm" : "set"}`}
+                purpose="pin"
+                length={pinLength}
+                value={password}
+                onChange={(value) => {
+                  setPassword(value);
+                  if (error) setError("");
+                }}
+                onComplete={(code) => void doSetCredential(undefined, code)}
+                status={error ? "error" : "idle"}
+                error={error || undefined}
+                style={savedPin ? undefined : styles.pinBoxes}
+              />
+            </View>
           ) : (
             <>
               <Input
-                label={lockType === "pin" ? "PIN" : "Password"}
+                label="Password"
                 value={password}
-                onChangeText={(value) => setPassword(lockType === "pin" ? value.replace(/\D/g, "").slice(0, 12) : value)}
-                placeholder={lockType === "pin" ? "4 to 12 digits" : "At least 4 characters"}
-                keyboardType={lockType === "pin" ? "number-pad" : "default"}
+                onChangeText={setPassword}
+                placeholder="At least 4 characters"
                 secureTextEntry={!showPassword}
                 autoFocus
                 error={error || undefined}
@@ -425,23 +502,20 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
                 autoCorrect={false}
                 rightAccessory={<EyeToggle visible={showPassword} onPress={() => setShowPassword((value) => !value)} />}
               />
-              {lockType === "pin" || lockType === "password" ? (
-                <Input
-                  label={lockType === "pin" ? "Confirm PIN" : "Confirm password"}
-                  value={confirmPassword}
-                  onChangeText={(value) => setConfirmPassword(lockType === "pin" ? value.replace(/\D/g, "").slice(0, 12) : value)}
-                  placeholder={lockType === "pin" ? "Enter PIN again" : "Enter password again"}
-                  keyboardType={lockType === "pin" ? "number-pad" : "default"}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  containerStyle={styles.confirmInput}
-                />
-              ) : null}
+              <Input
+                label="Confirm password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Enter password again"
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                containerStyle={styles.confirmInput}
+              />
             </>
           )}
           <View style={styles.actions}>
-            {lockType === "pattern" ? null : (
+            {lockType === "pattern" || lockType === "pin" ? null : (
               <Button label="Lock folder" block size="lg" onPress={() => void doSetCredential()} />
             )}
             <Button label="Back" variant="ghost" block onPress={() => showMode("lockChoice")} />
@@ -475,13 +549,44 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
               />
               {error ? <Text variant="footnote" color="danger" align="center">{error}</Text> : null}
             </>
+          ) : (folder.lockType ?? "password") === "pin" ? (
+            <View>
+              {folder.pinLength ? null : (
+                <Segmented
+                  options={[
+                    { value: "4", label: "4 digits" },
+                    { value: "6", label: "6 digits" },
+                  ]}
+                  value={String(pinLength) as "4" | "6"}
+                  onChange={(value) => {
+                    setPinLength(value === "6" ? 6 : 4);
+                    setPassword("");
+                    setError("");
+                  }}
+                />
+              )}
+              <OtpInput
+                key={pinLength}
+                purpose="pin"
+                length={pinLength}
+                value={password}
+                onChange={(value) => {
+                  setPassword(value);
+                  if (error) setError("");
+                }}
+                onComplete={(code) => void removeWithFolderPassword(undefined, code)}
+                status={removing ? "loading" : error ? "error" : "idle"}
+                error={error || undefined}
+                editable={!removing}
+                style={folder.pinLength ? undefined : styles.pinBoxes}
+              />
+            </View>
           ) : (
             <Input
-              label={(folder.lockType ?? "password") === "pin" ? "Folder PIN" : "Folder password"}
+              label="Folder password"
               value={password}
-              onChangeText={(value) => setPassword((folder.lockType ?? "password") === "pin" ? value.replace(/\D/g, "").slice(0, 12) : value)}
-              placeholder={(folder.lockType ?? "password") === "pin" ? "Folder PIN" : "Folder password"}
-              keyboardType={(folder.lockType ?? "password") === "pin" ? "number-pad" : "default"}
+              onChangeText={setPassword}
+              placeholder="Folder password"
               secureTextEntry={!showPassword}
               autoFocus
               autoCapitalize="none"
@@ -501,7 +606,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
             <Text variant="footnote" color="accent">Use account password</Text>
           </PressableScale>
           <View style={styles.actions}>
-            {(folder.lockType ?? "password") === "pattern" ? null : (
+            {(folder.lockType ?? "password") === "pattern" || (folder.lockType ?? "password") === "pin" ? null : (
               <Button
                 label={(folder.lockType ?? "password") === "device" ? "Use device lock" : "Remove lock"}
                 variant="danger"
@@ -612,5 +717,6 @@ const styles = StyleSheet.create({
   actions: { gap: spacing[8], marginTop: spacing[20] },
   forgot: { alignSelf: "center", marginTop: spacing[10] },
   confirmInput: { marginTop: spacing[12] },
+  pinBoxes: { marginTop: spacing[16] },
   staleServer: { marginTop: spacing[10] },
 });

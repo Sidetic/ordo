@@ -55,6 +55,8 @@ export interface OtpInputProps {
   onComplete?: (code: string) => void;
   autoFocus?: boolean;
   editable?: boolean;
+  /** `pin` disables SMS one-time-code autofill. */
+  purpose?: "otp" | "pin";
   style?: ViewStyle;
 }
 
@@ -70,6 +72,7 @@ export function OtpInput({
   onComplete,
   autoFocus = true,
   editable = true,
+  purpose = "otp",
   style,
 }: OtpInputProps) {
   const { palette } = useTheme();
@@ -234,14 +237,14 @@ export function OtpInput({
           autoCorrect={false}
           autoCapitalize="none"
           spellCheck={false}
-          autoComplete={kind === "backup" ? "off" : "one-time-code"}
-          textContentType={kind === "numeric" ? "oneTimeCode" : "none"}
-          importantForAutofill={kind === "numeric" ? "yes" : "no"}
+          autoComplete={purpose === "pin" || kind === "backup" ? "off" : "one-time-code"}
+          textContentType={purpose === "pin" ? "none" : kind === "numeric" ? "oneTimeCode" : "none"}
+          importantForAutofill={purpose === "pin" || kind === "backup" ? "no" : "yes"}
           keyboardType={kind === "backup" ? "default" : "number-pad"}
           inputMode={kind === "backup" ? "text" : "numeric"}
           keyboardAppearance={palette.mode === "dark" ? "dark" : "light"}
           maxLength={kind === "backup" ? length * 2 : length}
-          accessibilityLabel={label ?? "Verification code"}
+          accessibilityLabel={label ?? (purpose === "pin" ? "PIN" : "Verification code")}
           accessibilityValue={{ text: chars }}
           style={[
             styles.hiddenInput,

@@ -115,6 +115,14 @@ export function normalizeTagColor(value: unknown): TagColor {
 /** Icon used when a folder is created without an explicit icon. */
 export const DEFAULT_FOLDER_ICON = "folder-outline";
 
+/** Folder PIN lock: four or six digits, entered in separate boxes. */
+export const FOLDER_PIN_LENGTHS = [4, 6] as const;
+export type FolderPinLength = (typeof FOLDER_PIN_LENGTHS)[number];
+
+export function isFolderPinLength(value: unknown): value is FolderPinLength {
+  return value === 4 || value === 6;
+}
+
 /**
  * Curated Ionicons (outline variants) offered as folder icons.
  * Keep names in sync with the Ionicons set used by the mobile app.

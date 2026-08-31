@@ -13,6 +13,7 @@ import {
   type CreateFolderInput,
   type FolderDto,
   type FolderLockType,
+  type FolderPinLength,
   type UpdateFolderInput,
 } from "@ordo/shared";
 
@@ -148,10 +149,12 @@ export function useUnlockFolder() {
 
 export function patchFolderLock(
   id: string,
-  lock: { protected: boolean; lockType: FolderLockType | null },
+  lock: { protected: boolean; lockType: FolderLockType | null; pinLength?: FolderPinLength | null },
 ) {
   queryClient.setQueryData<FolderDto[]>(qk.folders, (old) =>
-    (old ?? []).map((folder) => (folder.id === id ? { ...folder, ...lock } : folder)),
+    (old ?? []).map((folder) =>
+      folder.id === id ? { ...folder, pinLength: null, ...lock } : folder,
+    ),
   );
 }
 

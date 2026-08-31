@@ -113,6 +113,8 @@ model Folder {
   passwordHash String?
   /// device | pattern | pin | password; null for unlocked folders.
   lockType     String?
+  /// 4 or 6 when lockType is pin.
+  pinLength    Int?
   position     Int          @default(0)
   // Retained only so legacy default folders can be migrated safely on startup.
   isDefault    Boolean      @default(false)

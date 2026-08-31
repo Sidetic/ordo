@@ -1235,11 +1235,19 @@ describe("Bookmarks & Folders (e2e)", () => {
         .expect(200);
       listed = await agent.get("/api/folders").expect(200);
       expect(listed.body.find((f: { id: string }) => f.id === folder.body.id).lockType).toBe("pin");
+      expect(listed.body.find((f: { id: string }) => f.id === folder.body.id).pinLength).toBe(4);
       const pinUnlock = await agent
         .post(`/api/folders/${folder.body.id}/unlock`)
         .send({ password: "4321" })
         .expect(200);
       expect(pinUnlock.body.token).toBeTruthy();
+
+      await agent
+        .post(`/api/folders/${folder.body.id}/password`)
+        .send({ password: "654321", lockType: "pin" })
+        .expect(200);
+      listed = await agent.get("/api/folders").expect(200);
+      expect(listed.body.find((f: { id: string }) => f.id === folder.body.id).pinLength).toBe(6);
 
       // pattern lock round-trip + removal with the account password
       await agent
@@ -1250,6 +1258,7 @@ describe("Bookmarks & Folders (e2e)", () => {
       expect(listed.body.find((f: { id: string }) => f.id === folder.body.id).lockType).toBe(
         "pattern",
       );
+      expect(listed.body.find((f: { id: string }) => f.id === folder.body.id).pinLength).toBeNull();
       const patternUnlock = await agent
         .post(`/api/folders/${folder.body.id}/unlock`)
         .send({ password: "0-1-4-8" })
@@ -1265,6 +1274,7 @@ describe("Bookmarks & Folders (e2e)", () => {
       const finalFolder = listed.body.find((f: { id: string }) => f.id === folder.body.id);
       expect(finalFolder.protected).toBe(false);
       expect(finalFolder.lockType).toBeNull();
+      expect(finalFolder.pinLength).toBeNull();
     });
 
     it("does not gate unfiled bookmarks on any folder token", async () => {

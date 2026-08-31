@@ -1,5 +1,5 @@
 /** Entity & response shapes shared between server and mobile client. */
-import type { FolderIcon, TagColor } from "./constants.js";
+import type { FolderIcon, FolderPinLength, TagColor } from "./constants.js";
 
 export interface UserDto {
   id: string;
@@ -93,6 +93,8 @@ export interface FolderDto {
   pinned: boolean;
   protected: boolean;
   lockType: FolderLockType | null;
+  /** 4 or 6 when lockType is pin; otherwise null. */
+  pinLength: FolderPinLength | null;
   bookmarkCount: number;
   unreadCount: number;
   createdAt: string;

@@ -36,8 +36,8 @@ export const SetFolderPasswordSchema = z
     lockType: FolderLockTypeSchema.default("password"),
   })
   .superRefine(({ password, lockType }, context) => {
-    if (lockType === "pin" && !/^\d{4,12}$/.test(password)) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ["password"], message: "Use a 4 to 12 digit PIN." });
+    if (lockType === "pin" && !/^\d{4}$|^\d{6}$/.test(password)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["password"], message: "Use a 4 or 6 digit PIN." });
     } else if (lockType === "pattern") {
       const nodes = password.split("-");
       if (nodes.length < 4 || new Set(nodes).size !== nodes.length || nodes.some((node) => !/^[0-8]$/.test(node))) {

@@ -1,5 +1,6 @@
 import type { Bookmark, Folder, Session, Tag, User } from "@prisma/client";
 import {
+  isFolderPinLength,
   normalizeFolderIcon,
   normalizeReaderPreferences,
   normalizeTagColor,
@@ -79,6 +80,12 @@ export function toFolderDto(
     pinned: f.pinned,
     protected: f.passwordHash !== null,
     lockType: f.passwordHash === null ? null : (f.lockType ?? "password") as FolderDto["lockType"],
+    pinLength:
+      f.passwordHash === null || f.lockType !== "pin"
+        ? null
+        : isFolderPinLength(f.pinLength)
+          ? f.pinLength
+          : null,
     bookmarkCount: counts.bookmarkCount,
     unreadCount: counts.unreadCount,
     createdAt: f.createdAt.toISOString(),

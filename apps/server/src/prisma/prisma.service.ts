@@ -310,6 +310,7 @@ const BOOKMARK_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: stri
 
 const FOLDER_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: string]> = [
   ["lockType", "TEXT"],
+  ["pinLength", "INTEGER"],
 ];
 
 /** Columns added to pre-existing User tables at runtime. */
