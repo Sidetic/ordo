@@ -3,7 +3,14 @@
  * the finger, and lifting completes the pattern.
  */
 import React, { useMemo, useRef, useState } from "react";
-import { PanResponder, Platform, StyleSheet, View } from "react-native";
+import {
+  PanResponder,
+  Platform,
+  StyleSheet,
+  View,
+  type GestureResponderEvent,
+  type NativeTouchEvent,
+} from "react-native";
 import Svg, { Line } from "react-native-svg";
 import { useTheme } from "../../theme/ThemeProvider";
 import { haptics } from "../../lib/haptics";
@@ -65,6 +72,28 @@ function hitIndex(x: number, y: number, used: ReadonlySet<number>): number | nul
   return null;
 }
 
+function clamp(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, n));
+}
+
+/**
+ * Board-local point from window coordinates. Never uses locationX/Y after grant:
+ * once the pointer leaves the view, those are relative to whatever is under the
+ * finger and the trail jumps to the top of the box.
+ */
+function localFromPage(pageX: number, pageY: number, origin: { x: number; y: number }) {
+  return { x: pageX - origin.x, y: pageY - origin.y };
+}
+
+function originFromGrant(native: NativeTouchEvent): { x: number; y: number } | null {
+  const { pageX, pageY, locationX, locationY } = native;
+  if (!Number.isFinite(pageX) || !Number.isFinite(pageY)) return null;
+  if (Number.isFinite(locationX) && Number.isFinite(locationY)) {
+    return { x: pageX - locationX, y: pageY - locationY };
+  }
+  return null;
+}
+
 export function PatternInput({
   value,
   onChange,
@@ -82,7 +111,9 @@ export function PatternInput({
   const { palette } = useTheme();
   const [stroke, setStroke] = useState<number[] | null>(null);
   const [finger, setFinger] = useState<{ x: number; y: number } | null>(null);
-  const origin = useRef({ x: 0, y: 0 });
+  const boardRef = useRef<View>(null);
+  const originRef = useRef({ x: 0, y: 0 });
+  const strokingRef = useRef(false);
   const strokeRef = useRef<number[]>([]);
   const disabledRef = useRef(disabled);
   disabledRef.current = disabled;
@@ -95,6 +126,16 @@ export function PatternInput({
   const used = useMemo(() => new Set(shown), [shown]);
   const active = error ? palette.danger : palette.accent;
   const idle = palette.borderStrong;
+
+  const measureOrigin = () => {
+    if (strokingRef.current) return;
+    boardRef.current?.measureInWindow((x, y) => {
+      if (strokingRef.current) return;
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        originRef.current = { x, y };
+      }
+    });
+  };
 
   const addNode = (node: number) => {
     const current = strokeRef.current;
@@ -112,67 +153,95 @@ export function PatternInput({
     haptics.selection();
   };
 
-  const localOf = (evt: { nativeEvent: { locationX: number; locationY: number; pageX: number; pageY: number } }) => {
-    const { locationX, locationY, pageX, pageY } = evt.nativeEvent;
-    if (Number.isFinite(locationX) && Number.isFinite(locationY)) {
-      origin.current = { x: pageX - locationX, y: pageY - locationY };
-      return { x: locationX, y: locationY };
-    }
-    return { x: pageX - origin.current.x, y: pageY - origin.current.y };
-  };
-
   const probe = (x: number, y: number) => {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
     const node = hitIndex(x, y, new Set(strokeRef.current));
     if (node !== null) addNode(node);
-    setFinger({ x, y });
+    setFinger({ x: clamp(x, 0, SIZE), y: clamp(y, 0, SIZE) });
   };
+
+  const finishStroke = () => {
+    strokingRef.current = false;
+    const path = strokeRef.current;
+    setFinger(null);
+    setStroke(null);
+    if (path.length === 0) return;
+    if (path.length < 4) {
+      haptics.warning();
+      onChangeRef.current([]);
+    } else {
+      onChangeRef.current(path);
+    }
+    onCompleteRef.current?.(path);
+  };
+
+  const probeRef = useRef(probe);
+  probeRef.current = probe;
+  const finishStrokeRef = useRef(finishStroke);
+  finishStrokeRef.current = finishStroke;
 
   const responder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !disabledRef.current,
       onStartShouldSetPanResponderCapture: () => !disabledRef.current,
       onMoveShouldSetPanResponder: () => !disabledRef.current,
+      onMoveShouldSetPanResponderCapture: () => !disabledRef.current,
       onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: (evt) => {
+      onShouldBlockNativeResponder: () => true,
+      onPanResponderGrant: (evt: GestureResponderEvent) => {
         if (disabledRef.current) return;
         strokeRef.current = [];
         setStroke([]);
         onChangeRef.current([]);
-        const local = localOf(evt);
-        probe(local.x, local.y);
-      },
-      onPanResponderMove: (evt) => {
-        if (disabledRef.current) return;
-        const local = localOf(evt);
-        probe(local.x, local.y);
-      },
-      onPanResponderRelease: () => {
-        const path = strokeRef.current;
-        setFinger(null);
-        setStroke(null);
-        if (path.length === 0) return;
-        if (path.length < 4) {
-          haptics.warning();
-          onChangeRef.current([]);
-        } else {
-          onChangeRef.current(path);
+        const guessed = originFromGrant(evt.nativeEvent);
+        if (guessed) originRef.current = guessed;
+        else {
+          boardRef.current?.measureInWindow((x, y) => {
+            if (Number.isFinite(x) && Number.isFinite(y)) originRef.current = { x, y };
+          });
         }
-        onCompleteRef.current?.(path);
+        strokingRef.current = true;
+        const local = localFromPage(evt.nativeEvent.pageX, evt.nativeEvent.pageY, originRef.current);
+        probeRef.current(local.x, local.y);
       },
-      onPanResponderTerminate: () => {
-        setFinger(null);
-        setStroke(null);
-        strokeRef.current = [];
-        onChangeRef.current([]);
+      onPanResponderMove: (evt: GestureResponderEvent) => {
+        if (disabledRef.current) return;
+        const local = localFromPage(evt.nativeEvent.pageX, evt.nativeEvent.pageY, originRef.current);
+        probeRef.current(local.x, local.y);
       },
+      onPanResponderRelease: () => finishStrokeRef.current(),
+      onPanResponderTerminate: () => finishStrokeRef.current(),
     }),
   ).current;
 
   const last = shown.length > 0 ? CENTERS[shown[shown.length - 1]] : null;
 
+  const webPointerProps =
+    Platform.OS === "web"
+      ? ({
+          onPointerDown: (event: {
+            currentTarget: { setPointerCapture?: (id: number) => void };
+            nativeEvent?: { pointerId?: number };
+            pointerId?: number;
+          }) => {
+            const id = event.nativeEvent?.pointerId ?? event.pointerId;
+            if (typeof id !== "number") return;
+            try {
+              event.currentTarget.setPointerCapture?.(id);
+            } catch {
+              /* ignore */
+            }
+          },
+        } as object)
+      : null;
+
   return (
     <View
+      ref={boardRef}
+      collapsable={false}
+      onLayout={measureOrigin}
       {...responder.panHandlers}
+      {...webPointerProps}
       accessibilityLabel="Pattern lock. Draw to connect at least four dots."
       accessibilityState={{ disabled }}
       style={[styles.board, { opacity: disabled ? 0.55 : 1 }]}
@@ -243,6 +312,7 @@ const styles = StyleSheet.create({
     width: SIZE,
     height: SIZE,
     alignSelf: "center",
+    overflow: "hidden",
     ...(Platform.OS === "web" ? { userSelect: "none", touchAction: "none" } : {}),
   },
   halo: {
