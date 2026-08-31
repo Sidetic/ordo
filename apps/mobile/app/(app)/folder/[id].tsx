@@ -1,12 +1,11 @@
 /**
  * Folder detail: cursor-paginated bookmark list with infinite scroll.
- * Handles protected folders (locked empty state → user taps Unlock → token
- * cached → list loads), optimistic toggle/delete/move, mark-all-read, and
- * folder actions.
+ * Handles protected folders (inline unlock → token cached → list loads),
+ * optimistic toggle/delete/move, mark-all-read, and folder actions.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ActivityIndicator, Linking, StyleSheet, View } from "react-native";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../../src/components/ui/Header";
@@ -19,7 +18,7 @@ import { BookmarkListSkeleton } from "../../../src/components/ui/BookmarkListSke
 import { BookmarkRow } from "../../../src/components/bookmarks/BookmarkRow";
 import { AddBookmarkSheet } from "../../../src/components/bookmarks/AddBookmarkSheet";
 import { MoveSheet } from "../../../src/components/bookmarks/MoveSheet";
-import { LockPrompt } from "../../../src/components/bookmarks/LockPrompt";
+import { UnlockScreen } from "../../../src/components/bookmarks/LockPrompt";
 import { BookmarkActionsSheet } from "../../../src/components/bookmarks/BookmarkActionsSheet";
 import { FolderActionsSheet } from "../../../src/components/bookmarks/FolderActionsSheet";
 import { EditTagsSheet } from "../../../src/components/tags/EditTagsSheet";
@@ -41,7 +40,7 @@ import { errorMessage, isFolderProtected } from "../../../src/lib/error-message"
 import { flattenPages } from "../../../src/lib/api/query-keys";
 import { opensBookmarkExternally } from "../../../src/lib/bookmark-reader";
 import { layout, radius, spacing } from "../../../src/theme/tokens";
-import { TOKEN_TTL, type BookmarkDto } from "@ordo/shared";
+import { type BookmarkDto } from "@ordo/shared";
 
 export default function FolderDetailScreen() {
   const { palette } = useTheme();
@@ -72,17 +71,6 @@ export default function FolderDetailScreen() {
   const [actionBm, setActionBm] = useState<BookmarkDto | null>(null);
   const [editTagsBm, setEditTagsBm] = useState<BookmarkDto | null>(null);
   const [folderActions, setFolderActions] = useState(false);
-  const [unlockOpen, setUnlockOpen] = useState(false);
-
-  useEffect(() => {
-    setUnlockOpen(false);
-  }, [folderId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      return () => setUnlockOpen(false);
-    }, []),
-  );
 
   const protectedError = !!bookmarks.error && isFolderProtected(bookmarks.error) && !unlocked;
   const showLocked = locked || protectedError;
@@ -206,13 +194,13 @@ export default function FolderDetailScreen() {
         }
       />
 
-      {showLocked ? (
+      {showLocked && folderId ? (
         <ScreenContent maxWidth={layout.maxContentWidth} style={styles.center}>
-          <EmptyState
-            icon="lock-closed-outline"
-            title="This folder is locked"
-            message={`Unlock this folder to view its bookmarks. Access lasts ${Math.round(TOKEN_TTL.FOLDER_MS / 60_000)} minutes.`}
-            action={<Button label="Unlock" onPress={() => setUnlockOpen(true)} />}
+          <UnlockScreen
+            folderId={folderId}
+            folderName={folder?.name}
+            lockType={folder?.lockType}
+            pinLength={folder?.pinLength}
           />
         </ScreenContent>
       ) : loadFailed ? (
@@ -337,14 +325,6 @@ export default function FolderDetailScreen() {
         }}
       />
 
-      <LockPrompt
-        visible={unlockOpen && showLocked}
-        folderId={folderId ?? ""}
-        folderName={folder?.name}
-        lockType={folder?.lockType}
-        onDismiss={() => setUnlockOpen(false)}
-        onUnlocked={() => setUnlockOpen(false)}
-      />
     </View>
   );
 }

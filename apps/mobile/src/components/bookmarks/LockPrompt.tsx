@@ -1,44 +1,70 @@
-/** Unlock prompt for device, pattern, PIN, and text folder locks. */
+/** Unlock UI for device, pattern, PIN, and password folder locks. */
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import { useFocusEffect } from "expo-router";
-import { TOKEN_TTL, type FolderLockType } from "@ordo/shared";
+import { TOKEN_TTL, type FolderLockType, type FolderPinLength } from "@ordo/shared";
 import { FloatingPanel } from "../ui/FloatingPanel";
 import { PanelHeader } from "../ui/PanelHeader";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
 import { EyeToggle } from "../ui/EyeToggle";
+import { Segmented } from "../ui/Segmented";
+import { OtpInput } from "../ui/OtpInput";
 import { PatternInput } from "./PatternInput";
 import { useUnlockFolder } from "../../hooks/use-folders";
 import { getDeviceLockCredential } from "../../lib/device-folder-lock";
 import { errorMessage } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
+import { useTheme } from "../../theme/ThemeProvider";
 import { spacing } from "../../theme/tokens";
 
 const UNLOCK_MINUTES = Math.round(TOKEN_TTL.FOLDER_MS / 60_000);
 
-export interface LockPromptProps {
-  visible: boolean;
+export interface UnlockFormProps {
   folderId: string;
   folderName?: string;
   lockType?: FolderLockType | null;
-  onDismiss: () => void;
-  onUnlocked: () => void;
+  pinLength?: FolderPinLength | null;
+  onUnlocked?: () => void;
+  /** When set, shows a ghost action that backs out of unlock (not the whole screen). */
+  onCancel?: () => void;
+  cancelLabel?: string;
 }
 
-export function LockPrompt({
-  visible,
+export interface LockPromptProps extends UnlockFormProps {
+  visible: boolean;
+  onDismiss: () => void;
+}
+
+function unlockSubtitle(lockType: FolderLockType | null | undefined, digits: FolderPinLength): string {
+  if (lockType === "device") return "Use Face ID, a fingerprint, or your device passcode.";
+  if (lockType === "pattern") return "Draw your pattern.";
+  if (lockType === "pin") return `Enter your ${digits}-digit PIN.`;
+  return "Enter the folder password.";
+}
+
+export function UnlockForm({
   folderId,
   folderName,
   lockType = "password",
-  onDismiss,
+  pinLength = null,
   onUnlocked,
-}: LockPromptProps) {
+  onCancel,
+  cancelLabel = "Cancel",
+}: UnlockFormProps) {
+  const { palette } = useTheme();
   const unlock = useUnlockFolder();
   const [focused, setFocused] = useState(true);
   const [password, setPassword] = useState("");
   const [pattern, setPattern] = useState<number[]>([]);
+  const [pinDigits, setPinDigits] = useState<FolderPinLength>(4);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const deviceAttempted = useRef(false);
@@ -50,26 +76,26 @@ export function LockPrompt({
     }, []),
   );
 
+  const digits: FolderPinLength = pinLength === 6 || pinLength === 4 ? pinLength : pinDigits;
+
   const reset = () => {
     setPassword("");
     setPattern([]);
     setShowPassword(false);
     setError("");
+    setPinDigits(pinLength === 6 ? 6 : 4);
   };
 
-  const active = visible && focused && Boolean(folderId);
-
   useEffect(() => {
-    if (!visible) return;
     reset();
     deviceAttempted.current = false;
-  }, [visible, folderId, lockType]);
+  }, [folderId, lockType, pinLength]);
 
   const finishUnlock = async (credential: string) => {
     await unlock.mutateAsync({ id: folderId, password: credential });
     haptics.success();
     reset();
-    onUnlocked();
+    onUnlocked?.();
   };
 
   const submitPattern = async (nodes: number[]) => {
@@ -86,20 +112,38 @@ export function LockPrompt({
     } catch (cause) {
       haptics.error();
       setError(errorMessage(cause, "That pattern is incorrect."));
+      setPattern([]);
     }
   };
 
-  const submit = async () => {
+  const submitPin = async (code: string) => {
+    if (unlock.isPending) return;
+    if (code.length !== digits) {
+      setError(`Enter your ${digits}-digit PIN.`);
+      return;
+    }
+    setError("");
+    setPassword(code);
+    try {
+      await finishUnlock(code);
+    } catch (cause) {
+      haptics.error();
+      setError(errorMessage(cause, "That PIN is incorrect."));
+      setPassword("");
+    }
+  };
+
+  const submitPassword = async () => {
     setError("");
     if (!password) {
-      setError(`Enter the folder ${lockType === "pin" ? "PIN" : "password"}.`);
+      setError("Enter the folder password.");
       return;
     }
     try {
       await finishUnlock(password);
     } catch (cause) {
       haptics.error();
-      setError(errorMessage(cause, lockType === "pin" ? "That PIN is incorrect." : "That password is incorrect."));
+      setError(errorMessage(cause, "That password is incorrect."));
     }
   };
 
@@ -113,7 +157,9 @@ export function LockPrompt({
       return;
     }
     if (!credential) {
-      setError("This device no longer has the folder key. Remove the lock from the folder menu with your account password.");
+      setError(
+        "This device no longer has the folder key. Remove the lock from the folder menu with your account password.",
+      );
       return;
     }
     try {
@@ -125,35 +171,33 @@ export function LockPrompt({
   };
 
   useEffect(() => {
-    if (!active || lockType !== "device" || deviceAttempted.current) return;
+    if (!folderId || !focused || lockType !== "device" || deviceAttempted.current) return;
+    if (Platform.OS === "web") return;
     deviceAttempted.current = true;
-    // Once per open; the button remains for a manual retry.
     void submitDeviceLock();
-  }, [active, lockType, folderId]);
+  }, [focused, lockType, folderId]);
 
-  const close = () => {
-    reset();
-    onDismiss();
-  };
-
-  const methodName = lockType === "pin" ? "PIN" : lockType === "pattern" ? "pattern" : "password";
-  const where = folderName ? ` ${folderName}` : " this folder";
+  const isPassword = lockType !== "device" && lockType !== "pattern" && lockType !== "pin";
+  const knownPinLength = pinLength === 4 || pinLength === 6;
+  const title = folderName ? `Unlock ${folderName}` : "Unlock folder";
 
   return (
-    <FloatingPanel visible={active} onDismiss={close}>
+    <View style={styles.form}>
       <PanelHeader
-        icon={lockType === "device" ? "finger-print-outline" : "lock-open-outline"}
-        title="Unlock folder"
-        subtitle={
-          lockType === "device"
-            ? `Use your device lock to unlock${where}. Access lasts ${UNLOCK_MINUTES} minutes.`
-            : lockType === "pattern"
-              ? `Draw your pattern to unlock${where}. Access lasts ${UNLOCK_MINUTES} minutes.`
-              : `Enter the ${methodName} to unlock${where}. Access lasts ${UNLOCK_MINUTES} minutes.`
-        }
+        icon={lockType === "device" ? "finger-print-outline" : "lock-closed-outline"}
+        iconColor={palette.accent}
+        iconBackground={palette.accentSoft}
+        title={title}
+        subtitle={unlockSubtitle(lockType, digits)}
       />
       {lockType === "device" ? (
-        <Button label="Use device lock" block size="lg" onPress={submitDeviceLock} loading={unlock.isPending} />
+        <Button
+          label="Use device lock"
+          block
+          size="lg"
+          onPress={submitDeviceLock}
+          loading={unlock.isPending}
+        />
       ) : lockType === "pattern" ? (
         <PatternInput
           value={pattern}
@@ -165,33 +209,155 @@ export function LockPrompt({
           error={Boolean(error)}
           disabled={unlock.isPending}
         />
+      ) : lockType === "pin" ? (
+        <View>
+          {knownPinLength ? null : (
+            <Segmented
+              options={[
+                { value: "4", label: "4 digits" },
+                { value: "6", label: "6 digits" },
+              ]}
+              value={String(pinDigits) as "4" | "6"}
+              onChange={(value) => {
+                setPinDigits(value === "6" ? 6 : 4);
+                setPassword("");
+                setError("");
+              }}
+            />
+          )}
+          <OtpInput
+            key={digits}
+            purpose="pin"
+            length={digits}
+            value={password}
+            onChange={(value) => {
+              setPassword(value);
+              if (error) setError("");
+            }}
+            onComplete={(code) => void submitPin(code)}
+            status={unlock.isPending ? "loading" : error ? "error" : "idle"}
+            error={error || undefined}
+            editable={!unlock.isPending}
+            style={knownPinLength ? undefined : { marginTop: spacing[16] }}
+          />
+        </View>
       ) : (
         <Input
-          label={lockType === "pin" ? "PIN" : "Password"}
+          label="Password"
           value={password}
-          onChangeText={(value) => setPassword(lockType === "pin" ? value.replace(/\D/g, "").slice(0, 12) : value)}
-          placeholder={lockType === "pin" ? "4 to 12 digits" : "Folder password"}
-          keyboardType={lockType === "pin" ? "number-pad" : "default"}
+          onChangeText={(value) => {
+            setPassword(value);
+            if (error) setError("");
+          }}
+          placeholder="Folder password"
           secureTextEntry={!showPassword}
           autoFocus
           error={error || undefined}
-          onSubmitEditing={submit}
+          onSubmitEditing={() => void submitPassword()}
           autoCapitalize="none"
           autoCorrect={false}
           rightAccessory={<EyeToggle visible={showPassword} onPress={() => setShowPassword((value) => !value)} />}
         />
       )}
       {(lockType === "pattern" || lockType === "device") && error ? (
-        <Text variant="footnote" color="danger" align="center">{error}</Text>
+        <Text variant="footnote" color="danger" align="center" style={styles.error}>
+          {error}
+        </Text>
       ) : null}
-      {lockType !== "device" && lockType !== "pattern" ? (
+      {isPassword ? (
         <>
           <View style={{ height: spacing[20] }} />
-          <Button label="Unlock" block size="lg" onPress={submit} loading={unlock.isPending} />
+          <Button label="Unlock" block size="lg" onPress={() => void submitPassword()} loading={unlock.isPending} />
         </>
       ) : null}
-      <View style={{ height: spacing[10] }} />
-      <Button label="Cancel" variant="ghost" block onPress={close} />
+      <Text variant="caption" color="tertiary" align="center" style={styles.footnote}>
+        Stays unlocked for {UNLOCK_MINUTES} minutes on this device.
+      </Text>
+      {onCancel ? (
+        <>
+          <View style={{ height: spacing[8] }} />
+          <Button label={cancelLabel} variant="ghost" block onPress={onCancel} />
+        </>
+      ) : null}
+    </View>
+  );
+}
+
+/** Full-screen unlock: same form as the sheet, no second popup. */
+export function UnlockScreen(props: UnlockFormProps) {
+  return (
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.screenScroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <UnlockForm {...props} />
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+export function LockPrompt({
+  visible,
+  folderId,
+  folderName,
+  lockType = "password",
+  pinLength = null,
+  onDismiss,
+  onUnlocked,
+}: LockPromptProps) {
+  const [focused, setFocused] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
+
+  const close = () => onDismiss();
+  const active = visible && focused && Boolean(folderId);
+
+  return (
+    <FloatingPanel visible={active} onDismiss={close}>
+      {active ? (
+        <UnlockForm
+          folderId={folderId}
+          folderName={folderName}
+          lockType={lockType}
+          pinLength={pinLength}
+          onUnlocked={onUnlocked}
+          onCancel={close}
+        />
+      ) : null}
     </FloatingPanel>
   );
 }
+
+const styles = StyleSheet.create({
+  form: {
+    width: "100%",
+    maxWidth: 420,
+    alignSelf: "center",
+  },
+  error: {
+    marginTop: spacing[12],
+  },
+  footnote: {
+    marginTop: spacing[16],
+  },
+  screen: {
+    flex: 1,
+    width: "100%",
+  },
+  screenScroll: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingVertical: spacing[24],
+    paddingHorizontal: spacing[8],
+  },
+});

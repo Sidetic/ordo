@@ -426,6 +426,7 @@ export default function DataScreen() {
         folderId={unlockTarget?.folder.id ?? ""}
         folderName={unlockTarget?.folder.name}
         lockType={unlockTarget?.folder.lockType ?? "password"}
+        pinLength={unlockTarget?.folder.pinLength}
         onDismiss={() => setUnlockTarget(null)}
         onUnlocked={() => {
           const target = unlockTarget;

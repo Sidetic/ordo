@@ -10,7 +10,7 @@ import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Text } from "../ui/Text";
 import { PressableScale } from "../ui/PressableScale";
-import { LockPrompt } from "./LockPrompt";
+import { UnlockForm } from "./LockPrompt";
 import { CreateFolderPanel } from "./CreateFolderPanel";
 import {
   SettingsSelect,
@@ -161,116 +161,129 @@ export function AddBookmarkSheet({
 
   const lockedFolder = folders?.find((folder) => folder.id === lockedFolderId);
 
+  const unlocking = Boolean(lockedFolderId);
+
   return (
     <>
-    <FloatingPanel visible={visible && !lockedFolderId} onDismiss={close}>
-      <PanelHeader title="Save bookmark" />
-      {allowFolderSelection ? (
-        <View style={styles.destinationRow}>
-          <Text variant="label" color="tertiary">DESTINATION</Text>
-          <SettingsSelect
-            value={selectedDestination}
-            options={destinationOptions}
-            onChange={chooseDestination}
-            title="Save to"
+      <FloatingPanel
+        visible={visible}
+        onDismiss={() => {
+          if (unlocking) setLockedFolderId(null);
+          else close();
+        }}
+      >
+        {lockedFolderId ? (
+          <UnlockForm
+            folderId={lockedFolderId}
+            folderName={lockedFolder?.name}
+            lockType={lockedFolder?.lockType}
+            pinLength={lockedFolder?.pinLength}
+            onCancel={() => setLockedFolderId(null)}
+            onUnlocked={() => {
+              setLockedFolderId(null);
+              void submit();
+            }}
           />
-        </View>
-      ) : destination ? (
-        <Text variant="footnote" color="secondary" style={{ marginBottom: spacing[16] }}>
-          Saving to <Text variant="footnote" color="accent">{destination}</Text>
-        </Text>
-      ) : null}
+        ) : (
+          <>
+            <PanelHeader title="Save bookmark" />
+            {allowFolderSelection ? (
+              <View style={styles.destinationRow}>
+                <Text variant="label" color="tertiary">DESTINATION</Text>
+                <SettingsSelect
+                  value={selectedDestination}
+                  options={destinationOptions}
+                  onChange={chooseDestination}
+                  title="Save to"
+                />
+              </View>
+            ) : destination ? (
+              <Text variant="footnote" color="secondary" style={{ marginBottom: spacing[16] }}>
+                Saving to <Text variant="footnote" color="accent">{destination}</Text>
+              </Text>
+            ) : null}
 
-      <Input
-        value={url}
-        onChangeText={setUrl}
-        placeholder="Paste a link"
-        keyboardType="url"
-        autoCapitalize="none"
-        autoCorrect={false}
-        autoFocus
-        error={error || undefined}
-        icon={<Ionicons name="link-outline" size={18} color={palette.textTertiary} />}
-        onSubmitEditing={() => void submit()}
-        returnKeyType="done"
-      />
+            <Input
+              value={url}
+              onChangeText={setUrl}
+              placeholder="Paste a link"
+              keyboardType="url"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoFocus
+              error={error || undefined}
+              icon={<Ionicons name="link-outline" size={18} color={palette.textTertiary} />}
+              onSubmitEditing={() => void submit()}
+              returnKeyType="done"
+            />
 
-      <View style={styles.tagsRow}>
-        <Text variant="label" color="tertiary">TAGS</Text>
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel={showTagPicker ? "Hide tag picker" : "Show tag picker"}
-          onPress={() => setShowTagPicker((v) => !v)}
-          hitSlop={8}
-        >
-          <Ionicons
-            name={showTagPicker ? "chevron-up" : "chevron-down"}
-            size={16}
-            color={palette.textTertiary}
-          />
-        </PressableScale>
-      </View>
-      {selectedTagIds.length > 0 ? (
-        <View style={styles.selectedTagWrap}>
-          {selectedTagIds.map((tagId) => {
-            const tag = tags?.find((t) => t.id === tagId);
-            if (!tag) return null;
-            return (
-              <TagChip
-                key={tagId}
-                name={tag.name}
-                color={tag.color}
-                selected
-                compact
-                onPress={() =>
-                  setSelectedTagIds((prev) => prev.filter((id) => id !== tagId))
+            <View style={styles.tagsRow}>
+              <Text variant="label" color="tertiary">TAGS</Text>
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel={showTagPicker ? "Hide tag picker" : "Show tag picker"}
+                onPress={() => setShowTagPicker((v) => !v)}
+                hitSlop={8}
+              >
+                <Ionicons
+                  name={showTagPicker ? "chevron-up" : "chevron-down"}
+                  size={16}
+                  color={palette.textTertiary}
+                />
+              </PressableScale>
+            </View>
+            {selectedTagIds.length > 0 ? (
+              <View style={styles.selectedTagWrap}>
+                {selectedTagIds.map((tagId) => {
+                  const tag = tags?.find((t) => t.id === tagId);
+                  if (!tag) return null;
+                  return (
+                    <TagChip
+                      key={tagId}
+                      name={tag.name}
+                      color={tag.color}
+                      selected
+                      compact
+                      onPress={() =>
+                        setSelectedTagIds((prev) => prev.filter((id) => id !== tagId))
+                      }
+                      accessibilityLabel={`Remove tag ${tag.name}`}
+                    />
+                  );
+                })}
+              </View>
+            ) : null}
+            {showTagPicker ? (
+              <TagSelectList
+                selectedIds={selectedTagIds}
+                onToggle={(tagId) =>
+                  setSelectedTagIds((prev) =>
+                    prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
+                  )
                 }
-                accessibilityLabel={`Remove tag ${tag.name}`}
+                maxHeight={200}
+                onRequestCreateTag={() => setCreateTagOpen(true)}
               />
-            );
-          })}
-        </View>
-      ) : null}
-      {showTagPicker ? (
-        <TagSelectList
-          selectedIds={selectedTagIds}
-          onToggle={(tagId) =>
-            setSelectedTagIds((prev) =>
-              prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
-            )
-          }
-          maxHeight={200}
-          onRequestCreateTag={() => setCreateTagOpen(true)}
-        />
-      ) : null}
+            ) : null}
 
-      <View style={styles.actions}>
-        <Button label="Cancel" variant="secondary" onPress={close} style={styles.action} />
-        <Button label="Save" onPress={submit} loading={create.isPending} style={styles.saveAction} />
-      </View>
-    </FloatingPanel>
-    <LockPrompt
-      visible={visible && !!lockedFolderId}
-      folderId={lockedFolderId ?? ""}
-      folderName={lockedFolder?.name}
-      lockType={lockedFolder?.lockType}
-      onDismiss={() => setLockedFolderId(null)}
-      onUnlocked={() => {
-        setLockedFolderId(null);
-        void submit();
-      }}
-    />
-    <CreateFolderPanel
-      visible={createFolderOpen}
-      onDismiss={() => setCreateFolderOpen(false)}
-      onCreated={(folder) => setSelectedDestination(folder.id)}
-    />
-    {/* Sibling of the save sheet: nested modals are not supported on Android. */}
-    <CreateTagPanel
-      visible={createTagOpen}
-      onDismiss={() => setCreateTagOpen(false)}
-      onCreated={(tag) => setSelectedTagIds((prev) => [...prev, tag.id])}
-    />
+            <View style={styles.actions}>
+              <Button label="Cancel" variant="secondary" onPress={close} style={styles.action} />
+              <Button label="Save" onPress={submit} loading={create.isPending} style={styles.saveAction} />
+            </View>
+          </>
+        )}
+      </FloatingPanel>
+      <CreateFolderPanel
+        visible={createFolderOpen}
+        onDismiss={() => setCreateFolderOpen(false)}
+        onCreated={(folder) => setSelectedDestination(folder.id)}
+      />
+      {/* Sibling of the save sheet: nested modals are not supported on Android. */}
+      <CreateTagPanel
+        visible={createTagOpen}
+        onDismiss={() => setCreateTagOpen(false)}
+        onCreated={(tag) => setSelectedTagIds((prev) => [...prev, tag.id])}
+      />
     </>
   );
 }

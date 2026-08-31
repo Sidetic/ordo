@@ -6,7 +6,7 @@ import { FlatList, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { FloatingPanel } from "../ui/FloatingPanel";
 import { PanelHeader } from "../ui/PanelHeader";
-import { LockPrompt } from "./LockPrompt";
+import { UnlockForm } from "./LockPrompt";
 import { Text } from "../ui/Text";
 import { PressableScale } from "../ui/PressableScale";
 import { useFolders } from "../../hooks/queries";
@@ -79,56 +79,65 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
   };
 
   return (
-    <>
-      <FloatingPanel visible={visible && !lockedTarget} onDismiss={onDismiss}>
-      <PanelHeader title="Move to folder" />
-      {error ? (
-        <Text variant="footnote" color="danger" style={{ marginBottom: spacing[12] }}>
-          {error}
-        </Text>
-      ) : null}
-      {destinations.length === 0 ? (
-        <Text variant="body" color="secondary">No other folders available.</Text>
-      ) : (
-        <FlatList
-          data={destinations}
-          keyExtractor={(d) => (isRootDestination(d) ? "root" : d.id)}
-          renderItem={({ item }) => (
-            <PressableScale style={[styles.row, { borderBottomColor: palette.border }]} onPress={() => pick(item)} accessibilityRole="button" accessibilityLabel={isRootDestination(item) ? "Bookmarks" : item.name}>
-              <Ionicons
-                name={isRootDestination(item) ? "bookmark-outline" : (item.icon ?? DEFAULT_FOLDER_ICON)}
-                size={20}
-                color={palette.accent}
-              />
-              <Text variant="body" style={{ flex: 1 }} numberOfLines={1}>
-                {isRootDestination(item) ? "Bookmarks" : item.name}
-              </Text>
-              {isRootDestination(item) ? null : (
-                <>
-                  {item.pinned ? <Ionicons name="pin" size={14} color={palette.accent} /> : null}
-                  {item.protected ? <Ionicons name="lock-closed" size={14} color={palette.textTertiary} /> : null}
-                  <Text variant="footnote" color="tertiary">{item.bookmarkCount}</Text>
-                </>
-              )}
-            </PressableScale>
-          )}
-          style={{ maxHeight: Math.min(320, height * 0.5) }}
+    <FloatingPanel
+      visible={visible}
+      onDismiss={() => {
+        if (lockedTarget) setLockedTarget(null);
+        else onDismiss();
+      }}
+    >
+      {lockedTarget ? (
+        <UnlockForm
+          folderId={lockedTarget.id}
+          folderName={lockedTarget.name}
+          lockType={lockedTarget.lockType}
+          pinLength={lockedTarget.pinLength}
+          onCancel={() => setLockedTarget(null)}
+          onUnlocked={() => {
+            const target = lockedTarget;
+            setLockedTarget(null);
+            if (target) void pick(target);
+          }}
         />
+      ) : (
+        <>
+          <PanelHeader title="Move to folder" />
+          {error ? (
+            <Text variant="footnote" color="danger" style={{ marginBottom: spacing[12] }}>
+              {error}
+            </Text>
+          ) : null}
+          {destinations.length === 0 ? (
+            <Text variant="body" color="secondary">No other folders available.</Text>
+          ) : (
+            <FlatList
+              data={destinations}
+              keyExtractor={(d) => (isRootDestination(d) ? "root" : d.id)}
+              renderItem={({ item }) => (
+                <PressableScale style={[styles.row, { borderBottomColor: palette.border }]} onPress={() => pick(item)} accessibilityRole="button" accessibilityLabel={isRootDestination(item) ? "Bookmarks" : item.name}>
+                  <Ionicons
+                    name={isRootDestination(item) ? "bookmark-outline" : (item.icon ?? DEFAULT_FOLDER_ICON)}
+                    size={20}
+                    color={palette.accent}
+                  />
+                  <Text variant="body" style={{ flex: 1 }} numberOfLines={1}>
+                    {isRootDestination(item) ? "Bookmarks" : item.name}
+                  </Text>
+                  {isRootDestination(item) ? null : (
+                    <>
+                      {item.pinned ? <Ionicons name="pin" size={14} color={palette.accent} /> : null}
+                      {item.protected ? <Ionicons name="lock-closed" size={14} color={palette.textTertiary} /> : null}
+                      <Text variant="footnote" color="tertiary">{item.bookmarkCount}</Text>
+                    </>
+                  )}
+                </PressableScale>
+              )}
+              style={{ maxHeight: Math.min(320, height * 0.5) }}
+            />
+          )}
+        </>
       )}
-      </FloatingPanel>
-      <LockPrompt
-        visible={visible && !!lockedTarget}
-        folderId={lockedTarget?.id ?? ""}
-        folderName={lockedTarget?.name}
-        lockType={lockedTarget?.lockType}
-        onDismiss={() => setLockedTarget(null)}
-        onUnlocked={() => {
-          const target = lockedTarget;
-          setLockedTarget(null);
-          if (target) void pick(target);
-        }}
-      />
-    </>
+    </FloatingPanel>
   );
 }
 
