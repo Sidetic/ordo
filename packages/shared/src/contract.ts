@@ -327,7 +327,7 @@ export const FolderRoutes = {
     response: {} as { success: true },
   },
   removePassword: {
-    path: `${API_PREFIX}/folders/:id/password/remove`,
+    path: `${API_PREFIX}/folders/:id/remove-password`,
     method: "POST",
     body: {} as RemoveFolderPasswordInput,
     query: {} as Empty,

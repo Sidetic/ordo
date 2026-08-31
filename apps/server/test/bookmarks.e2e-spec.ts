@@ -1208,7 +1208,7 @@ describe("Bookmarks & Folders (e2e)", () => {
 
       // removing the password opens the folder again
       await agent
-        .delete(`/api/folders/${folder.body.id}/password`)
+        .post(`/api/folders/${folder.body.id}/remove-password`)
         .send({ folderPassword: "1234" })
         .expect(200);
       await agent.get(`/api/bookmarks?folderId=${folder.body.id}`).expect(200);
@@ -1258,7 +1258,7 @@ describe("Bookmarks & Folders (e2e)", () => {
 
       // removal with the account password (setup() registers "password123")
       await agent
-        .delete(`/api/folders/${folder.body.id}/password`)
+        .post(`/api/folders/${folder.body.id}/remove-password`)
         .send({ accountPassword: "password123" })
         .expect(200);
       listed = await agent.get("/api/folders").expect(200);
@@ -1360,43 +1360,33 @@ describe("Bookmarks & Folders (e2e)", () => {
       const folder = await agent.post("/api/folders").send({ name: "Vault" }).expect(201);
       await agent.post(`/api/folders/${folder.body.id}/password`).send({ password: "1234" }).expect(200);
 
-      const missing = await agent.delete(`/api/folders/${folder.body.id}/password`).expect(400);
+      const missing = await agent.post(`/api/folders/${folder.body.id}/remove-password`).expect(400);
       expect(missing.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
 
       const wrongFolder = await agent
-        .delete(`/api/folders/${folder.body.id}/password`)
+        .post(`/api/folders/${folder.body.id}/remove-password`)
         .send({ folderPassword: "nope" })
         .expect(403);
       expect(wrongFolder.body.error.code).toBe(ErrorCode.INVALID_FOLDER_PASSWORD);
 
       const wrongAccount = await agent
-        .delete(`/api/folders/${folder.body.id}/password`)
+        .post(`/api/folders/${folder.body.id}/remove-password`)
         .send({ accountPassword: "wrongpassword" })
         .expect(401);
       expect(wrongAccount.body.error.code).toBe(ErrorCode.INVALID_CREDENTIALS);
 
       await agent
-        .delete(`/api/folders/${folder.body.id}/password`)
+        .post(`/api/folders/${folder.body.id}/remove-password`)
         .send({ accountPassword: "password123" })
         .expect(200);
       await agent.get(`/api/bookmarks?folderId=${folder.body.id}`).expect(200);
     });
 
-    it("removes a lock via POST /password/remove with the account password", async () => {
+    it("does not leak Express Cannot POST for an unknown folder route", async () => {
       const { agent } = await setup();
-      const folder = await agent.post("/api/folders").send({ name: "Vault" }).expect(201);
-      await agent.post(`/api/folders/${folder.body.id}/password`).send({ password: "1234" }).expect(200);
-
-      await agent
-        .post(`/api/folders/${folder.body.id}/password/remove`)
-        .send({ accountPassword: "wrongpassword" })
-        .expect(401);
-
-      await agent
-        .post(`/api/folders/${folder.body.id}/password/remove`)
-        .send({ accountPassword: "password123" })
-        .expect(200);
-      await agent.get(`/api/bookmarks?folderId=${folder.body.id}`).expect(200);
+      const res = await agent.post("/api/folders/any-id/password/nope").expect(404);
+      expect(res.body.error.code).toBe(ErrorCode.NOT_FOUND);
+      expect(res.body.error.message).not.toMatch(/Cannot POST/i);
     });
 
     it("moves a bookmark between two locked folders when both tokens are presented", async () => {

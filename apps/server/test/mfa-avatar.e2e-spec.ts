@@ -230,7 +230,7 @@ describe("MFA + avatars (e2e)", () => {
       await agent.post(`/api/folders/${folder.body.id}/password`).send({ password: "1234" }).expect(200);
 
       await agent
-        .delete(`/api/folders/${folder.body.id}/password`)
+        .post(`/api/folders/${folder.body.id}/remove-password`)
         .send({ accountPassword: "supersecret" })
         .expect(200);
     });
@@ -240,7 +240,7 @@ describe("MFA + avatars (e2e)", () => {
       const folder = await agent.post("/api/folders").send({ name: "Vault" }).expect(201);
       await agent.post(`/api/folders/${folder.body.id}/password`).send({ password: "1234" }).expect(200);
       await agent
-        .delete(`/api/folders/${folder.body.id}/password`)
+        .post(`/api/folders/${folder.body.id}/remove-password`)
         .send({ folderPassword: "1234" })
         .expect(200);
     });

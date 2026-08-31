@@ -54,7 +54,10 @@ export function errorMessage(err: unknown, fallback = "Something went wrong."): 
     }
     // Prefer the server message so specific copy (wrong password vs login,
     // "session not found", "this folder is not locked") is not overwritten.
-    return err.message || FRIENDLY[err.code] || fallback;
+    if (err.message && !/^Cannot (GET|POST|PUT|PATCH|DELETE) /i.test(err.message)) {
+      return err.message;
+    }
+    return FRIENDLY[err.code] || fallback;
   }
   if (err instanceof Error && err.message) return err.message;
   return fallback;

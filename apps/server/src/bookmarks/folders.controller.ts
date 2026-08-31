@@ -79,20 +79,7 @@ export class FoldersController {
     return { success: true };
   }
 
-  @Post(":id/password/remove")
-  @RateLimit("folder-unlock")
-  @HttpCode(200)
-  async removePasswordPost(
-    @CurrentUser() user: AuthContext,
-    @Param("id") id: string,
-    @Body(new ZodValidationPipe(RemoveFolderPasswordSchema)) body: RemoveFolderPasswordInput,
-  ): Promise<{ success: true }> {
-    await this.folders.removePassword(id, user.userId, body);
-    return { success: true };
-  }
-
-  /** Kept for older clients. Prefer POST /password/remove — DELETE bodies are unreliable. */
-  @Delete(":id/password")
+  @Post(":id/remove-password")
   @RateLimit("folder-unlock")
   @HttpCode(200)
   async removePassword(

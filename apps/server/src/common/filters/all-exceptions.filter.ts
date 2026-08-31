@@ -66,6 +66,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   private fromHttpException(body: unknown, status: HttpStatus): ApiError {
     if (typeof body === "string") {
+      if (status === HttpStatus.NOT_FOUND || isExpressMissingRoute(body)) {
+        return { code: ErrorCode.NOT_FOUND, message: "That item wasn't found." };
+      }
       return { code: ErrorCode.INTERNAL_ERROR, message: body };
     }
     const obj = (body ?? {}) as Record<string, unknown>;
@@ -89,11 +92,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
           ? "Invalid input"
           : HttpStatus[status] ?? "Error";
 
+    if (status === HttpStatus.NOT_FOUND || isExpressMissingRoute(message)) {
+      return { code: ErrorCode.NOT_FOUND, message: "That item wasn't found." };
+    }
+
     return {
       code: ErrorCode.INTERNAL_ERROR,
       message,
     };
   }
+}
+
+function isExpressMissingRoute(message: string): boolean {
+  return /^Cannot (GET|POST|PUT|PATCH|DELETE) /i.test(message);
 }
 
 function retryAfterSecondsOf(details: unknown): number | null {
