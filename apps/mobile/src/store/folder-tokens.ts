@@ -1,8 +1,9 @@
 /**
  * Cache of short-lived folder unlock tokens, keyed by folderId.
- * Folder tokens are folder-scoped and expire after 10 minutes; `get` returns
- * null once expired so the caller can re-prompt + re-unlock.
+ * Folder tokens are folder-scoped and expire after TOKEN_TTL.FOLDER_MS
+ * (10 minutes); `get` returns null once expired so the caller can re-prompt.
  */
+import { AppState } from "react-native";
 import { create } from "zustand";
 import { secureGet, secureSet, StorageKeys } from "../lib/storage";
 
@@ -43,6 +44,7 @@ function prune(map: FolderTokenMap): FolderTokenMap {
 }
 
 let pruneScheduled = false;
+const expiryTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function schedulePrune() {
   if (pruneScheduled) return;
@@ -56,9 +58,41 @@ function schedulePrune() {
       tokens: next,
       accessRevision: s.accessRevision + 1,
     }));
+    armAll(next);
     void secureSet(StorageKeys.FOLDER_TOKENS, next);
   });
 }
+
+function disarmExpiry(folderId: string) {
+  const timer = expiryTimers.get(folderId);
+  if (timer) clearTimeout(timer);
+  expiryTimers.delete(folderId);
+}
+
+function armExpiry(folderId: string, expiresAt: number) {
+  disarmExpiry(folderId);
+  const delay = Math.max(0, expiresAt - now() + 25);
+  expiryTimers.set(
+    folderId,
+    setTimeout(() => {
+      expiryTimers.delete(folderId);
+      schedulePrune();
+    }, delay),
+  );
+}
+
+function armAll(map: FolderTokenMap) {
+  for (const id of [...expiryTimers.keys()]) {
+    if (!map[id]) disarmExpiry(id);
+  }
+  for (const [id, entry] of Object.entries(map)) {
+    armExpiry(id, entry.expiresAt);
+  }
+}
+
+AppState.addEventListener("change", (state) => {
+  if (state === "active") schedulePrune();
+});
 
 export const useFolderTokenStore = create<FolderTokenState>((set, get) => ({
   tokens: {},
@@ -66,7 +100,9 @@ export const useFolderTokenStore = create<FolderTokenState>((set, get) => ({
 
   hydrate: async () => {
     const saved = await secureGet<FolderTokenMap>(StorageKeys.FOLDER_TOKENS);
-    set((s) => ({ tokens: saved ? prune(saved) : {}, accessRevision: s.accessRevision + 1 }));
+    const tokens = saved ? prune(saved) : {};
+    armAll(tokens);
+    set((s) => ({ tokens, accessRevision: s.accessRevision + 1 }));
   },
 
   get: (folderId) => {
@@ -92,12 +128,15 @@ export const useFolderTokenStore = create<FolderTokenState>((set, get) => ({
   },
 
   set: (folderId, token, expiresInSec) => {
-    const next = { ...get().tokens, [folderId]: { token, expiresAt: now() + expiresInSec * 1000 } };
+    const expiresAt = now() + expiresInSec * 1000;
+    const next = { ...get().tokens, [folderId]: { token, expiresAt } };
+    armExpiry(folderId, expiresAt);
     set((s) => ({ tokens: next, accessRevision: s.accessRevision + 1 }));
     void secureSet(StorageKeys.FOLDER_TOKENS, next);
   },
 
   clear: (folderId) => {
+    disarmExpiry(folderId);
     const next = { ...get().tokens };
     delete next[folderId];
     set((s) => ({ tokens: next, accessRevision: s.accessRevision + 1 }));
@@ -105,6 +144,7 @@ export const useFolderTokenStore = create<FolderTokenState>((set, get) => ({
   },
 
   clearAll: async () => {
+    for (const id of [...expiryTimers.keys()]) disarmExpiry(id);
     set((s) => ({ tokens: {}, accessRevision: s.accessRevision + 1 }));
     await secureSet(StorageKeys.FOLDER_TOKENS, {});
   },

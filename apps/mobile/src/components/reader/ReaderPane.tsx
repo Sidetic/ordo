@@ -24,7 +24,7 @@ import { StatusBar, setStatusBarStyle } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { EXTRACTION_VERSION, READ_COMPLETION_THRESHOLD } from "@ordo/shared";
+import { EXTRACTION_VERSION, READ_COMPLETION_THRESHOLD, TOKEN_TTL } from "@ordo/shared";
 import type {
   ReaderPreferences,
   UpdateReaderPreferencesInput,
@@ -635,7 +635,7 @@ function ReaderPaneInner({
           <EmptyState
             icon="lock-closed-outline"
             title="This folder is locked"
-            message="Unlock the folder to read this bookmark."
+            message={`Unlock the folder to read this bookmark. Access lasts ${Math.round(TOKEN_TTL.FOLDER_MS / 60_000)} minutes.`}
             action={
               lockedFolderId ? (
                 <Button label="Unlock" onPress={() => setUnlockOpen(true)} />

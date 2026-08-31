@@ -1,65 +1,262 @@
-import { StyleSheet, View } from "react-native";
-import { PressableScale } from "../ui/PressableScale";
-import { Text } from "../ui/Text";
+/**
+ * Android-style 3×3 pattern lock: draw through dots, connecting lines follow
+ * the finger, and lifting completes the pattern.
+ */
+import React, { useMemo, useRef, useState } from "react";
+import { PanResponder, Platform, StyleSheet, View } from "react-native";
+import Svg, { Line } from "react-native-svg";
 import { useTheme } from "../../theme/ThemeProvider";
 import { haptics } from "../../lib/haptics";
-import { radius, spacing } from "../../theme/tokens";
+import { radius } from "../../theme/tokens";
 
-export function PatternInput({ value, onChange }: { value: number[]; onChange: (value: number[]) => void }) {
+const NODES = 9;
+const COLS = 3;
+const SIZE = 252;
+const PADDING = 36;
+const DOT = 18;
+const HALO = 40;
+const HIT_RADIUS = 34;
+const LINE_WIDTH = 3;
+
+function nodeCenter(index: number): { x: number; y: number } {
+  const col = index % COLS;
+  const row = Math.floor(index / COLS);
+  const span = SIZE - PADDING * 2;
+  const step = span / (COLS - 1);
+  return { x: PADDING + col * step, y: PADDING + row * step };
+}
+
+const CENTERS = Array.from({ length: NODES }, (_, i) => nodeCenter(i));
+
+function gcd(a: number, b: number): number {
+  let x = Math.abs(a);
+  let y = Math.abs(b);
+  while (y) {
+    const t = y;
+    y = x % y;
+    x = t;
+  }
+  return x || 1;
+}
+
+/** Dots that lie on the grid line between two nodes (Android skip-fill). */
+function intermediates(from: number, to: number): number[] {
+  const fr = Math.floor(from / COLS);
+  const fc = from % COLS;
+  const tr = Math.floor(to / COLS);
+  const tc = to % COLS;
+  const steps = gcd(tr - fr, tc - fc);
+  if (steps <= 1) return [];
+  const out: number[] = [];
+  for (let i = 1; i < steps; i++) {
+    out.push(Math.round((fr + ((tr - fr) / steps) * i) * COLS + (fc + ((tc - fc) / steps) * i)));
+  }
+  return out;
+}
+
+function hitIndex(x: number, y: number, used: ReadonlySet<number>): number | null {
+  const r2 = HIT_RADIUS * HIT_RADIUS;
+  for (let i = 0; i < NODES; i++) {
+    if (used.has(i)) continue;
+    const dx = x - CENTERS[i].x;
+    const dy = y - CENTERS[i].y;
+    if (dx * dx + dy * dy <= r2) return i;
+  }
+  return null;
+}
+
+export function PatternInput({
+  value,
+  onChange,
+  onComplete,
+  error = false,
+  disabled = false,
+}: {
+  value: number[];
+  onChange: (value: number[]) => void;
+  /** Fired when the finger lifts. Shorter than 4 dots is still reported so the parent can show an error. */
+  onComplete?: (value: number[]) => void;
+  error?: boolean;
+  disabled?: boolean;
+}) {
   const { palette } = useTheme();
+  const [stroke, setStroke] = useState<number[] | null>(null);
+  const [finger, setFinger] = useState<{ x: number; y: number } | null>(null);
+  const origin = useRef({ x: 0, y: 0 });
+  const strokeRef = useRef<number[]>([]);
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
-  const toggle = (node: number) => {
-    if (value.includes(node)) return;
+  const shown = stroke ?? value;
+  const used = useMemo(() => new Set(shown), [shown]);
+  const active = error ? palette.danger : palette.accent;
+  const idle = palette.borderStrong;
+
+  const addNode = (node: number) => {
+    const current = strokeRef.current;
+    if (current.includes(node)) return;
+    const next = [...current];
+    if (next.length > 0) {
+      for (const mid of intermediates(next[next.length - 1], node)) {
+        if (!next.includes(mid)) next.push(mid);
+      }
+    }
+    next.push(node);
+    strokeRef.current = next;
+    setStroke(next);
+    onChangeRef.current(next);
     haptics.selection();
-    onChange([...value, node]);
   };
 
+  const localOf = (evt: { nativeEvent: { locationX: number; locationY: number; pageX: number; pageY: number } }) => {
+    const { locationX, locationY, pageX, pageY } = evt.nativeEvent;
+    if (Number.isFinite(locationX) && Number.isFinite(locationY)) {
+      origin.current = { x: pageX - locationX, y: pageY - locationY };
+      return { x: locationX, y: locationY };
+    }
+    return { x: pageX - origin.current.x, y: pageY - origin.current.y };
+  };
+
+  const probe = (x: number, y: number) => {
+    const node = hitIndex(x, y, new Set(strokeRef.current));
+    if (node !== null) addNode(node);
+    setFinger({ x, y });
+  };
+
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !disabledRef.current,
+      onStartShouldSetPanResponderCapture: () => !disabledRef.current,
+      onMoveShouldSetPanResponder: () => !disabledRef.current,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (evt) => {
+        if (disabledRef.current) return;
+        strokeRef.current = [];
+        setStroke([]);
+        onChangeRef.current([]);
+        const local = localOf(evt);
+        probe(local.x, local.y);
+      },
+      onPanResponderMove: (evt) => {
+        if (disabledRef.current) return;
+        const local = localOf(evt);
+        probe(local.x, local.y);
+      },
+      onPanResponderRelease: () => {
+        const path = strokeRef.current;
+        setFinger(null);
+        setStroke(null);
+        if (path.length === 0) return;
+        if (path.length < 4) {
+          haptics.warning();
+          onChangeRef.current([]);
+        } else {
+          onChangeRef.current(path);
+        }
+        onCompleteRef.current?.(path);
+      },
+      onPanResponderTerminate: () => {
+        setFinger(null);
+        setStroke(null);
+        strokeRef.current = [];
+        onChangeRef.current([]);
+      },
+    }),
+  ).current;
+
+  const last = shown.length > 0 ? CENTERS[shown[shown.length - 1]] : null;
+
   return (
-    <View>
-      <View style={styles.grid} accessibilityLabel="Pattern grid">
-        {Array.from({ length: 9 }, (_, node) => {
-          const order = value.indexOf(node);
-          const selected = order >= 0;
+    <View
+      {...responder.panHandlers}
+      accessibilityLabel="Pattern lock. Draw to connect at least four dots."
+      accessibilityState={{ disabled }}
+      style={[styles.board, { opacity: disabled ? 0.55 : 1 }]}
+    >
+      <Svg width={SIZE} height={SIZE} style={StyleSheet.absoluteFill} pointerEvents="none">
+        {shown.slice(1).map((node, i) => {
+          const from = CENTERS[shown[i]];
+          const to = CENTERS[node];
           return (
-            <PressableScale
-              key={node}
-              accessibilityRole="button"
-              accessibilityLabel={`Pattern dot ${node + 1}${selected ? `, selected ${order + 1}` : ""}`}
-              onPress={() => toggle(node)}
-              style={styles.cell}
-            >
-              <View
-                style={[
-                  styles.dot,
-                  {
-                    backgroundColor: selected ? palette.accent : palette.surfaceSecondary,
-                    borderColor: selected ? palette.accent : palette.border,
-                  },
-                ]}
-              >
-                {selected ? <Text variant="footnote" style={{ color: palette.onAccent }}>{order + 1}</Text> : null}
-              </View>
-            </PressableScale>
+            <Line
+              key={`${shown[i]}-${node}`}
+              x1={from.x}
+              y1={from.y}
+              x2={to.x}
+              y2={to.y}
+              stroke={active}
+              strokeWidth={LINE_WIDTH}
+              strokeLinecap="round"
+            />
           );
         })}
-      </View>
-      <PressableScale accessibilityRole="button" onPress={() => onChange([])} style={styles.clear}>
-        <Text variant="footnote" color="accent">Clear pattern</Text>
-      </PressableScale>
+        {last && finger ? (
+          <Line
+            x1={last.x}
+            y1={last.y}
+            x2={finger.x}
+            y2={finger.y}
+            stroke={active}
+            strokeWidth={LINE_WIDTH}
+            strokeLinecap="round"
+            strokeOpacity={0.55}
+          />
+        ) : null}
+      </Svg>
+      {CENTERS.map((center, node) => {
+        const selected = used.has(node);
+        return (
+          <View
+            key={node}
+            pointerEvents="none"
+            style={[
+              styles.halo,
+              {
+                left: center.x - HALO / 2,
+                top: center.y - HALO / 2,
+                backgroundColor: selected ? (error ? palette.dangerSoft : palette.accentSoft) : "transparent",
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.dot,
+                {
+                  borderColor: selected ? active : idle,
+                  backgroundColor: selected ? active : "transparent",
+                },
+              ]}
+            />
+          </View>
+        );
+      })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  grid: { width: 210, alignSelf: "center", flexDirection: "row", flexWrap: "wrap" },
-  cell: { width: 70, height: 64, alignItems: "center", justifyContent: "center" },
-  dot: {
-    width: 38,
-    height: 38,
+  board: {
+    width: SIZE,
+    height: SIZE,
+    alignSelf: "center",
+    ...(Platform.OS === "web" ? { userSelect: "none", touchAction: "none" } : {}),
+  },
+  halo: {
+    position: "absolute",
+    width: HALO,
+    height: HALO,
     borderRadius: radius.full,
-    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  clear: { alignSelf: "center", padding: spacing[8] },
+  dot: {
+    width: DOT,
+    height: DOT,
+    borderRadius: radius.full,
+    borderWidth: 2,
+  },
 });

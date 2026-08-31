@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { useFocusEffect } from "expo-router";
-import type { FolderLockType } from "@ordo/shared";
+import { TOKEN_TTL, type FolderLockType } from "@ordo/shared";
 import { FloatingPanel } from "../ui/FloatingPanel";
 import { PanelHeader } from "../ui/PanelHeader";
 import { Input } from "../ui/Input";
@@ -15,6 +15,8 @@ import { getDeviceLockCredential } from "../../lib/device-folder-lock";
 import { errorMessage } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
 import { spacing } from "../../theme/tokens";
+
+const UNLOCK_MINUTES = Math.round(TOKEN_TTL.FOLDER_MS / 60_000);
 
 export interface LockPromptProps {
   visible: boolean;
@@ -70,15 +72,31 @@ export function LockPrompt({
     onUnlocked();
   };
 
+  const submitPattern = async (nodes: number[]) => {
+    if (unlock.isPending) return;
+    if (nodes.length < 4) {
+      setError("Connect at least 4 dots.");
+      setPattern([]);
+      return;
+    }
+    setError("");
+    setPattern(nodes);
+    try {
+      await finishUnlock(nodes.join("-"));
+    } catch (cause) {
+      haptics.error();
+      setError(errorMessage(cause, "That pattern is incorrect."));
+    }
+  };
+
   const submit = async () => {
     setError("");
-    const credential = lockType === "pattern" ? pattern.join("-") : password;
-    if (!credential || (lockType === "pattern" && pattern.length < 4)) {
-      setError(lockType === "pattern" ? "Connect at least 4 dots." : `Enter the folder ${lockType === "pin" ? "PIN" : "password"}.`);
+    if (!password) {
+      setError(`Enter the folder ${lockType === "pin" ? "PIN" : "password"}.`);
       return;
     }
     try {
-      await finishUnlock(credential);
+      await finishUnlock(password);
     } catch (cause) {
       haptics.error();
       setError(errorMessage(cause, lockType === "pin" ? "That PIN is incorrect." : "That password is incorrect."));
@@ -128,14 +146,25 @@ export function LockPrompt({
         title="Unlock folder"
         subtitle={
           lockType === "device"
-            ? `Use your device lock to unlock${where}.`
-            : `Enter the ${methodName} to unlock${where}.`
+            ? `Use your device lock to unlock${where}. Access lasts ${UNLOCK_MINUTES} minutes.`
+            : lockType === "pattern"
+              ? `Draw your pattern to unlock${where}. Access lasts ${UNLOCK_MINUTES} minutes.`
+              : `Enter the ${methodName} to unlock${where}. Access lasts ${UNLOCK_MINUTES} minutes.`
         }
       />
       {lockType === "device" ? (
         <Button label="Use device lock" block size="lg" onPress={submitDeviceLock} loading={unlock.isPending} />
       ) : lockType === "pattern" ? (
-        <PatternInput value={pattern} onChange={setPattern} />
+        <PatternInput
+          value={pattern}
+          onChange={(nodes) => {
+            setPattern(nodes);
+            if (error) setError("");
+          }}
+          onComplete={(nodes) => void submitPattern(nodes)}
+          error={Boolean(error)}
+          disabled={unlock.isPending}
+        />
       ) : (
         <Input
           label={lockType === "pin" ? "PIN" : "Password"}
@@ -155,7 +184,7 @@ export function LockPrompt({
       {(lockType === "pattern" || lockType === "device") && error ? (
         <Text variant="footnote" color="danger" align="center">{error}</Text>
       ) : null}
-      {lockType !== "device" ? (
+      {lockType !== "device" && lockType !== "pattern" ? (
         <>
           <View style={{ height: spacing[20] }} />
           <Button label="Unlock" block size="lg" onPress={submit} loading={unlock.isPending} />

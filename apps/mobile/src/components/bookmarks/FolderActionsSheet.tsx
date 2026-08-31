@@ -145,23 +145,26 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     }
   };
 
-  const doSetCredential = async () => {
+  const doSetCredential = async (patternOverride?: number[]) => {
     if (!folder) return;
-    const credential = lockType === "pattern" ? pattern.join("-") : password;
-    if (lockType === "pattern" && savedPattern.length === 0) {
-      if (pattern.length < 4) {
+    const nodes = patternOverride ?? pattern;
+    const credential = lockType === "pattern" ? nodes.join("-") : password;
+    if (lockType === "pattern") {
+      if (nodes.length < 4) {
         setError("Connect at least 4 dots.");
+        setPattern([]);
         return;
       }
-      setSavedPattern(pattern);
-      setPattern([]);
-      setError("");
-      return;
-    }
-    if (lockType === "pattern" && savedPattern.join("-") !== credential) {
-      setError("Patterns do not match. Try again.");
-      setPattern([]);
-      return;
+      if (savedPattern.length === 0) {
+        setSavedPattern(nodes);
+        setPattern([]);
+        setError("");
+        return;
+      }
+      if (savedPattern.join("-") !== credential) {
+        setError("Patterns do not match. Try again.");
+        return;
+      }
     }
     if (lockType === "pin" && !/^\d{4,12}$/.test(password)) {
       setError("Use a 4 to 12 digit PIN.");
@@ -261,11 +264,12 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
     }
   };
 
-  const removeWithFolderPassword = async () => {
+  const removeWithFolderPassword = async (patternOverride?: number[]) => {
     if (!folder || removing) return;
     const lockKind = folder.lockType ?? "password";
-    const credential = lockKind === "pattern" ? pattern.join("-") : password;
-    if (!credential || (lockKind === "pattern" && pattern.length < 4)) {
+    const nodes = patternOverride ?? pattern;
+    const credential = lockKind === "pattern" ? nodes.join("-") : password;
+    if (!credential || (lockKind === "pattern" && nodes.length < 4)) {
       setError(lockKind === "pattern" ? "Connect at least 4 dots." : `Enter the folder ${lockKind === "pin" ? "PIN" : "password"}.`);
       return;
     }
@@ -276,7 +280,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
       finishRemoved();
     } catch (cause) {
       haptics.error();
-      setError(errorMessage(cause, "That password is incorrect."));
+      setError(errorMessage(cause, lockKind === "pattern" ? "That pattern is incorrect." : "That password is incorrect."));
     } finally {
       setRemoving(false);
     }
@@ -390,11 +394,20 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
         <>
           <PanelHeader
             title={lockType === "pattern" ? (savedPattern.length ? "Confirm pattern" : "Set a pattern") : lockType === "pin" ? "Set a PIN" : "Set a password"}
-            subtitle={lockType === "pattern" ? "Tap at least 4 dots in order." : lockType === "pin" ? "Use 4 to 12 digits." : "Use at least 4 characters."}
+            subtitle={lockType === "pattern" ? (savedPattern.length ? "Draw the same pattern again." : "Draw a pattern connecting at least 4 dots.") : lockType === "pin" ? "Use 4 to 12 digits." : "Use at least 4 characters."}
           />
           {lockType === "pattern" ? (
             <>
-              <PatternInput value={pattern} onChange={setPattern} />
+              <PatternInput
+                key={savedPattern.length ? "confirm" : "set"}
+                value={pattern}
+                onChange={(nodes) => {
+                  setPattern(nodes);
+                  if (error) setError("");
+                }}
+                onComplete={(nodes) => void doSetCredential(nodes)}
+                error={Boolean(error)}
+              />
               {error ? <Text variant="footnote" color="danger" align="center">{error}</Text> : null}
             </>
           ) : (
@@ -428,7 +441,9 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
             </>
           )}
           <View style={styles.actions}>
-            <Button label={lockType === "pattern" && !savedPattern.length ? "Continue" : "Lock folder"} block size="lg" onPress={doSetCredential} />
+            {lockType === "pattern" ? null : (
+              <Button label="Lock folder" block size="lg" onPress={() => void doSetCredential()} />
+            )}
             <Button label="Back" variant="ghost" block onPress={() => showMode("lockChoice")} />
           </View>
         </>
@@ -448,7 +463,16 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
             error ? <Text variant="footnote" color="danger" align="center">{error}</Text> : null
           ) : (folder.lockType ?? "password") === "pattern" ? (
             <>
-              <PatternInput value={pattern} onChange={setPattern} />
+              <PatternInput
+                value={pattern}
+                onChange={(nodes) => {
+                  setPattern(nodes);
+                  if (error) setError("");
+                }}
+                onComplete={(nodes) => void removeWithFolderPassword(nodes)}
+                error={Boolean(error)}
+                disabled={removing}
+              />
               {error ? <Text variant="footnote" color="danger" align="center">{error}</Text> : null}
             </>
           ) : (
@@ -463,7 +487,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
               autoCapitalize="none"
               autoCorrect={false}
               error={error || undefined}
-              onSubmitEditing={removeWithFolderPassword}
+              onSubmitEditing={() => void removeWithFolderPassword()}
               rightAccessory={<EyeToggle visible={showPassword} onPress={() => setShowPassword((value) => !value)} />}
             />
           )}
@@ -477,14 +501,16 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: Fo
             <Text variant="footnote" color="accent">Use account password</Text>
           </PressableScale>
           <View style={styles.actions}>
-            <Button
-              label={(folder.lockType ?? "password") === "device" ? "Use device lock" : "Remove lock"}
-              variant="danger"
-              block
-              size="lg"
-              onPress={(folder.lockType ?? "password") === "device" ? removeWithDeviceLock : removeWithFolderPassword}
-              loading={removing}
-            />
+            {(folder.lockType ?? "password") === "pattern" ? null : (
+              <Button
+                label={(folder.lockType ?? "password") === "device" ? "Use device lock" : "Remove lock"}
+                variant="danger"
+                block
+                size="lg"
+                onPress={(folder.lockType ?? "password") === "device" ? removeWithDeviceLock : () => void removeWithFolderPassword()}
+                loading={removing}
+              />
+            )}
             <Button label="Cancel" variant="ghost" block disabled={removing} onPress={() => showMode("menu")} />
           </View>
         </ScrollView>

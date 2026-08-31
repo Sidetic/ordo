@@ -41,7 +41,7 @@ import { errorMessage, isFolderProtected } from "../../../src/lib/error-message"
 import { flattenPages } from "../../../src/lib/api/query-keys";
 import { opensBookmarkExternally } from "../../../src/lib/bookmark-reader";
 import { layout, radius, spacing } from "../../../src/theme/tokens";
-import type { BookmarkDto } from "@ordo/shared";
+import { TOKEN_TTL, type BookmarkDto } from "@ordo/shared";
 
 export default function FolderDetailScreen() {
   const { palette } = useTheme();
@@ -211,7 +211,7 @@ export default function FolderDetailScreen() {
           <EmptyState
             icon="lock-closed-outline"
             title="This folder is locked"
-            message="Unlock this folder to view its bookmarks."
+            message={`Unlock this folder to view its bookmarks. Access lasts ${Math.round(TOKEN_TTL.FOLDER_MS / 60_000)} minutes.`}
             action={<Button label="Unlock" onPress={() => setUnlockOpen(true)} />}
           />
         </ScreenContent>

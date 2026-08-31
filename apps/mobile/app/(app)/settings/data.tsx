@@ -5,7 +5,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { DuplicatePolicy, ExportFormat, FolderDto, ImportJobDto } from "@ordo/shared";
-import { IMPORT_EXPORT } from "@ordo/shared";
+import { IMPORT_EXPORT, TOKEN_TTL } from "@ordo/shared";
 import { SettingsPage, SettingsScrollView, SettingsGroup } from "../../../src/components/settings/SettingsPage";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { Segmented } from "../../../src/components/ui/Segmented";
@@ -431,7 +431,7 @@ export default function DataScreen() {
           const target = unlockTarget;
           setUnlockTarget(null);
           if (target?.source === "export") setScope(target.folder.id);
-          toast.success("Folder unlocked");
+          toast.success(`Folder unlocked for ${Math.round(TOKEN_TTL.FOLDER_MS / 60_000)} minutes`);
         }}
       />
     </SettingsPage>
