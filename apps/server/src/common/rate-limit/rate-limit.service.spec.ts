@@ -185,16 +185,28 @@ describe("RateLimitService", () => {
     expect(() => limiter.consumeBookmarkCreate("user-2")).not.toThrow();
   });
 
-  it("limits folder unlocks per user and folder", () => {
+  it("limits failed folder unlocks per user and folder, and clears on success", () => {
     const limiter = service();
     for (let i = 0; i < RATE_LIMIT.folderUnlockUser.limit; i++) {
-      expect(() => limiter.consumeFolderUnlock("user-1", "folder-1")).not.toThrow();
+      limiter.checkFolderUnlock("user-1", "folder-1");
+      limiter.recordFolderUnlockFailure("user-1", "folder-1");
     }
     expectLimited(
-      () => limiter.consumeFolderUnlock("user-1", "folder-1"),
+      () => limiter.checkFolderUnlock("user-1", "folder-1"),
       "folder unlock attempts",
     );
-    expect(() => limiter.consumeFolderUnlock("user-1", "folder-2")).not.toThrow();
+    expect(() => limiter.checkFolderUnlock("user-1", "folder-2")).not.toThrow();
+
+    limiter.clearFolderUnlock("user-1", "folder-1");
+    expect(() => limiter.checkFolderUnlock("user-1", "folder-1")).not.toThrow();
+  });
+
+  it("does not treat a successful folder unlock as a failure", () => {
+    const limiter = service();
+    for (let i = 0; i < RATE_LIMIT.folderUnlockUser.limit; i++) {
+      limiter.checkFolderUnlock("user-1", "folder-1");
+    }
+    expect(() => limiter.checkFolderUnlock("user-1", "folder-1")).not.toThrow();
   });
 
   it("resetAll drops every bucket", () => {

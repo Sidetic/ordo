@@ -128,13 +128,31 @@ export class RateLimitService implements OnModuleInit, OnModuleDestroy {
     this.consumeWindow(`bookmark:${userId}`, RATE_LIMIT.bookmarkCreateUser, "URLs fetched");
   }
 
-  consumeFolderUnlock(userId: string, folderId: string): void {
+  /**
+   * Reject if this folder's failed-unlock window is already full.
+   * Does not record a failure.
+   */
+  checkFolderUnlock(userId: string, folderId: string): void {
     if (!this.enabled) return;
-    this.consumeWindow(
-      `folder-unlock:${userId}:${folderId}`,
+    this.assertWindow(
+      this.folderUnlockKey(userId, folderId),
       RATE_LIMIT.folderUnlockUser,
       "folder unlock attempts",
     );
+  }
+
+  recordFolderUnlockFailure(userId: string, folderId: string): void {
+    if (!this.enabled) return;
+    this.incrementWindow(
+      this.folderUnlockKey(userId, folderId),
+      RATE_LIMIT.folderUnlockUser,
+      Date.now(),
+    );
+  }
+
+  clearFolderUnlock(userId: string, folderId: string): void {
+    if (!this.enabled) return;
+    this.store.delete(this.folderUnlockKey(userId, folderId));
   }
 
   consumeMfaVerify(ip: string): void {
@@ -167,6 +185,10 @@ export class RateLimitService implements OnModuleInit, OnModuleDestroy {
 
   private ipStoreKey(scope: string, ip: string): string {
     return `${scope}:ip:${ip}`;
+  }
+
+  private folderUnlockKey(userId: string, folderId: string): string {
+    return `folder-unlock:${userId}:${folderId}`;
   }
 
   private assertAccountAvailable(key: string, action: string): void {

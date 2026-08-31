@@ -214,6 +214,86 @@ describe("Rate limiting (e2e)", () => {
       expect(res.body.error.message).toMatch(/URLs fetched/i);
     });
   });
+
+  describe("folder unlock", () => {
+    async function lockedFolder(email: string) {
+      const auth = await registerUser(ctx.app, email);
+      const agent = request.agent(ctx.app.getHttpServer()).auth(auth.tokens.accessToken, {
+        type: "bearer",
+      });
+      const folder = await agent.post("/api/folders").send({ name: "Private" }).expect(201);
+      await agent
+        .post(`/api/folders/${folder.body.id}/password`)
+        .send({ password: "correct-lock" })
+        .expect(200);
+      return { agent, folderId: folder.body.id as string };
+    }
+
+    it("does not count successful unlocks", async () => {
+      const { agent, folderId } = await lockedFolder("unlock-ok@ordo.app");
+      for (let i = 0; i < RATE_LIMIT.folderUnlockUser.limit + 1; i++) {
+        await agent.post(`/api/folders/${folderId}/unlock`).send({ password: "correct-lock" }).expect(200);
+      }
+    });
+
+    it("does not count invalid bodies", async () => {
+      const { agent, folderId } = await lockedFolder("unlock-empty@ordo.app");
+      for (let i = 0; i < RATE_LIMIT.folderUnlockUser.limit + 1; i++) {
+        await agent.post(`/api/folders/${folderId}/unlock`).send({ password: "" }).expect(400);
+      }
+      await agent.post(`/api/folders/${folderId}/unlock`).send({ password: "correct-lock" }).expect(200);
+    });
+
+    it("locks after too many wrong folder passwords, including a later correct one", async () => {
+      const { agent, folderId } = await lockedFolder("unlock-fail@ordo.app");
+      for (let i = 0; i < RATE_LIMIT.folderUnlockUser.limit; i++) {
+        const res = await agent
+          .post(`/api/folders/${folderId}/unlock`)
+          .send({ password: "wrong-lock" })
+          .expect(403);
+        expect(res.body.error.code).toBe(ErrorCode.INVALID_FOLDER_PASSWORD);
+      }
+      const blocked = await agent
+        .post(`/api/folders/${folderId}/unlock`)
+        .send({ password: "correct-lock" });
+      expectRateLimited(blocked);
+      expect(blocked.body.error.message).toMatch(/folder unlock attempts/i);
+    });
+
+    it("clears failures after a correct unlock", async () => {
+      const { agent, folderId } = await lockedFolder("unlock-clear@ordo.app");
+      for (let i = 0; i < RATE_LIMIT.folderUnlockUser.limit - 1; i++) {
+        await agent.post(`/api/folders/${folderId}/unlock`).send({ password: "wrong-lock" }).expect(403);
+      }
+      await agent.post(`/api/folders/${folderId}/unlock`).send({ password: "correct-lock" }).expect(200);
+      for (let i = 0; i < RATE_LIMIT.folderUnlockUser.limit; i++) {
+        await agent.post(`/api/folders/${folderId}/unlock`).send({ password: "wrong-lock" }).expect(403);
+      }
+    });
+
+    it("shares the failure window with remove-password using the folder secret", async () => {
+      const { agent, folderId } = await lockedFolder("unlock-remove@ordo.app");
+      for (let i = 0; i < RATE_LIMIT.folderUnlockUser.limit; i++) {
+        await agent
+          .post(`/api/folders/${folderId}/remove-password`)
+          .send({ folderPassword: "wrong-lock" })
+          .expect(403);
+      }
+      const blocked = await agent.post(`/api/folders/${folderId}/unlock`).send({ password: "correct-lock" });
+      expectRateLimited(blocked);
+    });
+
+    it("still allows removing the lock with the account password after unlock is limited", async () => {
+      const { agent, folderId } = await lockedFolder("unlock-escape@ordo.app");
+      for (let i = 0; i < RATE_LIMIT.folderUnlockUser.limit; i++) {
+        await agent.post(`/api/folders/${folderId}/unlock`).send({ password: "wrong-lock" }).expect(403);
+      }
+      await agent
+        .post(`/api/folders/${folderId}/remove-password`)
+        .send({ accountPassword: "password123" })
+        .expect(200);
+    });
+  });
 });
 
 describe("Rate limiting behind a trusted proxy (e2e)", () => {

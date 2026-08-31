@@ -22,7 +22,6 @@ import {
   type UpdateFolderInput,
 } from "@ordo/shared";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe.js";
-import { RateLimit } from "../common/rate-limit/rate-limit.decorator.js";
 import { AuthGuard } from "../auth/auth.guard.js";
 import {
   CurrentUser,
@@ -80,7 +79,6 @@ export class FoldersController {
   }
 
   @Post(":id/remove-password")
-  @RateLimit("folder-unlock")
   @HttpCode(200)
   async removePassword(
     @CurrentUser() user: AuthContext,
@@ -92,7 +90,6 @@ export class FoldersController {
   }
 
   @Post(":id/unlock")
-  @RateLimit("folder-unlock")
   @HttpCode(200)
   async unlock(
     @CurrentUser() user: AuthContext,

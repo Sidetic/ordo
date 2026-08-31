@@ -10,6 +10,7 @@ import type {
 import { ErrorCode } from "@ordo/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { AppError } from "../common/errors/app-error.js";
+import { RateLimitService } from "../common/rate-limit/rate-limit.service.js";
 import { FolderTokenService } from "./folder-token.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
 import { toFolderDto } from "../common/mappers.js";
@@ -20,6 +21,7 @@ export class FoldersService {
     private readonly prisma: PrismaService,
     private readonly folderTokens: FolderTokenService,
     private readonly access: FolderAccessService,
+    private readonly rateLimit: RateLimitService,
   ) {}
 
   async list(userId: string): Promise<FolderDto[]> {
@@ -104,8 +106,11 @@ export class FoldersService {
     if (!folder.passwordHash) {
       throw new AppError(ErrorCode.FORBIDDEN, "This folder is not locked.");
     }
-    if (input.folderPassword) {
-      await this.folderTokens.assertPassword(folder, input.folderPassword);
+    const folderPassword = input.folderPassword;
+    if (folderPassword) {
+      await this.withFolderUnlockLimit(userId, folderId, () =>
+        this.folderTokens.assertPassword(folder, folderPassword),
+      );
     } else {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, "Account not found.");
@@ -123,7 +128,31 @@ export class FoldersService {
     password: string,
   ): Promise<{ token: string; expiresIn: number }> {
     const folder = await this.access.loadOwned(folderId, userId);
-    return this.folderTokens.unlock(folder, password);
+    return this.withFolderUnlockLimit(userId, folderId, () =>
+      this.folderTokens.unlock(folder, password),
+    );
+  }
+
+  /**
+   * Count only wrong folder secrets. Successful checks clear the window;
+   * validation errors and account-password removals never touch it.
+   */
+  private async withFolderUnlockLimit<T>(
+    userId: string,
+    folderId: string,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    this.rateLimit.checkFolderUnlock(userId, folderId);
+    try {
+      const result = await fn();
+      this.rateLimit.clearFolderUnlock(userId, folderId);
+      return result;
+    } catch (cause) {
+      if (cause instanceof AppError && cause.code === ErrorCode.INVALID_FOLDER_PASSWORD) {
+        this.rateLimit.recordFolderUnlockFailure(userId, folderId);
+      }
+      throw cause;
+    }
   }
 
   /** Live bookmark counts for a single folder. */

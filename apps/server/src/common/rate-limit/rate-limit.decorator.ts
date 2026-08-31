@@ -7,7 +7,6 @@ export type RateLimitPolicyName =
   | "forgot-password"
   | "reset-password"
   | "bookmark-create"
-  | "folder-unlock"
   | "mfa-verify"
   | "avatar-upload"
   | "import-upload"
