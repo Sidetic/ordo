@@ -45,6 +45,7 @@ export default function SearchScreen() {
   const [q, setQ] = useState(routeQuery);
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const { data: allTags } = useTags();
+  const browsing = q.length > 0 || tagFilter.length > 0;
 
   // Debounce the query (300ms) so typing stays smooth.
   useEffect(() => {
@@ -107,6 +108,7 @@ export default function SearchScreen() {
           bookmark={item}
           onPress={openReader}
           selected={hasDetailPane && item.id === selectedBookmarkId}
+          onTagPress={toggleTag}
         />
       )}
       estimatedItemSize={108}
@@ -134,13 +136,13 @@ export default function SearchScreen() {
             icon={<Ionicons name="search-outline" size={18} color={palette.textTertiary} />}
             returnKeyType="search"
           />
-          {q && (allTags?.length ?? 0) > 0 ? (
+          {allTags && allTags.length > 0 ? (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.tagRail}
             >
-              {allTags!.map((tag) => (
+              {allTags.map((tag) => (
                 <TagChip
                   key={tag.id}
                   name={tag.name}
@@ -154,12 +156,16 @@ export default function SearchScreen() {
           ) : null}
         </View>
 
-        {!q ? (
+        {!browsing ? (
           <View style={styles.stateFill}>
             <EmptyState
               icon="search-outline"
               title="Search your library"
-              message="Find bookmarks by title, URL, or article content."
+              message={
+                (allTags?.length ?? 0) > 0
+                  ? "Find bookmarks by title, URL, or article content, or pick a tag."
+                  : "Find bookmarks by title, URL, or article content."
+              }
             />
           </View>
         ) : search.isLoading ? (
@@ -191,7 +197,11 @@ export default function SearchScreen() {
             <EmptyState
               icon="document-text-outline"
               title="No results"
-              message={`Nothing matched "${q}".`}
+              message={
+                q
+                  ? `Nothing matched "${q}".`
+                  : "No bookmarks with these tags."
+              }
             />
           </View>
         ) : hasDetailPane ? (

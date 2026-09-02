@@ -151,15 +151,19 @@ export class BookmarksService implements OnApplicationBootstrap {
       userId,
       AND: [
         this.access.visibleBookmarksFilter(authorized),
-        {
-          OR: [
-            { title: { contains: term } },
-            { url: { contains: term } },
-            { contentText: { contains: term } },
-            { description: { contains: term } },
-            { tags: { some: { tag: { name: { contains: term } } } } },
-          ],
-        },
+        ...(term
+          ? [
+              {
+                OR: [
+                  { title: { contains: term } },
+                  { url: { contains: term } },
+                  { contentText: { contains: term } },
+                  { description: { contains: term } },
+                  { tags: { some: { tag: { name: { contains: term } } } } },
+                ],
+              } satisfies Prisma.BookmarkWhereInput,
+            ]
+          : []),
         ...tagIds.map((tagId) => ({ tags: { some: { tagId } } })),
       ],
     };

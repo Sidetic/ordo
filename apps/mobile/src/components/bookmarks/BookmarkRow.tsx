@@ -5,6 +5,7 @@
  */
 import React from "react";
 import { ActivityIndicator, Image, StyleSheet, View } from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { PressableScale } from "../ui/PressableScale";
 import { Text } from "../ui/Text";
@@ -12,6 +13,7 @@ import { TagChip } from "../tags/TagChip";
 import { useTheme } from "../../theme/ThemeProvider";
 import { domainFromUrl, relativeTime } from "../../lib/format";
 import { opensBookmarkExternally } from "../../lib/bookmark-reader";
+import { haptics } from "../../lib/haptics";
 import { radius, spacing } from "../../theme/tokens";
 import type { BookmarkDto } from "@ordo/shared";
 
@@ -23,10 +25,13 @@ export interface BookmarkRowProps {
   onPress: (b: BookmarkDto) => void;
   onMore?: (b: BookmarkDto) => void;
   selected?: boolean;
+  /** Override chip taps (e.g. toggle a search filter). Default: open that tag. */
+  onTagPress?: (tagId: string) => void;
 }
 
-export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRowProps) {
+export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress }: BookmarkRowProps) {
   const { palette } = useTheme();
+  const router = useRouter();
   const titleColor = bookmark.isRead ? "secondary" : "primary";
   const domain = bookmark.domain || domainFromUrl(bookmark.url);
   const title = bookmark.title || domain;
@@ -50,6 +55,15 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRow
   ]
     .filter(Boolean)
     .join(", ");
+
+  const handleTagPress = (tagId: string) => {
+    if (onTagPress) {
+      onTagPress(tagId);
+      return;
+    }
+    haptics.light();
+    router.push(`/tags/${tagId}`);
+  };
 
   return (
     <View
@@ -108,7 +122,14 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected }: BookmarkRow
           {bookmark.tags.length > 0 ? (
             <View style={styles.tagRow}>
               {visibleTags.map((tag) => (
-                <TagChip key={tag.id} name={tag.name} color={tag.color} compact />
+                <TagChip
+                  key={tag.id}
+                  name={tag.name}
+                  color={tag.color}
+                  compact
+                  onPress={() => handleTagPress(tag.id)}
+                  accessibilityLabel={`Show bookmarks tagged ${tag.name}`}
+                />
               ))}
               {overflowCount > 0 ? (
                 <Text variant="caption" color="tertiary" style={styles.overflow}>

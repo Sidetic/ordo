@@ -73,8 +73,11 @@ export function TagChip({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? name}
       accessibilityState={{ selected }}
-      onPress={onPress}
-      hitSlop={4}
+      onPress={(event) => {
+        event.stopPropagation();
+        onPress();
+      }}
+      hitSlop={8}
     >
       {body}
     </PressableScale>

@@ -950,6 +950,10 @@ describe("Bookmarks & Folders (e2e)", () => {
         .expect(200);
       expect(withFilter.body.items).toHaveLength(1);
 
+      const tagOnly = await agent.get(`/api/bookmarks/search?tagIds=${espresso.body.id}`).expect(200);
+      expect(tagOnly.body.items).toHaveLength(1);
+      expect(tagOnly.body.items[0].id).toBe(coffee.id);
+
       const filterExcludes = await agent
         .get(`/api/bookmarks/search?q=morning&tagIds=${espresso.body.id},unknown-id`)
         .expect(404);

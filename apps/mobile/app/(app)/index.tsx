@@ -1,4 +1,4 @@
-/** Bookmarks home: unfiled bookmarks first, with folders available above them. */
+/** Bookmarks home: folders and a tags destination, then unfiled bookmarks. */
 import React, { useMemo, useState } from "react";
 import { ActivityIndicator, Linking, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -19,12 +19,12 @@ import { EmptyState } from "../../src/components/ui/EmptyState";
 import { AddBookmarkSheet } from "../../src/components/bookmarks/AddBookmarkSheet";
 import { BookmarkActionsSheet } from "../../src/components/bookmarks/BookmarkActionsSheet";
 import { FolderRow } from "../../src/components/bookmarks/FolderRow";
+import { TagsLibraryRow } from "../../src/components/bookmarks/TagsLibraryRow";
 import { FolderActionsSheet } from "../../src/components/bookmarks/FolderActionsSheet";
 import { CreateFolderPanel } from "../../src/components/bookmarks/CreateFolderPanel";
 import { MoveSheet } from "../../src/components/bookmarks/MoveSheet";
 import { BookmarkRow } from "../../src/components/bookmarks/BookmarkRow";
 import { EditTagsSheet } from "../../src/components/tags/EditTagsSheet";
-import { TagChip } from "../../src/components/tags/TagChip";
 import { useFolders } from "../../src/hooks/use-folders";
 import { useTags } from "../../src/hooks/use-tags";
 import {
@@ -72,6 +72,8 @@ export default function BookmarksScreen() {
 
   const items = useMemo(() => flattenPages(bookmarks.data?.pages ?? []), [bookmarks.data]);
   const hasUnread = items.some((bookmark) => !bookmark.isRead);
+  const folderItems = folders.data ?? [];
+  const tagCount = tags.data?.length ?? 0;
 
   const onToggleRead = (bookmark: BookmarkDto) => {
     haptics.light();
@@ -95,7 +97,7 @@ export default function BookmarksScreen() {
   };
 
   const refresh = async () => {
-    await Promise.all([bookmarks.refetch(), folders.refetch()]);
+    await Promise.all([bookmarks.refetch(), folders.refetch(), tags.refetch()]);
   };
 
   const loadMore = () => {
@@ -137,76 +139,46 @@ export default function BookmarksScreen() {
       <SettingsSectionLabel compact>Folders</SettingsSectionLabel>
       {folders.isLoading ? (
         <Skeleton height={68} radiusKey="lg" />
-      ) : folders.data?.length ? (
-        <View style={styles.folderList}>
-          {folders.data.map((folder, index) => (
-            <React.Fragment key={folder.id}>
-              <FolderRow
-                folder={folder}
-                onPress={(selected) => router.push(`/folder/${selected.id}`)}
-                onMore={setActionsFolder}
-              />
-              {index < folders.data.length - 1 ? <View style={styles.folderSeparator} /> : null}
-            </React.Fragment>
-          ))}
-        </View>
       ) : (
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel="New folder"
-          accessibilityHint="Organize bookmarks into a folder."
-          style={[styles.noFolders, { borderColor: palette.border, backgroundColor: palette.surface }]}
-          onPress={() => setCreateOpen(true)}
-        >
-          <Ionicons name="folder-open-outline" size={20} color={palette.accent} />
-          <View style={styles.noFoldersCopy}>
-            <Text variant="bodyStrong">Organize with folders</Text>
-            <Text variant="footnote" color="tertiary">Create one whenever you need it.</Text>
-          </View>
-          <Ionicons name="add" size={20} color={palette.textTertiary} />
-        </PressableScale>
-      )}
-      <View style={styles.bookmarksSection}>
-        <SettingsSectionLabel compact>Tags</SettingsSectionLabel>
-        {tags.isLoading ? (
-          <Skeleton height={28} radiusKey="full" />
-        ) : (tags.data?.length ?? 0) > 0 ? (
-          <View style={styles.tagWrap}>
-            {tags.data!.slice(0, 8).map((tag) => (
-              <TagChip
-                key={tag.id}
-                name={tag.name}
-                color={tag.color}
-                count={tag.bookmarkCount}
-                onPress={() => router.push(`/tags/${tag.id}`)}
-                accessibilityLabel={`Show bookmarks tagged ${tag.name}`}
-              />
-            ))}
+        <View style={styles.folderList}>
+          {folderItems.length > 0 ? (
+            folderItems.map((folder, index) => (
+              <React.Fragment key={folder.id}>
+                <FolderRow
+                  folder={folder}
+                  onPress={(selected) => router.push(`/folder/${selected.id}`)}
+                  onMore={setActionsFolder}
+                />
+                {index < folderItems.length - 1 ? <View style={styles.folderSeparator} /> : null}
+              </React.Fragment>
+            ))
+          ) : (
             <PressableScale
               accessibilityRole="button"
-              accessibilityLabel="All tags"
-              style={styles.allTagsBtn}
-              onPress={() => router.push("/tags")}
+              accessibilityLabel="New folder"
+              accessibilityHint="Organize bookmarks into a folder."
+              style={[styles.noFolders, { borderColor: palette.border, backgroundColor: palette.surface }]}
+              onPress={() => setCreateOpen(true)}
             >
-              <Ionicons name="chevron-forward" size={14} color={palette.textTertiary} />
-              <Text variant="footnote" color="tertiary">All</Text>
+              <Ionicons name="folder-open-outline" size={20} color={palette.accent} />
+              <View style={styles.noFoldersCopy}>
+                <Text variant="bodyStrong">Organize with folders</Text>
+                <Text variant="footnote" color="tertiary">Create one whenever you need it.</Text>
+              </View>
+              <Ionicons name="add" size={20} color={palette.textTertiary} />
             </PressableScale>
-          </View>
-        ) : (
-          <PressableScale
-            accessibilityRole="button"
-            accessibilityLabel="Create a tag"
-            style={styles.noTagsRow}
-            onPress={() => router.push("/tags")}
-          >
-            <Ionicons name="pricetags-outline" size={16} color={palette.accent} />
-            <Text variant="footnote" color="secondary">
-              Organize across folders with tags
-            </Text>
-            <Ionicons name="chevron-forward" size={14} color={palette.textFaint} />
-          </PressableScale>
-        )}
-      </View>
+          )}
+          {tagCount > 0 ? (
+            <>
+              <View style={styles.folderSeparator} />
+              <TagsLibraryRow
+                count={tagCount}
+                onPress={() => router.push("/tags")}
+              />
+            </>
+          ) : null}
+        </View>
+      )}
 
       <View style={styles.bookmarksSectionHeader}>
         <SettingsSectionLabel compact>Bookmarks</SettingsSectionLabel>
@@ -278,7 +250,7 @@ export default function BookmarksScreen() {
               ) : null
             }
             contentContainerStyle={{ paddingBottom: floatingNavigation ? bottomClearance : spacing[96] }}
-            refreshing={(bookmarks.isFetching || folders.isFetching) && !bookmarks.isLoading}
+            refreshing={(bookmarks.isFetching || folders.isFetching || tags.isFetching) && !bookmarks.isLoading}
             onRefresh={refresh}
             onEndReached={loadMore}
             onEndReachedThreshold={0.4}
@@ -407,30 +379,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[16],
   },
   noFoldersCopy: { flex: 1 },
-  bookmarksSection: { paddingTop: spacing[16] },
   bookmarksSectionHeader: { paddingTop: spacing[20] },
-  tagWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: spacing[6],
-    paddingTop: spacing[4],
-    paddingBottom: spacing[8],
-  },
-  allTagsBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[2],
-    paddingHorizontal: spacing[8],
-    paddingVertical: spacing[4],
-  },
-  noTagsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[8],
-    paddingVertical: spacing[6],
-    paddingBottom: spacing[10],
-  },
   emptyBookmarks: { minHeight: 300, justifyContent: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
   createMenuActions: { gap: spacing[8] },

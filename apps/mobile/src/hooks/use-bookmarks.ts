@@ -68,7 +68,7 @@ export function useInfiniteSearch(q: string, tagIds: readonly string[] = []) {
       bookmarksApi.search(q, pageParam ?? undefined, DEFAULT_PAGE_SIZE, [...tagIds]),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor : undefined),
-    enabled: q.trim().length > 0,
+    enabled: q.trim().length > 0 || tagIds.length > 0,
     placeholderData: (prev) => prev,
     refetchInterval: (query) =>
       hasPendingBookmark(query.state.data) ? EXTRACTION_POLL_MS : false,

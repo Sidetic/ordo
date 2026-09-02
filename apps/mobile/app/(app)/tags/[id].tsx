@@ -119,6 +119,10 @@ export default function TagDetailScreen() {
           onPress={openReader}
           onMore={(b) => setActionBm(b)}
           selected={hasDetailPane && item.id === selectedBookmarkId}
+          onTagPress={(tagId) => {
+            if (tagId === routeId) return;
+            toggleExtra(tagId);
+          }}
         />
       )}
       estimatedItemSize={108}
