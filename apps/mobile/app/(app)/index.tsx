@@ -176,8 +176,8 @@ export default function BookmarksScreen() {
               router.push("/tags");
             }}
           >
-            <Ionicons name="pricetags-outline" size={13} color={palette.textTertiary} />
-            <Text variant="footnote" color="tertiary">
+            <Ionicons name="pricetags-outline" size={11} color={palette.textTertiary} />
+            <Text variant="label" color="secondary">
               Tags
             </Text>
           </PressableScale>
@@ -390,6 +390,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing[6],
     paddingBottom: spacing[8],
+    paddingRight: spacing[12],
   },
   emptyBookmarks: { minHeight: 300, justifyContent: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
