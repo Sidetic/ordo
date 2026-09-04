@@ -65,7 +65,11 @@ export default function TagsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
-      <Header title="Tags" large showBack />
+      <Header
+        title="Tags"
+        showBack
+        onBack={() => (router.canGoBack() ? router.back() : router.replace("/"))}
+      />
 
       <ScreenContent maxWidth={layout.maxContentWidth} style={styles.content}>
         {isLoading ? (

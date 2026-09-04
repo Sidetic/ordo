@@ -30,8 +30,6 @@ export interface HeaderProps {
   divider?: boolean;
   onTitleLongPress?: () => void;
   titleAccessibilityHint?: string;
-  /** Colored dot beside the title (tag screens). */
-  dotColor?: string;
 }
 
 export function Header({
@@ -46,7 +44,6 @@ export function Header({
   divider = false,
   onTitleLongPress,
   titleAccessibilityHint,
-  dotColor,
 }: HeaderProps) {
   const { palette } = useTheme();
   const insets = useSafeAreaInsets();
@@ -70,12 +67,7 @@ export function Header({
 
   const titles = (
     <>
-      <View style={styles.titleRow}>
-        {dotColor ? <View style={[styles.titleDot, { backgroundColor: dotColor }]} /> : null}
-        <Text variant="header" align="center" numberOfLines={1} style={styles.titleText}>
-          {title}
-        </Text>
-      </View>
+      <Text variant="header" align="center" numberOfLines={1}>{title}</Text>
       {subtitle ? (
         <Text
           variant="footnote"
@@ -119,25 +111,6 @@ export function Header({
           },
         ]}
       >
-        {showBack ? (
-          <View
-            style={[
-              styles.largeLeft,
-              { top: topInset - spacing[2], left: Math.max(insets.left, spacing[16]) },
-            ]}
-          >
-            <PressableScale
-              style={styles.backBtn}
-              scaleTo={0.85}
-              onPress={handleBack}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-            >
-              <Ionicons name="chevron-back" size={24} color={palette.text} />
-            </PressableScale>
-          </View>
-        ) : null}
         {right ? (
           <View
             style={[
@@ -148,13 +121,7 @@ export function Header({
             {right}
           </View>
         ) : null}
-        <View
-          style={[
-            styles.largeTitles,
-            !subtitle && styles.singleLineTitle,
-            showBack || right ? styles.largeTitlesWithControls : null,
-          ]}
-        >
+        <View style={[styles.largeTitles, !subtitle && styles.singleLineTitle]}>
           {titleBlock}
         </View>
       </View>
@@ -210,20 +177,9 @@ const styles = StyleSheet.create({
   backBtn: { width: 36, height: 32, alignItems: "center", justifyContent: "center" },
   compactLeft: { position: "absolute", left: 0, top: "50%", marginTop: -16, zIndex: 1 },
   compactRight: { position: "absolute", right: 0, top: "50%", marginTop: -16, height: 32, justifyContent: "center", zIndex: 1 },
-  largeLeft: { position: "absolute", height: 32, justifyContent: "center", zIndex: 1 },
   largeRight: { position: "absolute", height: 32, justifyContent: "center", zIndex: 1 },
   largeTitles: { alignItems: "center" },
-  largeTitlesWithControls: { paddingHorizontal: 48 },
   singleLineTitle: { height: HEADER_LINE_HEIGHT, justifyContent: "center" },
   compactTitle: { position: "absolute", top: 0, bottom: 0, left: 48, right: 48, alignItems: "center", justifyContent: "center" },
   compactTitleHit: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing[8],
-    maxWidth: "100%",
-  },
-  titleText: { flexShrink: 1 },
-  titleDot: { width: 8, height: 8, borderRadius: 9999, flexShrink: 0 },
 });

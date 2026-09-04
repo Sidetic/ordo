@@ -31,7 +31,6 @@ import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
 import { errorMessage } from "../../../src/lib/error-message";
 import { flattenPages } from "../../../src/lib/api/query-keys";
-import { tagColorValue } from "../../../src/lib/tag-colors";
 import { layout, radius, spacing } from "../../../src/theme/tokens";
 import type { BookmarkDto } from "@ordo/shared";
 
@@ -132,11 +131,10 @@ export default function TagDetailScreen() {
         title={anchor?.name ?? "Tag"}
         subtitle={
           anchor
-            ? `${anchor.bookmarkCount} ${anchor.bookmarkCount === 1 ? "bookmark" : "bookmarks"} tagged`
+            ? `${anchor.bookmarkCount} ${anchor.bookmarkCount === 1 ? "bookmark" : "bookmarks"}`
             : undefined
         }
         showBack
-        dotColor={anchor ? tagColorValue(anchor.color).dot : undefined}
         right={
           <PressableScale
             style={styles.iconBtn}
