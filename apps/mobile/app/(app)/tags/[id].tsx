@@ -1,15 +1,16 @@
 /**
- * Tag browse: whole-library bookmark list filtered by one or more tags
- * (AND semantics). The route's tag anchors the filter; others can be toggled
- * from a horizontal chip rail.
+ * Tag browse: whole-library bookmark list for one tag. Other tags stay on
+ * each row (except the one you are already viewing) and open that tag.
  */
 import { useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
+import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../../src/components/ui/Header";
 import { FAB, FABLayer } from "../../../src/components/ui/FAB";
 import { Button } from "../../../src/components/ui/Button";
+import { PressableScale } from "../../../src/components/ui/PressableScale";
 import { ScreenContent } from "../../../src/components/ui/ScreenContent";
 import { EmptyState } from "../../../src/components/ui/EmptyState";
 import { BookmarkListSkeleton } from "../../../src/components/ui/BookmarkListSkeleton";
@@ -18,7 +19,6 @@ import { AddBookmarkSheet } from "../../../src/components/bookmarks/AddBookmarkS
 import { BookmarkActionsSheet } from "../../../src/components/bookmarks/BookmarkActionsSheet";
 import { MoveSheet } from "../../../src/components/bookmarks/MoveSheet";
 import { EditTagsSheet } from "../../../src/components/tags/EditTagsSheet";
-import { TagChip } from "../../../src/components/tags/TagChip";
 import { ReaderPane, ReaderPanePlaceholder } from "../../../src/components/reader/ReaderPane";
 import { useTags, useTaggedBookmarks } from "../../../src/hooks/use-tags";
 import {
@@ -31,6 +31,7 @@ import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
 import { errorMessage } from "../../../src/lib/error-message";
 import { flattenPages } from "../../../src/lib/api/query-keys";
+import { tagColorValue } from "../../../src/lib/tag-colors";
 import { layout, radius, spacing } from "../../../src/theme/tokens";
 import type { BookmarkDto } from "@ordo/shared";
 
@@ -44,12 +45,7 @@ export default function TagDetailScreen() {
 
   const { data: tags } = useTags();
   const anchor = useMemo(() => tags?.find((t) => t.id === routeId), [tags, routeId]);
-
-  const [extraIds, setExtraIds] = useState<string[]>([]);
-  const activeIds = useMemo(
-    () => (routeId ? [routeId, ...extraIds.filter((tagId) => tagId !== routeId)] : []),
-    [routeId, extraIds],
-  );
+  const activeIds = useMemo(() => (routeId ? [routeId] : []), [routeId]);
 
   const list = useTaggedBookmarks(activeIds, !!routeId);
   const toggleRead = useToggleRead(null);
@@ -91,13 +87,6 @@ export default function TagDetailScreen() {
     });
   };
 
-  const toggleExtra = (tagId: string) => {
-    haptics.selection();
-    setExtraIds((prev) =>
-      prev.includes(tagId) ? prev.filter((t) => t !== tagId) : [...prev, tagId],
-    );
-  };
-
   const loadMore = () => {
     if (list.hasNextPage && !list.isFetchingNextPage) list.fetchNextPage();
   };
@@ -112,9 +101,10 @@ export default function TagDetailScreen() {
           onPress={openReader}
           onMore={(b) => setActionBm(b)}
           selected={hasDetailPane && item.id === selectedBookmarkId}
+          omitTagIds={activeIds}
           onTagPress={(tagId) => {
-            if (tagId === routeId) return;
-            toggleExtra(tagId);
+            haptics.light();
+            router.replace(`/tags/${tagId}`);
           }}
         />
       )}
@@ -141,37 +131,28 @@ export default function TagDetailScreen() {
       <Header
         title={anchor?.name ?? "Tag"}
         subtitle={
-          activeIds.length > 1
-            ? `${activeIds.length} tags`
-            : anchor
-              ? `${anchor.bookmarkCount} ${anchor.bookmarkCount === 1 ? "bookmark" : "bookmarks"}`
-              : undefined
+          anchor
+            ? `${anchor.bookmarkCount} ${anchor.bookmarkCount === 1 ? "bookmark" : "bookmarks"} tagged`
+            : undefined
         }
         showBack
+        dotColor={anchor ? tagColorValue(anchor.color).dot : undefined}
+        right={
+          <PressableScale
+            style={styles.iconBtn}
+            scaleTo={0.85}
+            hitSlop={8}
+            onPress={() => {
+              haptics.light();
+              router.push("/tags");
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="All tags"
+          >
+            <Ionicons name="pricetags-outline" size={22} color={palette.text} />
+          </PressableScale>
+        }
       />
-
-      {tags && tags.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tagRail}
-        >
-          {tags.map((tag) => (
-            <TagChip
-              key={tag.id}
-              name={tag.name}
-              color={tag.color}
-              count={tag.bookmarkCount}
-              selected={activeIds.includes(tag.id)}
-              onPress={() => {
-                if (tag.id === routeId) return; // anchor stays selected
-                toggleExtra(tag.id);
-              }}
-              accessibilityLabel={`Filter by ${tag.name}`}
-            />
-          ))}
-        </ScrollView>
-      ) : null}
 
       {list.error && !list.data ? (
         <ScreenContent maxWidth={layout.maxContentWidth} style={styles.center}>
@@ -186,8 +167,8 @@ export default function TagDetailScreen() {
         <ScreenContent maxWidth={layout.maxContentWidth} style={styles.center}>
           <EmptyState
             icon="pricetag-outline"
-            title="No bookmarks with these tags"
-            message="Try removing a tag from the filter."
+            title="No bookmarks with this tag"
+            message="Save a bookmark with this tag, or pick a different one."
           />
         </ScreenContent>
       ) : list.isLoading ? (
@@ -276,6 +257,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     overflow: "hidden",
   },
-  tagRail: { paddingHorizontal: spacing[16], paddingVertical: spacing[10], gap: spacing[8] },
+  iconBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
 });

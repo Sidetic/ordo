@@ -27,9 +27,11 @@ export interface BookmarkRowProps {
   selected?: boolean;
   /** Override chip taps (e.g. toggle a search filter). Default: open that tag. */
   onTagPress?: (tagId: string) => void;
+  /** Hide tags already expressed by the current view (e.g. the active tag filter). */
+  omitTagIds?: readonly string[];
 }
 
-export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress }: BookmarkRowProps) {
+export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress, omitTagIds }: BookmarkRowProps) {
   const { palette } = useTheme();
   const router = useRouter();
   const titleColor = bookmark.isRead ? "secondary" : "primary";
@@ -41,8 +43,11 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress }:
   const opensAsWebsite = bookmarkOpensAsWebsite(bookmark);
   const isPending = bookmark.fetchStatus === "pending";
   const hasSuggestions = bookmark.suggestedTags.length > 0;
-  const visibleTags = bookmark.tags.slice(0, MAX_ROW_TAGS);
-  const overflowCount = bookmark.tags.length - visibleTags.length;
+  const rowTags = omitTagIds?.length
+    ? bookmark.tags.filter((tag) => !omitTagIds.includes(tag.id))
+    : bookmark.tags;
+  const visibleTags = rowTags.slice(0, MAX_ROW_TAGS);
+  const overflowCount = rowTags.length - visibleTags.length;
   const accessibilityLabel = [
     title,
     domain,
@@ -119,7 +124,7 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress }:
               {bookmark.description}
             </Text>
           ) : null}
-          {bookmark.tags.length > 0 ? (
+          {rowTags.length > 0 ? (
             <View style={styles.tagRow}>
               {visibleTags.map((tag) => (
                 <TagChip
