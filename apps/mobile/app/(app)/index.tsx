@@ -1,4 +1,4 @@
-/** Bookmarks home: folders and a tags destination, then unfiled bookmarks. */
+/** Bookmarks home: unfiled bookmarks first, with folders available above them. */
 import React, { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -19,7 +19,6 @@ import { EmptyState } from "../../src/components/ui/EmptyState";
 import { AddBookmarkSheet } from "../../src/components/bookmarks/AddBookmarkSheet";
 import { BookmarkActionsSheet } from "../../src/components/bookmarks/BookmarkActionsSheet";
 import { FolderRow } from "../../src/components/bookmarks/FolderRow";
-import { TagsLibraryRow } from "../../src/components/bookmarks/TagsLibraryRow";
 import { FolderActionsSheet } from "../../src/components/bookmarks/FolderActionsSheet";
 import { CreateFolderPanel } from "../../src/components/bookmarks/CreateFolderPanel";
 import { MoveSheet } from "../../src/components/bookmarks/MoveSheet";
@@ -161,20 +160,28 @@ export default function BookmarksScreen() {
               <Ionicons name="add" size={20} color={palette.textTertiary} />
             </PressableScale>
           )}
-          {tagCount > 0 ? (
-            <>
-              <View style={styles.folderSeparator} />
-              <TagsLibraryRow
-                count={tagCount}
-                onPress={() => router.push("/tags")}
-              />
-            </>
-          ) : null}
         </View>
       )}
 
       <View style={styles.bookmarksSectionHeader}>
         <SettingsSectionLabel compact>Bookmarks</SettingsSectionLabel>
+        {tagCount > 0 ? (
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel={`Tags, ${tagCount} ${tagCount === 1 ? "tag" : "tags"}`}
+            accessibilityHint="Browse and manage tags."
+            style={styles.tagsLink}
+            onPress={() => {
+              haptics.light();
+              router.push("/tags");
+            }}
+          >
+            <Ionicons name="pricetags-outline" size={13} color={palette.textTertiary} />
+            <Text variant="footnote" color="tertiary">
+              Tags
+            </Text>
+          </PressableScale>
+        ) : null}
       </View>
     </View>
   );
@@ -372,7 +379,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[16],
   },
   noFoldersCopy: { flex: 1 },
-  bookmarksSectionHeader: { paddingTop: spacing[20] },
+  bookmarksSectionHeader: {
+    paddingTop: spacing[20],
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  tagsLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[6],
+    paddingBottom: spacing[8],
+  },
   emptyBookmarks: { minHeight: 300, justifyContent: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
   createMenuActions: { gap: spacing[8] },
