@@ -116,7 +116,7 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress, o
         </View>
 
         <View style={styles.content}>
-          <Text variant="headline" color={titleColor} numberOfLines={2}>
+          <Text variant="headline" color={titleColor} numberOfLines={1}>
             {title}
           </Text>
           {bookmark.description ? (
