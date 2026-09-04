@@ -241,6 +241,7 @@ describe("Bookmarks & Folders (e2e)", () => {
       expect(res.body.domain).toBe("example.com");
       expect(res.body.contentMarkdown).toBeNull();
       expect(res.body.fetchStatus).toBe("pending");
+      expect(res.body.contentKind).toBeNull();
       expect(res.body.isRead).toBe(false);
 
       let stored = await ctx.prisma.bookmark.findUnique({ where: { id: res.body.id } });
@@ -258,6 +259,8 @@ describe("Bookmarks & Folders (e2e)", () => {
         readingTimeMinutes: 4,
         publishedAt: new Date("2026-01-15T09:30:00.000Z"),
       });
+      const ready = await agent.get(`/api/bookmarks/${res.body.id}`).expect(200);
+      expect(ready.body.contentKind).toBe("article");
     });
 
     it("stores typed unsupported rejections instead of junk content", async () => {
@@ -281,6 +284,8 @@ describe("Bookmarks & Folders (e2e)", () => {
         contentMarkdown: null,
         contentText: null,
       });
+      const rejected = await agent.get(`/api/bookmarks/${res.body.id}`).expect(200);
+      expect(rejected.body.contentKind).toBe("web");
     });
 
     it("creates an unfiled bookmark with an explicit null folderId", async () => {
@@ -651,6 +656,7 @@ describe("Bookmarks & Folders (e2e)", () => {
       expect(detail.body.extractionVersion).toBeNull();
       expect(detail.body.extractionReason).toBeNull();
       expect(detail.body.fetchStatus).toBe("ok");
+      expect(detail.body.contentKind).toBe("article");
     });
   });
 

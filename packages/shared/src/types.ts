@@ -116,6 +116,12 @@ export interface TagDto extends TagSummaryDto {
 export type FetchStatus = "pending" | "ok" | "unsupported" | "failed";
 
 /**
+ * How the client should present a bookmark. Derived from fetchStatus +
+ * extractionReason so routing does not treat "we extracted text" as "article".
+ */
+export type ContentKind = "article" | "web" | "media" | "file";
+
+/**
  * Machine-readable reason a bookmark's extraction ended in `unsupported` or
  * `failed`. Stored alongside `fetchStatus` so clients can explain themselves.
  */
@@ -127,9 +133,21 @@ export type ExtractionReason =
   | "bot_challenge" // bot check / CAPTCHA interstitial
   | "consent_wall" // cookie/consent interstitial hides the content
   | "too_short" // extracted (or visible) content is empty or tiny
-  | "not_an_article" // link-heavy list/home/search shell with no article body
+  | "not_an_article" // link-heavy list/home/search/commerce shell with no article body
   | "interrupted" // extraction was pending when the server stopped
   | "fetch_error"; // network/HTTP failure while fetching
+
+/** Map extraction outcome to the surface the client should open. */
+export function bookmarkContentKind(
+  fetchStatus: FetchStatus,
+  extractionReason: ExtractionReason | null,
+): ContentKind | null {
+  if (fetchStatus === "pending") return null;
+  if (fetchStatus === "ok") return "article";
+  if (extractionReason === "social_video_or_app") return "media";
+  if (extractionReason === "non_html_content") return "file";
+  return "web";
+}
 
 export interface BookmarkDto {
   id: string;
@@ -144,6 +162,8 @@ export interface BookmarkDto {
   fetchStatus: FetchStatus;
   /** Why extraction ended in `unsupported`/`failed`; null when it succeeded. */
   extractionReason: ExtractionReason | null;
+  /** Presentation kind derived from fetchStatus + extractionReason; null while pending. */
+  contentKind: ContentKind | null;
   /** Pipeline version that produced the stored content (null = pre-versioning). */
   extractionVersion: number | null;
   author: string | null;

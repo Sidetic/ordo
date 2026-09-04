@@ -4,6 +4,7 @@ import {
   normalizeFolderIcon,
   normalizeReaderPreferences,
   normalizeTagColor,
+  bookmarkContentKind,
   type BookmarkDto,
   type ExtractionReason,
   type FetchStatus,
@@ -151,6 +152,12 @@ export function toTagDto(
 }
 
 export function toBookmarkDto(b: BookmarkDtoFields): BookmarkDto {
+  const fetchStatus = FETCH_STATUSES.includes(b.fetchStatus as FetchStatus)
+    ? (b.fetchStatus as FetchStatus)
+    : "failed";
+  const extractionReason = EXTRACTION_REASONS.includes(b.extractionReason as ExtractionReason)
+    ? (b.extractionReason as ExtractionReason)
+    : null;
   return {
     id: b.id,
     folderId: b.folderId,
@@ -160,12 +167,9 @@ export function toBookmarkDto(b: BookmarkDtoFields): BookmarkDto {
     domain: b.domain,
     contentText: b.contentText,
     contentMarkdown: b.contentMarkdown,
-    fetchStatus: FETCH_STATUSES.includes(b.fetchStatus as FetchStatus)
-      ? (b.fetchStatus as FetchStatus)
-      : "failed",
-    extractionReason: EXTRACTION_REASONS.includes(b.extractionReason as ExtractionReason)
-      ? (b.extractionReason as ExtractionReason)
-      : null,
+    fetchStatus,
+    extractionReason,
+    contentKind: bookmarkContentKind(fetchStatus, extractionReason),
     extractionVersion: b.extractionVersion,
     author: b.author,
     publishedAt: b.publishedAt?.toISOString() ?? null,
