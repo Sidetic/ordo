@@ -5,11 +5,16 @@ import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import TurndownService from "turndown";
 import sanitizeHtml from "sanitize-html";
-import type { ExtractionReason } from "@ordo/shared";
-import unsupportedDomains from "./reader-unsupported-domains.json";
+import {
+  classifyDestination,
+  classifyPageSignals,
+  collectPageSignals,
+  hasArticleEvidence,
+  hasCommerceCta,
+  type ReaderRejectionReason,
+} from "./reader-classify.js";
 
-/** Reasons the reader itself can reject a destination (excludes bookkeeping-only reasons). */
-export type ReaderRejectionReason = Exclude<ExtractionReason, "fetch_error" | "interrupted">;
+export type { ReaderRejectionReason };
 
 /** Typed rejection: the bookmark is stored as `unsupported` with this reason. */
 export class UnsupportedContentError extends Error {
@@ -42,30 +47,14 @@ const USER_AGENT =
 
 /** Quality gates an extracted (or fallback) body must pass to count as an article. */
 const MIN_WORDS = 70;
+/** Unmarked pages (no Article schema / og:type) need a real body, not nav chrome. */
+const MIN_WORDS_UNMARKED = 280;
 const MAX_LINK_DENSITY = 0.4;
+const MAX_LINK_DENSITY_UNMARKED = 0.3;
 /** Shell phrases are only trusted on pages with very little text at all. */
 const SHELL_TEXT_LIMIT = 2_000;
 const WORDS_PER_MINUTE = 200;
 const MAX_IMAGE_DIMENSION = 10_000;
-
-/** File extensions that can never be HTML articles. */
-const NON_HTML_EXTENSIONS = new Set([
-  // documents
-  "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "odt", "ods", "odp", "rtf", "epub", "mobi",
-  // archives & binaries
-  "zip", "gz", "tgz", "bz2", "xz", "tar", "rar", "7z", "dmg", "iso", "exe", "msi", "apk", "deb", "rpm", "bin",
-  // audio & video
-  "mp3", "wav", "ogg", "flac", "m4a", "aac", "mp4", "avi", "mkv", "mov", "webm", "flv", "wmv", "m4v",
-  // images
-  "png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "tif", "tiff", "heic", "avif",
-  // data & code
-  "css", "js", "mjs", "json", "xml", "rss", "atom", "csv", "tsv", "txt",
-]);
-
-const APP_HOSTS = new Set(unsupportedDomains.appHosts);
-
-/** Pathnames that, combined with a query parameter, are search result pages. */
-const SEARCH_PATHS = new Set(["/search", "/results", "/search/", "/results/"]);
 
 const JS_REQUIRED_PATTERNS: RegExp[] = [
   /(?:please|kindly) (?:enable|turn on|activate) (?:javascript|js)\b/,
@@ -247,6 +236,16 @@ export class ReaderService {
     // No `runScripts`: embedded scripts are parsed but never executed.
     const document = new JSDOM(html, { url }).window.document;
 
+    const signals = collectPageSignals(document);
+    const pageKind = classifyPageSignals(signals);
+    if (pageKind) {
+      throw new UnsupportedContentError(pageKind, "Page metadata is not an article");
+    }
+    const articleEvidence = hasArticleEvidence(signals);
+    if (!articleEvidence && hasCommerceCta(document)) {
+      throw new UnsupportedContentError("not_an_article", "Page looks like a store, not an article");
+    }
+
     const visibleText = this.shellDetectionText(document);
     if (!visibleText) {
       throw new UnsupportedContentError("too_short", "Page contains no readable text");
@@ -258,8 +257,9 @@ export class ReaderService {
 
     this.stripNonContentTags(document);
 
+    const readerable = isProbablyReaderable(document);
     let parsed: ReturnType<Readability["parse"]> = null;
-    if (isProbablyReaderable(document)) {
+    if (readerable) {
       try {
         parsed = new Readability(document.cloneNode(true) as Document).parse();
       } catch (err) {
@@ -270,12 +270,16 @@ export class ReaderService {
     let contentRoot: Element;
     if (parsed?.content) {
       contentRoot = this.parseFragment(parsed.content);
-    } else {
-      const fallback = this.narrowFallback(document);
+    } else if (articleEvidence) {
+      // Not readerable, or parse returned nothing. Only a marked <article>
+      // may rescue a page that already declared itself an article.
+      const fallback = this.narrowArticleFallback(document);
       if (!fallback) {
         throw new UnsupportedContentError("not_an_article", "No readable article content found");
       }
       contentRoot = fallback;
+    } else {
+      throw new UnsupportedContentError("not_an_article", "No readable article content found");
     }
     this.unwrapLayoutRoots(contentRoot);
 
@@ -288,10 +292,12 @@ export class ReaderService {
         `Extracted content is a ${extractedShell.replace(/_/g, " ")} shell`,
       );
     }
-    if (wordCount(text) < MIN_WORDS) {
+    const minWords = articleEvidence ? MIN_WORDS : MIN_WORDS_UNMARKED;
+    const maxLinkDensity = articleEvidence ? MAX_LINK_DENSITY : MAX_LINK_DENSITY_UNMARKED;
+    if (wordCount(text) < minWords) {
       throw new UnsupportedContentError("too_short", "Extracted content is too short to read");
     }
-    if (linkDensity(contentRoot) > MAX_LINK_DENSITY) {
+    if (linkDensity(contentRoot) > maxLinkDensity) {
       throw new UnsupportedContentError("not_an_article", "Content is mostly links, not an article");
     }
 
@@ -336,30 +342,9 @@ export class ReaderService {
     } catch {
       throw new Error(`Invalid URL: ${url}`);
     }
-
-    const path = parsed.pathname.toLowerCase();
-    const filename = path.slice(path.lastIndexOf("/") + 1);
-    const dot = filename.lastIndexOf(".");
-    if (dot !== -1 && NON_HTML_EXTENSIONS.has(filename.slice(dot + 1))) {
-      throw new UnsupportedContentError("non_html_content", `.${filename.slice(dot + 1)} files are not articles`);
-    }
-
-    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
-    const knownShell =
-      APP_HOSTS.has(host) ||
-      unsupportedDomains.socialVideoAppHosts.some(
-        (configuredHost) => host === configuredHost || host.endsWith(`.${configuredHost}`),
-      ) ||
-      unsupportedDomains.appHostPrefixes.some((prefix) => host.startsWith(prefix));
-    if (knownShell) {
-      throw new UnsupportedContentError("social_video_or_app", `${host} is not an article source`);
-    }
-
-    if (
-      SEARCH_PATHS.has(path) &&
-      (parsed.searchParams.get("q") ?? parsed.searchParams.get("query") ?? parsed.searchParams.get("search"))
-    ) {
-      throw new UnsupportedContentError("not_an_article", "Search result pages are not articles");
+    const reason = classifyDestination(parsed);
+    if (reason) {
+      throw new UnsupportedContentError(reason, `${parsed.hostname} is not an article source`);
     }
   }
 
@@ -398,16 +383,15 @@ export class ReaderService {
     return normalizeSpace(clone.body?.textContent ?? "");
   }
 
-  /** Narrow `<article>`/`<main>` fallback, accepted only if it passes the
-   *  same quality gates as the primary extraction. */
-  private narrowFallback(document: Document): Element | null {
-    for (const selector of ["article", "main", '[role="main"]']) {
-      const viable = Array.from(document.querySelectorAll(selector))
-        .filter((el) => wordCount(el.textContent ?? "") >= MIN_WORDS)
-        .filter((el) => linkDensity(el) <= MAX_LINK_DENSITY)
-        .sort((a, b) => (b.textContent ?? "").length - (a.textContent ?? "").length);
-      if (viable.length > 0) return this.parseFragment(viable[0].outerHTML);
-    }
+  /** Marked `<article>` fallback when Readability declines a page that already
+   *  declared itself an article. `<main>` is never used — product/home chrome
+   *  lives there and used to leak into the reader. */
+  private narrowArticleFallback(document: Document): Element | null {
+    const viable = Array.from(document.querySelectorAll("article"))
+      .filter((el) => wordCount(el.textContent ?? "") >= MIN_WORDS)
+      .filter((el) => linkDensity(el) <= MAX_LINK_DENSITY)
+      .sort((a, b) => (b.textContent ?? "").length - (a.textContent ?? "").length);
+    if (viable.length > 0) return this.parseFragment(viable[0].outerHTML);
     return null;
   }
 

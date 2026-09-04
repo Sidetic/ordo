@@ -1,7 +1,7 @@
 import { ReaderService, UnsupportedContentError } from "./reader.service.js";
 
 const P = (i: number) =>
-  `<p>Paragraph ${i} with plenty of words to satisfy the quality gates that the reader applies before accepting content. It talks about distributed systems, caching layers, and the tradeoffs engineers make every day.</p>`;
+  `<p>Paragraph ${i} with plenty of words to satisfy the quality gates that the reader applies before accepting content. It talks about distributed systems, caching layers, and the tradeoffs engineers make every day when they ship software people actually use.</p>`;
 
 const SAMPLE_HTML = `<!DOCTYPE html>
 <html><head>
@@ -34,17 +34,18 @@ const SAMPLE_HTML = `<!DOCTYPE html>
 const SHORT_ARTICLE_HTML = `<!DOCTYPE html>
 <html><head><title>Fallback Piece — Site</title>
   <meta property="og:title" content="Fallback Piece">
+  <meta property="og:type" content="article">
 </head><body>
   <article>
     <h1>Fallback Piece</h1>
     <p>Intro line about reading very carefully here now today</p>
     <p>Second short line about the clearly stated topic at hand</p>
     <p>Third short line adding a little more real bulk now</p>
-    <p>Fourth short line included for the word gate</p>
-    <p>Fifth short line continuing the tiny written piece</p>
-    <p>Sixth short line with additional plain words here</p>
-    <p>Seventh short line still discussing the same thing</p>
-    <p>Eighth short line that finally wraps the piece</p>
+    <p>Fourth short line included for the word gate and padding</p>
+    <p>Fifth short line continuing the tiny written piece today</p>
+    <p>Sixth short line with additional plain words here too</p>
+    <p>Seventh short line still discussing the same thing now</p>
+    <p>Eighth short line that finally wraps the piece nicely</p>
   </article>
 </body></html>`;
 
@@ -253,7 +254,7 @@ describe("ReaderService", () => {
         Information about your use of this site is shared with Google. By using this site,
         you agree to its use of cookies.</p><a href="/learn-more">Learn more</a><p>Got it</p>
       </main></body></html>`);
-      await expectUnsupported("https://liech.space/", "consent_wall");
+      await expectUnsupported("https://liech.space/home", "consent_wall");
     });
 
     it("detects noscript warnings even when a large inline bundle is present", async () => {
@@ -294,7 +295,7 @@ describe("ReaderService", () => {
         </main>
         <footer><p>© 2026</p></footer>
       </body></html>`);
-      await expectUnsupported("https://liech.space/", "not_an_article");
+      await expectUnsupported("https://liech.space/welcome", "not_an_article");
     });
 
     it("rejects empty pages with reason too_short", async () => {
@@ -323,6 +324,21 @@ describe("ReaderService", () => {
       await expectUnsupported("https://docs.google.com/document/d/xyz/edit", "social_video_or_app");
     });
 
+    it("pre-bypasses commerce hosts, product paths, and homepages without fetching", async () => {
+      mockFetchNeverCalled();
+      await expectUnsupported("https://www.amazon.com/dp/B00TEST123", "not_an_article");
+      await expectUnsupported("https://store.example.com/products/wool-runners", "not_an_article");
+      await expectUnsupported("https://shop.example.com/collections/mens", "not_an_article");
+      await expectUnsupported("https://example.com/pricing", "not_an_article");
+      await expectUnsupported("https://example.com/", "not_an_article");
+    });
+
+    it("does not treat article paths like Substack /p/ as commerce", async () => {
+      mockFetch(SAMPLE_HTML);
+      const result = await reader.extract("https://example.substack.com/p/a-real-essay");
+      expect(result.title).toBe("The Real Title");
+    });
+
     it("pre-bypasses recognizable search result pages", async () => {
       mockFetchNeverCalled();
       await expectUnsupported("https://example.com/search?q=shoes", "not_an_article");
@@ -335,6 +351,45 @@ describe("ReaderService", () => {
       await expectUnsupported("http://169.254.169.254/latest/meta-data", "non_html_content");
       await expectUnsupported("http://192.168.1.1/", "non_html_content");
       await expectUnsupported("http://[::1]/", "non_html_content");
+    });
+
+    it("rejects JSON-LD Product pages even when the body is long enough to parse", async () => {
+      mockFetch(`<!DOCTYPE html><html><head>
+        <script type="application/ld+json">${JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: "Wool Runner",
+        })}</script>
+      </head><body><article>${P(1)}${P(2)}${P(3)}${P(4)}</article></body></html>`);
+      await expectUnsupported("https://example.com/shoes/wool-runner", "not_an_article");
+    });
+
+    it("rejects og:type product pages", async () => {
+      mockFetch(`<!DOCTYPE html><html><head>
+        <meta property="og:type" content="product.group">
+      </head><body><article>${P(1)}${P(2)}${P(3)}${P(4)}</article></body></html>`);
+      await expectUnsupported("https://example.com/catalog/chairs", "not_an_article");
+    });
+
+    it("rejects unmarked pages with buy/cart CTAs", async () => {
+      mockFetch(`<!DOCTYPE html><html><head><title>Wool Runner</title></head><body>
+        <h1>Wool Runner</h1>
+        ${P(1)}${P(2)}${P(3)}${P(4)}${P(5)}${P(6)}
+        <button>Add to cart</button>
+      </body></html>`);
+      await expectUnsupported("https://example.com/shoes/wool-runner-cta", "not_an_article");
+    });
+
+    it("does not fall back to <main> chrome when Readability declines", async () => {
+      mockFetch(`<!DOCTYPE html><html><head><title>Outlet</title></head><body>
+        <main>
+          <p>Skip to top navigation Skip to shopping bag Skip to footer links</p>
+          <p>Gap Gap Factory Old Navy Banana Republic Athleta</p>
+          <p>The Biggest Little Sale ends in 02h 28m 06s off all kids and baby styles</p>
+          <p>Sorry! This was so wanted, it sold out.</p>
+        </main>
+      </body></html>`);
+      await expectUnsupported("https://example.com/olive/sold-out-tee", "not_an_article");
     });
   });
 
