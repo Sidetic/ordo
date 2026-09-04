@@ -28,6 +28,7 @@
     "date-fns": "^4.1.0",
     "expo": "~52.0.30",
     "expo-asset": "^11.0.5",
+    "expo-clipboard": "~7.0.1",
     "expo-constants": "~17.0.5",
     "expo-crypto": "~14.0.2",
     "expo-device": "~7.0.3",

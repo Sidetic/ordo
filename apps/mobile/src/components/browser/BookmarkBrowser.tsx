@@ -22,7 +22,8 @@ export function BookmarkBrowser({ url }: BookmarkBrowserProps) {
       <WebView
         key={url}
         source={source}
-        style={[styles.web, { backgroundColor: palette.background }]}
+        style={styles.web}
+        containerStyle={[styles.web, { backgroundColor: palette.background }]}
         startInLoadingState={false}
         onLoadStart={() => setLoading(true)}
         onLoadEnd={() => setLoading(false)}
@@ -34,6 +35,9 @@ export function BookmarkBrowser({ url }: BookmarkBrowserProps) {
         domStorageEnabled
         allowsInlineMediaPlayback
         mediaPlaybackRequiresUserAction={false}
+        automaticallyAdjustContentInsets={false}
+        contentInsetAdjustmentBehavior="never"
+        hideKeyboardAccessoryView
         originWhitelist={["*"]}
         onShouldStartLoadWithRequest={(request) => {
           if (!request.url) return false;
@@ -53,7 +57,7 @@ export function BookmarkBrowser({ url }: BookmarkBrowserProps) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, overflow: "hidden" },
+  wrap: { flex: 1 },
   web: { flex: 1, ...(Platform.OS === "web" ? ({ height: "100%" } as const) : null) },
   loading: {
     ...StyleSheet.absoluteFillObject,

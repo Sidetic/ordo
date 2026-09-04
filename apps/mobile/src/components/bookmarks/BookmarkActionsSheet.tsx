@@ -7,6 +7,7 @@ import { Button } from "../ui/Button";
 import { SheetActionRow } from "../ui/SheetActionRow";
 import { useTheme } from "../../theme/ThemeProvider";
 import { spacing } from "../../theme/tokens";
+import { copyLink } from "../../lib/copy-link";
 import type { BookmarkDto } from "@ordo/shared";
 
 export interface BookmarkActionsSheetProps {
@@ -102,6 +103,14 @@ export function BookmarkActionsSheet({
                 params: { id: bookmark.id, view: "browser" },
               });
               if (!bookmark.isRead) onToggleRead(bookmark);
+              onDismiss();
+            }}
+          />
+          <SheetActionRow
+            icon="link-outline"
+            label="Copy link"
+            onPress={() => {
+              void copyLink(bookmark.url);
               onDismiss();
             }}
           />

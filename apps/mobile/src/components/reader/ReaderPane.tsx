@@ -49,7 +49,7 @@ import { UnlockScreen } from "../bookmarks/LockPrompt";
 import { READER_BODY_SIZE, resolveReaderFont } from "./reader-typography";
 import { ThemeOverrideProvider, useTheme } from "../../theme/ThemeProvider";
 import { resolveReaderPalette } from "../../theme/reader-theme";
-import { resolvePalette } from "../../theme/theme";
+import { resolvePalette, type Palette } from "../../theme/theme";
 import { queryClient } from "../../lib/query-client";
 import { bookmarksApi } from "../../lib/api/bookmarks";
 import { findBookmarkInCache, updateBookmarkEverywhere } from "../../lib/cache-helpers";
@@ -64,6 +64,7 @@ import { layout, spacing } from "../../theme/tokens";
 import { toast } from "../ui/toast-store";
 import { BookmarkBrowser } from "../browser/BookmarkBrowser";
 import { canReadInOrdo } from "../../lib/bookmark-reader";
+import { copyLink } from "../../lib/copy-link";
 
 export interface ReaderPaneProps {
   bookmarkId?: string;
@@ -109,24 +110,19 @@ export function ReaderPane(props: ReaderPaneProps) {
   }, []);
 
   return (
-    <ThemeOverrideProvider palette={readerPalette}>
-      {!props.embedded ? (
-        <StatusBar style={readerPalette.mode === "dark" ? "light" : "dark"} />
-      ) : null}
-      <ReaderPaneInner
-        {...props}
-        preferences={preferences}
-        onUpdatePreferences={setPreferences}
-        effectiveDark={readerPalette.mode === "dark"}
-      />
-    </ThemeOverrideProvider>
+    <ReaderPaneInner
+      {...props}
+      preferences={preferences}
+      onUpdatePreferences={setPreferences}
+      readerPalette={readerPalette}
+    />
   );
 }
 
 interface ReaderPaneInnerProps extends ReaderPaneProps {
   preferences: ReaderPreferences;
   onUpdatePreferences: (patch: UpdateReaderPreferencesInput) => void;
-  effectiveDark: boolean;
+  readerPalette: Palette;
 }
 
 function ReaderPaneInner({
@@ -137,9 +133,9 @@ function ReaderPaneInner({
   initialSurface = "auto",
   preferences,
   onUpdatePreferences,
-  effectiveDark,
+  readerPalette,
 }: ReaderPaneInnerProps) {
-  const { palette } = useTheme();
+  const { palette: appPalette } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
@@ -271,11 +267,18 @@ function ReaderPaneInner({
     }).catch(() => {});
   };
 
+  const handleCopyLink = () => {
+    if (!bookmark) return;
+    void copyLink(bookmark.url);
+  };
+
   /* ---------------- unsupported/failed: in-app website view ---------------- */
 
   const showWebsiteView =
     surface === "browser" || (surface === "auto" && terminalExternal);
   const showReadInOrdo = !!bookmark && canReadInOrdo(bookmark);
+  const palette = showWebsiteView ? appPalette : readerPalette;
+  const effectiveDark = palette.mode === "dark";
 
   useEffect(() => {
     setSurface(initialSurface === "browser" ? "browser" : "auto");
@@ -595,6 +598,10 @@ function ReaderPaneInner({
   );
 
   return (
+    <ThemeOverrideProvider palette={palette}>
+      {!embedded && !showWebsiteView ? (
+        <StatusBar style={readerPalette.mode === "dark" ? "light" : "dark"} />
+      ) : null}
     <View style={[styles.container, { backgroundColor: palette.background }]}>
       <Header
         title={bookmark ? domain : "Reader"}
@@ -603,7 +610,10 @@ function ReaderPaneInner({
         onBack={!embedded ? handleBack : undefined}
         safeTop={!embedded}
         maxWidth={layout.maxLibraryWidth}
+        divider
         right={rightActions}
+        onTitleLongPress={bookmark ? handleCopyLink : undefined}
+        titleAccessibilityHint={bookmark ? "Copies the link." : undefined}
       />
 
       {hasContent && !showWebsiteView ? (
@@ -858,6 +868,14 @@ function ReaderPaneInner({
               }}
             />
             <SheetActionRow
+              icon="link-outline"
+              label="Copy link"
+              onPress={() => {
+                setActionPanel(null);
+                handleCopyLink();
+              }}
+            />
+            <SheetActionRow
               icon="pricetags-outline"
               label="Edit tags"
               onPress={() => {
@@ -905,6 +923,7 @@ function ReaderPaneInner({
         )}
       </FloatingPanel>
     </View>
+    </ThemeOverrideProvider>
   );
 }
 
