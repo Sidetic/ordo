@@ -13,6 +13,26 @@ const { assignStylesValue, getAppThemeGroup } = AndroidConfig.Styles;
 
 const SHARE_RECEIVER_ACTIVITY = '.ShareReceiverActivity';
 
+// Keep the default -O / source-map flags; only suppress the two hermesc
+// categories that RN's own bundle cannot satisfy at compile time.
+const HERMES_FLAGS_LINE =
+  '    hermesFlags = ["-O", "-output-source-map", "-Wno-undefined-variable", "-Wno-direct-eval"]';
+
+function applyHermesFlags(code) {
+  if (code.includes('-Wno-undefined-variable')) return code;
+
+  if (/^[ \t]*\/\/[ \t]*hermesFlags\s*=/m.test(code)) {
+    return code.replace(
+      /^[ \t]*\/\/[ \t]*hermesFlags\s*=\s*\[[^\]]*\]/m,
+      HERMES_FLAGS_LINE
+    );
+  }
+  if (/^[ \t]*hermesFlags\s*=/m.test(code)) {
+    return code.replace(/^[ \t]*hermesFlags\s*=\s*\[[^\]]*\]/m, HERMES_FLAGS_LINE);
+  }
+  return code.replace(/react\s*\{/, `react {\n${HERMES_FLAGS_LINE}`);
+}
+
 function isSendFilter(filter) {
   return filter.action?.some(
     (action) =>
@@ -36,6 +56,10 @@ function isSendFilter(filter) {
  *     emits one APK per ABI plus a universal APK during release builds. Dev
  *     builds instead pass `-PreactNativeArchitectures=arm64-v8a` and skip
  *     splits for a single fast APK.
+ *   - Hermes is told to ignore undefined-variable / direct-eval warnings.
+ *     RN, Reanimated, and whatwg-fetch refer to polyfilled globals (`Promise`,
+ *     `setTimeout`, `Headers`, …) and worklet `eval()`, which hermesc otherwise
+ *     dumps into the Gradle log during `:app:createBundleReleaseJsAndAssets`.
  */
 const withAndroidBuild = (config) => {
   // ── AndroidManifest.xml ────────────────────────────────────────────────
@@ -195,6 +219,8 @@ class ShareReceiverActivity : Activity() {
     if (!code.includes('android.buildAbiSplits')) {
       code = code.replace(/android\s*\{/, `android {\n${SPLITS}`);
     }
+
+    code = applyHermesFlags(code);
 
     c.modResults.contents = code;
     return c;
