@@ -12,7 +12,7 @@ import { Text } from "../ui/Text";
 import { TagChip } from "../tags/TagChip";
 import { useTheme } from "../../theme/ThemeProvider";
 import { domainFromUrl, relativeTime } from "../../lib/format";
-import { opensBookmarkExternally } from "../../lib/bookmark-reader";
+import { bookmarkOpensAsWebsite } from "../../lib/bookmark-reader";
 import { haptics } from "../../lib/haptics";
 import { radius, spacing } from "../../theme/tokens";
 import type { BookmarkDto } from "@ordo/shared";
@@ -38,7 +38,7 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress }:
   const createdLabel = relativeTime(bookmark.createdAt);
   const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
   const [failedFavicon, setFailedFavicon] = React.useState<string | null>(null);
-  const opensInBrowser = opensBookmarkExternally(bookmark);
+  const opensAsWebsite = bookmarkOpensAsWebsite(bookmark);
   const isPending = bookmark.fetchStatus === "pending";
   const hasSuggestions = bookmark.suggestedTags.length > 0;
   const visibleTags = bookmark.tags.slice(0, MAX_ROW_TAGS);
@@ -51,7 +51,7 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress }:
     hasSuggestions ? `${bookmark.suggestedTags.length} tag suggestions` : undefined,
     !bookmark.isRead ? "Unread" : undefined,
     isPending ? "Article processing" : undefined,
-    opensInBrowser ? "Opens in browser" : undefined,
+    opensAsWebsite ? "Opens as website" : undefined,
   ]
     .filter(Boolean)
     .join(", ");
@@ -170,7 +170,7 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress }:
                 style={styles.statusIcon}
                 accessible={false}
               />
-            ) : opensInBrowser ? (
+            ) : opensAsWebsite ? (
               <Ionicons
                 name="open-outline"
                 size={13}

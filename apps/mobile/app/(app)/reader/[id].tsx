@@ -1,15 +1,20 @@
 /**
- * Reader mode: distraction-free article rendering from the server's
- * sanitized HTML. Renders from cached metadata immediately; the detail
- * (HTML) is fetched in place.
+ * Reader or in-app website view for a saved bookmark.
+ * Use `?view=browser` to open the live page first (from "Open original").
  */
 import React from "react";
 import { useLocalSearchParams } from "expo-router";
 import { ReaderPane } from "../../../src/components/reader/ReaderPane";
 
 export default function ReaderScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, view } = useLocalSearchParams<{ id: string; view?: string }>();
   const bookmarkId = Array.isArray(id) ? id[0] : id;
+  const viewParam = Array.isArray(view) ? view[0] : view;
 
-  return <ReaderPane bookmarkId={bookmarkId} />;
+  return (
+    <ReaderPane
+      bookmarkId={bookmarkId}
+      initialSurface={viewParam === "browser" ? "browser" : "auto"}
+    />
+  );
 }

@@ -2,7 +2,7 @@
  * Global bookmark search (title, url, article text). Debounced + infinite.
  */
 import React, { useEffect, useMemo, useState } from "react";
-import { Linking, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,13 +15,12 @@ import { BookmarkListSkeleton } from "../../src/components/ui/BookmarkListSkelet
 import { BookmarkRow } from "../../src/components/bookmarks/BookmarkRow";
 import { TagChip } from "../../src/components/tags/TagChip";
 import { ReaderPane, ReaderPanePlaceholder } from "../../src/components/reader/ReaderPane";
-import { useInfiniteSearch, useMarkBookmarkRead } from "../../src/hooks/use-bookmarks";
+import { useInfiniteSearch } from "../../src/hooks/use-bookmarks";
 import { useTags } from "../../src/hooks/use-tags";
 import { useResponsiveLayout } from "../../src/hooks/use-responsive-layout";
 import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metrics";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { flattenPages } from "../../src/lib/api/query-keys";
-import { opensBookmarkExternally } from "../../src/lib/bookmark-reader";
 import { haptics } from "../../src/lib/haptics";
 import { layout, radius, spacing } from "../../src/theme/tokens";
 import { errorMessage } from "../../src/lib/error-message";
@@ -60,7 +59,6 @@ export default function SearchScreen() {
   }, [input, routeQuery, router]);
 
   const search = useInfiniteSearch(q, tagFilter);
-  const markRead = useMarkBookmarkRead();
   const items = useMemo(() => flattenPages(search.data?.pages ?? []), [search.data]);
 
   useEffect(() => {
@@ -71,12 +69,6 @@ export default function SearchScreen() {
   }, [q, routeQuery]);
 
   const openReader = (b: BookmarkDto) => {
-    if (opensBookmarkExternally(b)) {
-      haptics.light();
-      if (!b.isRead) markRead.mutate({ id: b.id, folderId: b.folderId });
-      void Linking.openURL(b.url).catch(() => router.push(`/reader/${b.id}`));
-      return;
-    }
     if (hasDetailPane) {
       router.push({
         pathname: "/search",

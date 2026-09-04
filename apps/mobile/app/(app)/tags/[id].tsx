@@ -4,7 +4,7 @@
  * from a horizontal chip rail.
  */
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Header } from "../../../src/components/ui/Header";
@@ -31,7 +31,6 @@ import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
 import { errorMessage } from "../../../src/lib/error-message";
 import { flattenPages } from "../../../src/lib/api/query-keys";
-import { opensBookmarkExternally } from "../../../src/lib/bookmark-reader";
 import { layout, radius, spacing } from "../../../src/theme/tokens";
 import type { BookmarkDto } from "@ordo/shared";
 
@@ -64,12 +63,6 @@ export default function TagDetailScreen() {
   const items = useMemo(() => flattenPages(list.data?.pages ?? []), [list.data]);
 
   const openReader = (b: BookmarkDto) => {
-    if (opensBookmarkExternally(b)) {
-      haptics.light();
-      if (!b.isRead) toggleRead.mutate({ id: b.id, isRead: true });
-      void Linking.openURL(b.url).catch(() => router.push(`/reader/${b.id}`));
-      return;
-    }
     if (hasDetailPane) {
       router.push({
         pathname: "/tags/[id]",

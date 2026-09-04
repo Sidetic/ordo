@@ -3,8 +3,9 @@
  *
  * Renders the server's sanitized semantic HTML natively (no WebView/JS) in a
  * reader-themed surface independent of the app theme, with account-synced
- * font/size/theme preferences, reading-progress tracking, and a clean
- * handoff to the browser for unsupported destinations.
+ * font/size/theme preferences and reading-progress tracking. Non-articles
+ * open an in-app website view; "Read in Ordo" appears when extraction
+ * actually produced an article.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -60,12 +61,17 @@ import { domainFromUrl, formatDate } from "../../lib/format";
 import { errorMessage, folderProtectedId, isFolderProtected } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
 import { layout, spacing } from "../../theme/tokens";
+import { toast } from "../ui/toast-store";
+import { BookmarkBrowser } from "../browser/BookmarkBrowser";
+import { canReadInOrdo } from "../../lib/bookmark-reader";
 
 export interface ReaderPaneProps {
   bookmarkId?: string;
   embedded?: boolean;
   onBack?: () => void;
   safeBottom?: boolean;
+  /** Force the live website view (e.g. "Open original" from the library). */
+  initialSurface?: "auto" | "browser";
 }
 
 /** Minimum change worth an eager write (throttles request-per-scroll). */
@@ -128,6 +134,7 @@ function ReaderPaneInner({
   embedded = false,
   onBack,
   safeBottom = !embedded,
+  initialSurface = "auto",
   preferences,
   onUpdatePreferences,
   effectiveDark,
@@ -184,9 +191,11 @@ function ReaderPaneInner({
     headings: readonly ArticleHeading[];
   }>({ bookmarkId: "", headings: [] });
   const [contentsShortcutVisible, setContentsShortcutVisible] = useState(false);
-  const [externalLaunchFailed, setExternalLaunchFailed] = useState(false);
   const [articleWidth, setArticleWidth] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [surface, setSurface] = useState<"auto" | "reader" | "browser">(
+    initialSurface === "browser" ? "browser" : "auto",
+  );
 
   const toggleRead = useToggleRead(bookmark?.folderId ?? null);
   const markedRef = useRef<string | null>(null);
@@ -242,7 +251,14 @@ function ReaderPaneInner({
   const handleOpenOriginal = () => {
     if (!bookmark) return;
     haptics.light();
-    Linking.openURL(bookmark.url).catch(() => {});
+    setSurface("browser");
+  };
+
+  const handleOpenSystemBrowser = () => {
+    if (!bookmark) return;
+    Linking.openURL(bookmark.url).catch(() =>
+      toast.error("Couldn't open this page in the browser."),
+    );
   };
 
   const handleShare = () => {
@@ -255,29 +271,15 @@ function ReaderPaneInner({
     }).catch(() => {});
   };
 
-  /* ---------------- unsupported/failed: hand off to the browser ---------------- */
+  /* ---------------- unsupported/failed: in-app website view ---------------- */
 
-  const launchedRef = useRef<string | null>(null);
+  const showWebsiteView =
+    surface === "browser" || (surface === "auto" && terminalExternal);
+  const showReadInOrdo = !!bookmark && canReadInOrdo(bookmark);
+
   useEffect(() => {
-    if (!bookmark || !terminalExternal) return;
-    if (launchedRef.current === bookmark.id) return; // never relaunch on rerender/refetch
-    launchedRef.current = bookmark.id;
-    let cancelled = false;
-    Linking.openURL(bookmark.url)
-      .then(() => {
-        if (cancelled) return;
-        if (onBack) onBack();
-        else if (router.canGoBack()) router.back();
-        else router.replace("/");
-      })
-      .catch(() => {
-        // Couldn't hand off — stay and offer a manual open instead.
-        if (!cancelled) setExternalLaunchFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [bookmark?.id, terminalExternal]);
+    setSurface(initialSurface === "browser" ? "browser" : "auto");
+  }, [bookmarkId, initialSurface]);
 
   /* ------------------------------ reading progress ----------------------------- */
 
@@ -432,7 +434,6 @@ function ReaderPaneInner({
     offsetRef.current = 0;
     articleHeaderHeightRef.current = 0;
     setProgress(baseline);
-    setExternalLaunchFailed(false);
     if (contentsShortcutTimerRef.current) {
       clearTimeout(contentsShortcutTimerRef.current);
       contentsShortcutTimerRef.current = null;
@@ -513,20 +514,22 @@ function ReaderPaneInner({
 
   const rightActions = bookmark ? (
     <View style={styles.headerActions}>
-      <PressableScale
-        style={styles.iconBtn}
-        scaleTo={0.85}
-        hitSlop={8}
-        onPress={() => {
-          haptics.light();
-          setControlsOpen(true);
-        }}
-        accessibilityRole="button"
-        accessibilityLabel="Reader settings"
-        accessibilityHint="Adjust text size, typeface, and reading theme."
-      >
-        <Ionicons name="options-outline" size={22} color={palette.text} />
-      </PressableScale>
+      {!showWebsiteView ? (
+        <PressableScale
+          style={styles.iconBtn}
+          scaleTo={0.85}
+          hitSlop={8}
+          onPress={() => {
+            haptics.light();
+            setControlsOpen(true);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Reader settings"
+          accessibilityHint="Adjust text size, typeface, and reading theme."
+        >
+          <Ionicons name="options-outline" size={22} color={palette.text} />
+        </PressableScale>
+      ) : null}
       <PressableScale
         style={styles.iconBtn}
         scaleTo={0.85}
@@ -536,7 +539,7 @@ function ReaderPaneInner({
           setActionPanel("actions");
         }}
         accessibilityRole="button"
-        accessibilityLabel="More article actions"
+        accessibilityLabel={showWebsiteView ? "More page actions" : "More article actions"}
       >
         <Ionicons name="ellipsis-horizontal" size={22} color={palette.text} />
       </PressableScale>
@@ -595,15 +598,15 @@ function ReaderPaneInner({
     <View style={[styles.container, { backgroundColor: palette.background }]}>
       <Header
         title={bookmark ? domain : "Reader"}
-        subtitle={headerSubtitle}
+        subtitle={showWebsiteView ? "Website" : headerSubtitle}
         showBack={!embedded}
-        onBack={!embedded ? onBack : undefined}
+        onBack={!embedded ? handleBack : undefined}
         safeTop={!embedded}
         maxWidth={layout.maxLibraryWidth}
         right={rightActions}
       />
 
-      {hasContent ? (
+      {hasContent && !showWebsiteView ? (
         <View
           style={[styles.progressTrack, { backgroundColor: palette.border }]}
           accessibilityRole="progressbar"
@@ -662,6 +665,30 @@ function ReaderPaneInner({
             }
           />
         </ScreenContent>
+      ) : showWebsiteView ? (
+        <View style={styles.browserPane}>
+          <BookmarkBrowser url={bookmark.url} />
+          <View
+            style={[
+              styles.browserBar,
+              {
+                backgroundColor: palette.surface,
+                borderTopColor: palette.border,
+                paddingBottom: safeBottom ? insets.bottom + spacing[8] : spacing[8],
+              },
+            ]}
+          >
+            {showReadInOrdo ? (
+              <Button label="Read in Ordo" block onPress={() => setSurface("reader")} />
+            ) : null}
+            <Button
+              label="Open in browser"
+              variant="secondary"
+              block
+              onPress={handleOpenSystemBrowser}
+            />
+          </View>
+        </View>
       ) : (
         <View style={styles.scrollViewport}>
           <ScrollView
@@ -707,25 +734,6 @@ function ReaderPaneInner({
                 <View style={styles.content}>
                   <Markdown>{bookmark.contentMarkdown ?? ""}</Markdown>
                 </View>
-              ) : terminalExternal ? (
-                externalLaunchFailed ? (
-                  <EmptyState
-                    compact
-                    icon="reader-outline"
-                    title="Can't show this page"
-                    message="This page can't be shown in Ordo's reader."
-                    action={<Button label="Open original" onPress={handleOpenOriginal} />}
-                  />
-                ) : (
-                  <View style={styles.inlineEmpty}>
-                    <Skeleton width="100%" height={16} />
-                    <Skeleton width="92%" height={16} style={{ marginTop: spacing[8] }} />
-                    <Skeleton width="68%" height={16} style={{ marginTop: spacing[8] }} />
-                    <Text variant="body" color="secondary" style={styles.preparingText}>
-                      Opening this page in your browser…
-                    </Text>
-                  </View>
-                )
               ) : detailFetchFailed ? (
                 <EmptyState
                   compact
@@ -769,7 +777,7 @@ function ReaderPaneInner({
         </View>
       )}
 
-      {contentsShortcutVisible && actionPanel === null && !controlsOpen ? (
+      {contentsShortcutVisible && actionPanel === null && !controlsOpen && !showWebsiteView ? (
         <FABLayer maxWidth={layout.maxLibraryWidth}>
           <FAB
             icon="list-outline"
@@ -833,8 +841,8 @@ function ReaderPaneInner({
           </>
         ) : (
           <>
-            <PanelHeader title="Article actions" style={styles.actionsTitle} />
-            {hasHtml && articleHeadings.length >= 3 ? (
+            <PanelHeader title={showWebsiteView ? "Page actions" : "Article actions"} style={styles.actionsTitle} />
+            {hasHtml && articleHeadings.length >= 3 && !showWebsiteView ? (
               <SheetActionRow
                 icon="list-outline"
                 label="Table of contents"
@@ -843,7 +851,7 @@ function ReaderPaneInner({
             ) : null}
             <SheetActionRow
               icon="share-social-outline"
-              label="Share article"
+              label={showWebsiteView ? "Share page" : "Share article"}
               onPress={() => {
                 setActionPanel(null);
                 handleShare();
@@ -857,14 +865,35 @@ function ReaderPaneInner({
                 setEditTagsOpen(true);
               }}
             />
-            <SheetActionRow
-              icon="globe-outline"
-              label="Open original"
-              onPress={() => {
-                setActionPanel(null);
-                handleOpenOriginal();
-              }}
-            />
+            {showWebsiteView && showReadInOrdo ? (
+              <SheetActionRow
+                icon="reader-outline"
+                label="Read in Ordo"
+                onPress={() => {
+                  setActionPanel(null);
+                  setSurface("reader");
+                }}
+              />
+            ) : null}
+            {showWebsiteView ? (
+              <SheetActionRow
+                icon="open-outline"
+                label="Open in browser"
+                onPress={() => {
+                  setActionPanel(null);
+                  handleOpenSystemBrowser();
+                }}
+              />
+            ) : (
+              <SheetActionRow
+                icon="globe-outline"
+                label="Open original"
+                onPress={() => {
+                  setActionPanel(null);
+                  handleOpenOriginal();
+                }}
+              />
+            )}
             <Button
               label="Cancel"
               variant="ghost"
@@ -930,4 +959,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[32],
   },
   preparingText: { marginTop: spacing[16], textAlign: "center" },
+  browserPane: { flex: 1 },
+  browserBar: {
+    gap: spacing[8],
+    paddingHorizontal: spacing[16],
+    paddingTop: spacing[8],
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
 });

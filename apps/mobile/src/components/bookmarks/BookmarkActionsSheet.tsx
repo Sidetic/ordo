@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Linking, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { useRouter } from "expo-router";
 import { FloatingPanel } from "../ui/FloatingPanel";
 import { PanelHeader } from "../ui/PanelHeader";
 import { Button } from "../ui/Button";
 import { SheetActionRow } from "../ui/SheetActionRow";
-import { toast } from "../ui/toast-store";
 import { useTheme } from "../../theme/ThemeProvider";
 import { spacing } from "../../theme/tokens";
 import type { BookmarkDto } from "@ordo/shared";
@@ -29,6 +29,7 @@ export function BookmarkActionsSheet({
   onEditTags,
 }: BookmarkActionsSheetProps) {
   const { palette } = useTheme();
+  const router = useRouter();
   const [mode, setMode] = useState<"menu" | "delete">("menu");
 
   useEffect(() => {
@@ -93,14 +94,14 @@ export function BookmarkActionsSheet({
             />
           ) : null}
           <SheetActionRow
-            icon="open-outline"
+            icon="globe-outline"
             label="Open original"
             onPress={() => {
-              Linking.openURL(bookmark.url)
-                .then(() => {
-                  if (!bookmark.isRead) onToggleRead(bookmark);
-                })
-                .catch(() => toast.error("Couldn't open the link."));
+              router.push({
+                pathname: "/reader/[id]",
+                params: { id: bookmark.id, view: "browser" },
+              });
+              if (!bookmark.isRead) onToggleRead(bookmark);
               onDismiss();
             }}
           />
