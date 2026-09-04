@@ -324,12 +324,25 @@ describe("ReaderService", () => {
       await expectUnsupported("https://docs.google.com/document/d/xyz/edit", "social_video_or_app");
     });
 
-    it("pre-bypasses commerce hosts, product paths, and homepages without fetching", async () => {
+    it("pre-bypasses commerce hosts and product paths without fetching", async () => {
       mockFetchNeverCalled();
       await expectUnsupported("https://www.amazon.com/dp/B00TEST123", "not_an_article");
       await expectUnsupported("https://store.example.com/products/wool-runners", "not_an_article");
       await expectUnsupported("https://shop.example.com/collections/mens", "not_an_article");
       await expectUnsupported("https://example.com/pricing", "not_an_article");
+    });
+
+    it("extracts a long essay published at the site root", async () => {
+      mockFetch(SAMPLE_HTML);
+      const result = await reader.extract("https://grugbrain.dev/");
+      expect(result.title).toBe("The Real Title");
+    });
+
+    it("rejects a link-heavy site root after fetching, not by URL alone", async () => {
+      mockFetch(`<!DOCTYPE html><html><head><title>Acme</title></head><body>
+        <nav><a href="/">Home</a> <a href="/shop">Shop</a> <a href="/about">About</a></nav>
+        <main><p>Welcome. Use the links above.</p></main>
+      </body></html>`);
       await expectUnsupported("https://example.com/", "not_an_article");
     });
 

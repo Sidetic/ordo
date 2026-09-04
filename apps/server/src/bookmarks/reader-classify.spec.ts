@@ -14,14 +14,15 @@ describe("reader-classify", () => {
       return classifyDestination(new URL(url));
     }
 
-    it("rejects commerce hosts, product paths, and site roots", () => {
+    it("rejects commerce hosts and product paths", () => {
       expect(reason("https://www.amazon.com/something-else")).toBe("not_an_article");
       expect(reason("https://shop.example.com/products/wool")).toBe("not_an_article");
-      expect(reason("https://example.com/")).toBe("not_an_article");
       expect(reason("https://example.com/pricing")).toBe("not_an_article");
     });
 
-    it("keeps article-like paths including Substack /p/", () => {
+    it("keeps article-like paths including site-root essays and Substack /p/", () => {
+      expect(reason("https://grugbrain.dev/")).toBeNull();
+      expect(reason("https://example.com/")).toBeNull();
       expect(reason("https://example.substack.com/p/a-real-essay")).toBeNull();
       expect(reason("https://jvns.ca/blog/2024/cool-post")).toBeNull();
     });

@@ -1,5 +1,4 @@
 import type { ExtractionReason } from "@ordo/shared";
-import { isIP } from "node:net";
 import unsupportedDomains from "./reader-unsupported-domains.json";
 
 export type ReaderRejectionReason = Exclude<ExtractionReason, "fetch_error" | "interrupted">;
@@ -88,11 +87,6 @@ export function hostMatches(host: string, configured: string): boolean {
   return host === configured || host.endsWith(`.${configured}`);
 }
 
-function isLocalOrIpHost(host: string): boolean {
-  const bare = host.replace(/^\[|\]$/g, "");
-  return bare === "localhost" || bare.endsWith(".localhost") || isIP(bare) !== 0;
-}
-
 /** Classify destinations an article reader can never handle, before fetching. */
 export function classifyDestination(url: URL): ReaderRejectionReason | null {
   const path = url.pathname.toLowerCase();
@@ -114,7 +108,8 @@ export function classifyDestination(url: URL): ReaderRejectionReason | null {
     return "not_an_article";
   }
 
-  if ((path === "/" || path === "") && !isLocalOrIpHost(host)) return "not_an_article";
+  // Site roots are not skipped: many essays live at `/` (grugbrain.dev, …).
+  // Link-heavy homepages still fail the unmarked quality gates after fetch.
 
   if (pathnameLooksLikeCommerce(path)) return "not_an_article";
 
