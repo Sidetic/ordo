@@ -68,6 +68,7 @@ export default function TagsScreen() {
       <Header
         title="Tags"
         showBack
+        maxWidth={layout.maxContentWidth}
         onBack={() => (router.canGoBack() ? router.back() : router.replace("/"))}
       />
 

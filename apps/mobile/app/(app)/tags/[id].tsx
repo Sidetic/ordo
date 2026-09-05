@@ -19,8 +19,13 @@ import { AddBookmarkSheet } from "../../../src/components/bookmarks/AddBookmarkS
 import { BookmarkActionsSheet } from "../../../src/components/bookmarks/BookmarkActionsSheet";
 import { MoveSheet } from "../../../src/components/bookmarks/MoveSheet";
 import { EditTagsSheet } from "../../../src/components/tags/EditTagsSheet";
+import { EditTagPanel } from "../../../src/components/tags/EditTagPanel";
+import { ConfirmDialog } from "../../../src/components/ui/ConfirmDialog";
+import { FloatingPanel } from "../../../src/components/ui/FloatingPanel";
+import { PanelHeader } from "../../../src/components/ui/PanelHeader";
+import { SheetActionRow } from "../../../src/components/ui/SheetActionRow";
 import { ReaderPane, ReaderPanePlaceholder } from "../../../src/components/reader/ReaderPane";
-import { useTags, useTaggedBookmarks } from "../../../src/hooks/use-tags";
+import { useTags, useTaggedBookmarks, useDeleteTag } from "../../../src/hooks/use-tags";
 import {
   useToggleRead,
   useDeleteBookmark,
@@ -49,11 +54,15 @@ export default function TagDetailScreen() {
   const list = useTaggedBookmarks(activeIds, !!routeId);
   const toggleRead = useToggleRead(null);
   const deleteBm = useDeleteBookmark(null);
+  const deleteTag = useDeleteTag();
 
   const [addOpen, setAddOpen] = useState(false);
   const [actionBm, setActionBm] = useState<BookmarkDto | null>(null);
   const [moveTarget, setMoveTarget] = useState<BookmarkDto | null>(null);
   const [editTagsBm, setEditTagsBm] = useState<BookmarkDto | null>(null);
+  const [tagActionsOpen, setTagActionsOpen] = useState(false);
+  const [editTagOpen, setEditTagOpen] = useState(false);
+  const [deleteTagOpen, setDeleteTagOpen] = useState(false);
 
   const items = useMemo(() => flattenPages(list.data?.pages ?? []), [list.data]);
 
@@ -136,19 +145,20 @@ export default function TagDetailScreen() {
         }
         showBack
         right={
-          <PressableScale
-            style={styles.iconBtn}
-            scaleTo={0.85}
-            hitSlop={8}
-            onPress={() => {
-              haptics.light();
-              router.push("/tags");
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="All tags"
-          >
-            <Ionicons name="pricetags-outline" size={22} color={palette.text} />
-          </PressableScale>
+          anchor ? (
+            <View style={styles.headerActions}>
+              <PressableScale
+                style={styles.iconBtn}
+                scaleTo={0.85}
+                hitSlop={8}
+                onPress={() => setTagActionsOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Tag actions"
+              >
+                <Ionicons name="ellipsis-horizontal" size={22} color={palette.text} />
+              </PressableScale>
+            </View>
+          ) : undefined
         }
       />
 
@@ -238,6 +248,65 @@ export default function TagDetailScreen() {
         bookmark={editTagsBm}
         onDismiss={() => setEditTagsBm(null)}
       />
+
+      <FloatingPanel visible={tagActionsOpen} onDismiss={() => setTagActionsOpen(false)}>
+        <PanelHeader title={anchor?.name ?? "Tag"} />
+        <SheetActionRow
+          icon="create-outline"
+          label="Edit tag"
+          onPress={() => {
+            setTagActionsOpen(false);
+            setTimeout(() => setEditTagOpen(true), 100);
+          }}
+        />
+        <SheetActionRow
+          icon="trash-outline"
+          label="Delete tag"
+          tone="danger"
+          onPress={() => {
+            setTagActionsOpen(false);
+            setTimeout(() => setDeleteTagOpen(true), 100);
+          }}
+        />
+      </FloatingPanel>
+
+      <EditTagPanel
+        visible={editTagOpen}
+        tag={anchor ?? null}
+        onDismiss={() => setEditTagOpen(false)}
+      />
+      <ConfirmDialog
+        visible={deleteTagOpen}
+        icon="trash-outline"
+        onDismiss={() => setDeleteTagOpen(false)}
+        title={
+          anchor
+            ? anchor.bookmarkCount > 0
+              ? `Delete "${anchor.name}" from ${anchor.bookmarkCount} bookmarks?`
+              : `Delete "${anchor.name}"?`
+            : ""
+        }
+        message="The tag is removed everywhere. Bookmarks are kept."
+        confirmLabel="Delete tag"
+        loading={deleteTag.isPending}
+        onConfirm={() => {
+          if (!anchor) return;
+          haptics.medium();
+          deleteTag.mutate(anchor.id, {
+            onSuccess: () => {
+              toast.success(
+                anchor.bookmarkCount > 0
+                  ? `Deleted "${anchor.name}" and its ${anchor.bookmarkCount} assignments`
+                  : `Deleted "${anchor.name}"`,
+              );
+              setDeleteTagOpen(false);
+              if (router.canGoBack()) router.back();
+              else router.replace("/tags");
+            },
+            onError: (e) => toast.error(errorMessage(e)),
+          });
+        }}
+      />
     </View>
   );
 }
@@ -256,5 +325,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   iconBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  headerActions: { flexDirection: "row", alignItems: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
 });
