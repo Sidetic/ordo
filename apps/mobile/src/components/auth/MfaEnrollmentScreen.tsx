@@ -22,11 +22,11 @@ export function MfaEnrollmentScreen() {
       <SettingsScrollView>
         <View style={{ gap: spacing[16], paddingVertical: spacing[8] }}>
           <Text variant="body" color="secondary">
-            This server requires an authenticator app before you can continue.
+            This server requires an authenticator before you can continue.
           </Text>
           {pending ? (
             <Text variant="body" color="secondary">
-              Authenticator is on. Save your backup codes to continue.
+              Save your backup codes to continue.
             </Text>
           ) : (
             <MfaSetupPanel onEnabled={(user, backupCodes) => setPending({ user, codes: backupCodes })} />

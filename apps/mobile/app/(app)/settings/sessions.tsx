@@ -20,7 +20,7 @@ import { ConfirmDialog } from "../../../src/components/ui/ConfirmDialog";
 import { useSessions } from "../../../src/hooks/queries";
 import { useRevokeSession } from "../../../src/hooks/use-auth-actions";
 import { useTheme } from "../../../src/theme/ThemeProvider";
-import { timeAgo, formatDate } from "../../../src/lib/format";
+import { timeAgo } from "../../../src/lib/format";
 import { errorMessage } from "../../../src/lib/error-message";
 import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
@@ -55,7 +55,7 @@ function deviceDescription(s: SessionDto): string {
   const type = s.deviceType === "unknown"
     ? null
     : `${s.deviceType[0].toUpperCase()}${s.deviceType.slice(1)}`;
-  return [os, type].filter(Boolean).join(" · ") || "Unknown device type";
+  return [os, type].filter(Boolean).join(" · ");
 }
 
 function deviceIcon(s: SessionDto): keyof typeof Ionicons.glyphMap {
@@ -126,13 +126,15 @@ export default function SessionsScreen() {
                     <Text variant="bodyStrong" numberOfLines={1}>{deviceLabel(item)}</Text>
                     {item.current ? <Badge tone="accent">This device</Badge> : null}
                   </View>
+                  {deviceDescription(item) ? (
+                    <Text variant="footnote" color="tertiary" numberOfLines={1}>
+                      {deviceDescription(item)}
+                    </Text>
+                  ) : null}
                   <Text variant="footnote" color="tertiary" numberOfLines={1}>
-                    {deviceDescription(item)}
+                    Active {timeAgo(item.lastSeenAt)}
+                    {item.ip ? ` · ${item.ip}` : ""}
                   </Text>
-                  <Text variant="footnote" color="tertiary" numberOfLines={1}>
-                    {item.ip ?? "Unknown IP"} · active {timeAgo(item.lastSeenAt)}
-                  </Text>
-                  <Text variant="caption" color="tertiary">Signed in {formatDate(item.createdAt)}</Text>
                 </View>
               </View>
               {item.current ? null : (
@@ -173,7 +175,7 @@ export default function SessionsScreen() {
         title="Revoke this session?"
         message={
           pendingRevoke
-            ? `${deviceLabel(pendingRevoke)} will be signed out and will need to sign in again.`
+            ? `${deviceLabel(pendingRevoke)} will be signed out.`
             : ""
         }
         confirmLabel="Revoke"
@@ -193,7 +195,7 @@ const styles = StyleSheet.create({
   // Matches SettingsPage so loading, error, and loaded states do not jump.
   listContent: { paddingTop: spacing[8], paddingBottom: spacing[40] },
   listContentEmpty: { flexGrow: 1, justifyContent: "center" },
-  card: { width: "100%", borderWidth: StyleSheet.hairlineWidth, borderRadius: radius["2xl"], padding: spacing[16] },
+  card: { width: "100%", borderWidth: StyleSheet.hairlineWidth, borderRadius: radius["2xl"], padding: spacing[14] },
   cardHead: { flexDirection: "row", gap: spacing[12], alignItems: "flex-start" },
   iconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   titleRow: { flexDirection: "row", alignItems: "center", gap: spacing[8], marginBottom: 2 },

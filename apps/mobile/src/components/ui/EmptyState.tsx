@@ -22,13 +22,13 @@ export function EmptyState({ icon, title, message, action, compact }: EmptyState
       <View style={[styles.iconCircle, { backgroundColor: palette.surfaceSecondary, borderColor: palette.border }]}>
         <Ionicons name={icon} size={26} color={palette.textTertiary} />
       </View>
-      <Text variant="title3" align="center" style={{ marginTop: spacing[16] }}>{title}</Text>
+      <Text variant="title2" align="center" style={{ marginTop: spacing[12] }}>{title}</Text>
       {message ? (
-        <Text variant="body" color="secondary" align="center" style={{ marginTop: spacing[6] }}>
+        <Text variant="footnote" color="secondary" align="center" style={{ marginTop: spacing[4] }}>
           {message}
         </Text>
       ) : null}
-      {action ? <View style={{ marginTop: spacing[20] }}>{action}</View> : null}
+      {action ? <View style={{ marginTop: spacing[16] }}>{action}</View> : null}
     </View>
   );
 }
@@ -40,11 +40,11 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: spacing[48],
-    paddingHorizontal: spacing[32],
+    paddingVertical: spacing[32],
+    paddingHorizontal: spacing[24],
   },
   compact: {
-    paddingVertical: spacing[24],
+    paddingVertical: spacing[20],
     paddingHorizontal: spacing[16],
   },
   iconCircle: { width: 60, height: 60, borderRadius: radius.lg, borderWidth: 1, alignItems: "center", justifyContent: "center" },

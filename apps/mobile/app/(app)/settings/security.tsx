@@ -36,7 +36,7 @@ export default function SecurityScreen() {
               <SettingsGroup
                 label="Authenticator"
                 compact
-                footer="A second step after your password. Backup codes are shown only when you create them."
+                footer="Backup codes are shown only when you create them."
               >
                 <SettingRow
                   icon="key-outline"
@@ -59,11 +59,7 @@ export default function SecurityScreen() {
               </SettingsGroup>
             </>
           ) : (
-            <SettingsGroup
-              label="Authenticator"
-              compact
-              footer="Use an authenticator app as a second step after your password."
-            >
+            <SettingsGroup label="Authenticator" compact>
               <SettingsForm style={styles.form}>
                 <MfaSetupPanel
                   onEnabled={(updated, codes) => {
@@ -83,8 +79,8 @@ export default function SecurityScreen() {
         title={stepUp === "disable" ? "Turn off authenticator?" : "New backup codes"}
         description={
           stepUp === "disable"
-            ? "Enter a current authenticator or backup code to turn it off."
-            : "Enter a current authenticator or backup code. Your old backup codes will stop working."
+            ? "Enter an authenticator or backup code."
+            : "Your current backup codes will stop working."
         }
         confirmLabel={stepUp === "disable" ? "Turn off" : "Create codes"}
         confirmVariant={stepUp === "disable" ? "danger" : "primary"}
@@ -111,5 +107,5 @@ export default function SecurityScreen() {
 }
 
 const styles = {
-  form: { padding: spacing[16], gap: spacing[16] },
+  form: { padding: spacing[16], gap: spacing[12] },
 };

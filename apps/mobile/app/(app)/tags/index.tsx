@@ -93,7 +93,7 @@ export default function TagsScreen() {
             <EmptyState
               icon="pricetags-outline"
               title="No tags yet"
-              message="Create a tag to start organizing bookmarks across folders."
+              message="Create a tag to organize bookmarks."
               action={<Button label="New tag" onPress={() => setCreateOpen(true)} />}
             />
           </View>
@@ -171,7 +171,7 @@ export default function TagsScreen() {
               : `Delete "${deleteTarget.name}"?`
             : ""
         }
-        message="The tag is removed everywhere. Bookmarks are kept."
+        message="The tag is removed. Bookmarks are kept."
         confirmLabel="Delete tag"
         loading={deleteTag.isPending}
         onConfirm={onDelete}
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing[12],
-    paddingVertical: spacing[14],
+    paddingVertical: spacing[12],
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   dot: { width: 12, height: 12, borderRadius: 9999 },

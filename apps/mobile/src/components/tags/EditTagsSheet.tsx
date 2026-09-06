@@ -119,13 +119,13 @@ export function EditTagsSheet({ visible, onDismiss, bookmark }: EditTagsSheetPro
         </ScrollView>
       ) : (
         <Text variant="footnote" color="secondary" style={styles.hint}>
-          No tags yet — pick some below.
+          Pick tags below.
         </Text>
       )}
 
       {suggestions.length > 0 ? (
         <View style={styles.section}>
-          <Text variant="label" color="tertiary">SUGGESTED FROM ARTICLE</Text>
+          <Text variant="label" color="tertiary">Suggested</Text>
           <View style={styles.chipWrap}>
             {suggestions.map((tag) => (
               <View key={tag.id} style={styles.suggestionChip}>
@@ -151,7 +151,7 @@ export function EditTagsSheet({ visible, onDismiss, bookmark }: EditTagsSheetPro
       ) : null}
 
       <View style={styles.section}>
-        <Text variant="label" color="tertiary">ALL TAGS</Text>
+        <Text variant="label" color="tertiary">Tags</Text>
         <TagSelectList
           selectedIds={selectedIds}
           onToggle={toggle}
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     gap: spacing[4],
   },
   suggestionActions: { flexDirection: "row", gap: spacing[2] },
-  section: { marginTop: spacing[16] },
+  section: { marginTop: spacing[12] },
   error: { marginTop: spacing[12] },
-  actions: { flexDirection: "row", gap: spacing[10], marginTop: spacing[20] },
+  actions: { flexDirection: "row", gap: spacing[10], marginTop: spacing[16] },
 });

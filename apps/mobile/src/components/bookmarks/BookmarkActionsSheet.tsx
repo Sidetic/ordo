@@ -50,8 +50,7 @@ export function BookmarkActionsSheet({
             iconColor={palette.danger}
             iconBackground={palette.dangerSoft}
             title="Delete this bookmark?"
-            subtitle="This bookmark will be permanently deleted."
-            subtitleVariant="body"
+            subtitle="This can't be undone."
           />
           <View style={styles.actions}>
             <Button
@@ -140,7 +139,7 @@ export function BookmarkActionsSheet({
 }
 
 const styles = StyleSheet.create({
-  title: { marginBottom: spacing[12] },
+  title: { marginBottom: spacing[8] },
   menuCancel: { marginTop: spacing[8] },
-  actions: { gap: spacing[8], marginTop: spacing[20] },
+  actions: { gap: spacing[8], marginTop: spacing[16] },
 });

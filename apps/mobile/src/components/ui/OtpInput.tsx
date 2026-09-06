@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing[8],
+    gap: spacing[6],
   },
   group: {
     flex: 1,
@@ -446,8 +446,8 @@ const styles = StyleSheet.create({
   hyphen: { marginHorizontal: spacing[2] },
   box: {
     flex: 1,
-    maxWidth: 56,
-    height: 56,
+    maxWidth: 48,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   digit: {
-    fontSize: fontSize["4xl"],
+    fontSize: fontSize["3xl"],
     fontWeight: "600",
     letterSpacing: 0,
     textAlign: "center",

@@ -59,7 +59,7 @@ export function SettingRow({
         ) : null}
       </View>
       {value ? (
-        <Text variant="footnote" color="tertiary" numberOfLines={1} style={[styles.value, { color: valueColor }]}>
+        <Text variant="footnote" numberOfLines={1} style={[styles.value, { color: valueColor }]}>
           {value}
         </Text>
       ) : null}
@@ -88,9 +88,9 @@ const styles = StyleSheet.create({
     flexWrap: "nowrap",
     alignItems: "center",
     gap: spacing[12],
-    minHeight: 64,
+    minHeight: 52,
     paddingHorizontal: spacing[16],
-    paddingVertical: spacing[12],
+    paddingVertical: spacing[10],
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   noDivider: { borderBottomWidth: 0 },
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   },
   body: { flex: 1, flexBasis: 0, minWidth: 0 },
   description: { marginTop: spacing[2] },
-  value: { maxWidth: layout.settingsControlWidth, flexShrink: 0 },
+  value: { maxWidth: layout.settingsControlWidth, flexShrink: 0, textAlign: "right" },
   trailing: {
     width: layout.settingsControlWidth,
     flexGrow: 0,

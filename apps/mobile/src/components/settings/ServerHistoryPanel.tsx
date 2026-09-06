@@ -35,7 +35,7 @@ export function ServerHistoryPanel({
   return (
     <SettingsGroup
       label="Recent servers"
-      footer="Picking one fills the URL below and runs a health check. Switching still signs you out."
+      footer="Fills the URL below. Switching still signs you out."
     >
       {entries.map((entry, index) => {
         const host = hostOf(entry.url);

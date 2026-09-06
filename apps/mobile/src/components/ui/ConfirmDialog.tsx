@@ -77,8 +77,7 @@ export function ConfirmDialog({
               iconBackground={iconBg}
               title={title}
               subtitle={message}
-              titleVariant="title1"
-              subtitleVariant="body"
+              titleVariant="title2"
               style={styles.header}
             />
             {children ? <View style={styles.extra}>{children}</View> : null}
@@ -119,11 +118,11 @@ const styles = StyleSheet.create({
     maxHeight: "88%",
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radius["3xl"],
-    paddingHorizontal: spacing[24],
-    paddingTop: spacing[24],
+    paddingHorizontal: spacing[20],
+    paddingTop: spacing[20],
     paddingBottom: spacing[16],
   },
   header: { marginBottom: 0 },
-  extra: { marginTop: spacing[16] },
-  actions: { gap: spacing[4], marginTop: spacing[20] },
+  extra: { marginTop: spacing[12] },
+  actions: { gap: spacing[4], marginTop: spacing[16] },
 });

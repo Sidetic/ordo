@@ -65,7 +65,7 @@ export function CreateTagPanel({ visible, onDismiss, onCreated }: CreateTagPanel
         returnKeyType="done"
         onSubmitEditing={() => void submit()}
       />
-      <Text variant="label" color="tertiary" style={styles.label}>COLOR</Text>
+      <Text variant="label" color="tertiary" style={styles.label}>Color</Text>
       <TagColorPicker value={color} onChange={setColor} />
       <View style={styles.actions}>
         <Button label="Cancel" variant="secondary" onPress={onDismiss} style={{ flex: 1 }} />
@@ -76,6 +76,6 @@ export function CreateTagPanel({ visible, onDismiss, onCreated }: CreateTagPanel
 }
 
 const styles = StyleSheet.create({
-  label: { marginTop: spacing[16], marginBottom: spacing[10] },
-  actions: { flexDirection: "row", gap: spacing[10], marginTop: spacing[20] },
+  label: { marginTop: spacing[12], marginBottom: spacing[8] },
+  actions: { flexDirection: "row", gap: spacing[10], marginTop: spacing[16] },
 });

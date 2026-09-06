@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing[12],
-    minHeight: 50,
+    minHeight: 46,
     paddingHorizontal: spacing[4],
     borderBottomWidth: StyleSheet.hairlineWidth,
   },

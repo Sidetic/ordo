@@ -64,9 +64,7 @@ export function OtpDeliveryHint({
           </PressableScale>
         </View>
         <Text variant="footnote" color="secondary">
-          This server isn't sending mail, so the one-time code is printed in
-          the server process. Point SMTP_URL at Mailpit if you'd rather catch
-          it in an inbox — that's optional.
+          Codes print in the server process until SMTP is configured.
         </Text>
       </View>
     </View>

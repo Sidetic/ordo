@@ -165,5 +165,5 @@ export function MoveSheet({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: spacing[12], paddingVertical: spacing[14], borderBottomWidth: StyleSheet.hairlineWidth },
+  row: { flexDirection: "row", alignItems: "center", gap: spacing[12], paddingVertical: spacing[12], borderBottomWidth: StyleSheet.hairlineWidth },
 });

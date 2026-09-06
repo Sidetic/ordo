@@ -45,12 +45,13 @@ export default function AboutScreen() {
           <SettingRow
             icon="layers-outline"
             label="Origin"
-            description={!ota.isEmbeddedLaunch && published ? `Published ${published.toLocaleDateString()}.` : undefined}
+            description={!ota.isEmbeddedLaunch && published ? `Published ${published.toLocaleDateString()}` : undefined}
             right={
               <Badge tone={ota.isEmbeddedLaunch ? "neutral" : "blue"}>
-                {ota.isEmbeddedLaunch ? "Embedded build" : "OTA update"}
+                {ota.isEmbeddedLaunch ? "Embedded" : "OTA"}
               </Badge>
             }
+            rightFit="content"
           />
           <View style={styles.fingerprint}>
             <View
@@ -62,7 +63,7 @@ export default function AboutScreen() {
               <Ionicons name="finger-print-outline" size={16} color={palette.accent} />
             </View>
             <View style={styles.fingerprintCopy}>
-              <Text variant="body">Build fingerprint</Text>
+              <Text variant="bodyStrong">Build fingerprint</Text>
               <Text
                 variant="monoSmall"
                 color="secondary"
@@ -83,7 +84,6 @@ export default function AboutScreen() {
           <SettingRow
             icon="flask-outline"
             label="Early access updates"
-            description="Include preview app versions."
             right={
               <Toggle
                 value={nativeUpdate.includePrereleases}
@@ -91,6 +91,7 @@ export default function AboutScreen() {
                 onValueChange={(enabled) => void nativeUpdate.setIncludePrereleases(enabled)}
               />
             }
+            rightFit="content"
             divider={false}
           />
         </SettingsGroup>
@@ -99,14 +100,14 @@ export default function AboutScreen() {
           <SettingRow
             icon="logo-github"
             label="Source"
-            description="github.com/axoletlabs/ordo"
+            value="GitHub"
             onPress={() => Linking.openURL(REPO_URL).catch(() => {})}
             showChevron
           />
           <SettingRow
             icon="shield-checkmark-outline"
             label="License"
-            description="AGPL-3.0"
+            value="AGPL-3.0"
             divider={false}
           />
         </SettingsGroup>
@@ -121,9 +122,9 @@ export default function AboutScreen() {
 
 const styles = StyleSheet.create({
   fingerprint: {
-    minHeight: 64,
+    minHeight: 52,
     paddingHorizontal: spacing[16],
-    paddingVertical: spacing[12],
+    paddingVertical: spacing[10],
     flexDirection: "row",
     alignItems: "center",
     gap: spacing[12],
@@ -131,5 +132,5 @@ const styles = StyleSheet.create({
   fingerprintIcon: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
   fingerprintCopy: { flex: 1, minWidth: 0 },
   fingerprintValue: { marginTop: spacing[2] },
-  footer: { marginTop: spacing[32] },
+  footer: { marginTop: spacing[24] },
 });

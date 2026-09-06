@@ -36,18 +36,17 @@ export function OtaUpdateCard() {
     }
   }, [native.error, ota.message, update]);
 
-  const channel = ota.channel ?? "default";
   const description = !update.enabled
-    ? "Automatic updates are available in production builds."
+    ? "Available in production builds"
     : native.status === "downloading"
-      ? `Downloading Ordo v${native.release?.version ?? ""}…`
+      ? `Downloading v${native.release?.version ?? ""}…`
       : update.kind === "native" && native.release
-        ? `Version ${native.release.version} is ready to install.`
+        ? `v${native.release.version} is ready to install`
         : update.kind === "ota" && ota.status === "ready"
-          ? "Quick update downloaded. Restart to apply."
+          ? "Restart to apply"
           : update.kind === "ota"
-            ? "A quick update is available."
-            : `${channel.charAt(0).toUpperCase()}${channel.slice(1)} channel`;
+            ? "A quick update is available"
+            : undefined;
 
   const buttonLabel = update.checking
     ? "Checking…"

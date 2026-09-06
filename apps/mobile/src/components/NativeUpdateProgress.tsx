@@ -40,12 +40,11 @@ export function NativeUpdateProgress() {
         }
         subtitle={
           downloading
-            ? "Keep Ordo open while the new app version downloads."
+            ? "Keep Ordo open."
             : downloadFailed
-              ? "The app update couldn't be downloaded. Your current version is unchanged."
-              : `Ordo v${update.release?.version ?? ""} has downloaded.`
+              ? "Your current version is unchanged."
+              : `Ordo v${update.release?.version ?? ""} is ready.`
         }
-        titleVariant="title1"
       />
 
       {downloading ? (

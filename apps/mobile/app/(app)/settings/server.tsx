@@ -245,7 +245,7 @@ export default function ServerScreen() {
           }}
         />
 
-        <SettingsGroup label="Change server" footer="Switching servers signs you out and restarts Ordo.">
+        <SettingsGroup label="Change server" footer="You'll be signed out, and Ordo will restart.">
           <SettingsForm style={styles.editor}>
             <Input
               label="Server URL"
@@ -277,8 +277,8 @@ export default function ServerScreen() {
         onDismiss={() => setConfirmedUrl(null)}
         icon="log-out-outline"
         title="Switch server?"
-        message="You'll be signed out and Ordo will restart."
-        confirmLabel="Switch and restart"
+        message="You'll be signed out, and Ordo will restart."
+        confirmLabel="Switch"
         loading={switching}
         dismissible={!switching}
         onConfirm={() => void confirmSwitch()}

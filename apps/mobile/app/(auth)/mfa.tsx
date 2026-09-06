@@ -85,7 +85,7 @@ export default function LoginMfaScreen() {
   };
 
   return (
-    <AuthShell title="Check your authenticator" subtitle="Enter a code to finish signing in.">
+    <AuthShell title="Check your authenticator">
       {mode === "totp" ? (
         <>
           <OtpInput
@@ -163,7 +163,7 @@ export default function LoginMfaScreen() {
           />
           <View style={{ height: spacing[16] }} />
           <Text variant="footnote" color="secondary">
-            This turns off your authenticator so you can set it up again.
+            This turns off your authenticator.
           </Text>
           <Button
             label="Use an authenticator code"

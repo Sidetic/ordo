@@ -156,10 +156,10 @@ const styles = StyleSheet.create({
   contentColumn: { width: "100%", alignSelf: "center" },
   formColumn: { width: "100%", alignSelf: "center" },
   sectionLabel: {
-    paddingTop: spacing[24],
-    paddingBottom: spacing[8],
+    paddingTop: spacing[16],
+    paddingBottom: spacing[6],
   },
   compactSectionLabel: { paddingTop: spacing[0] },
   group: { overflow: "hidden" },
-  groupFooter: { paddingHorizontal: spacing[4], paddingTop: spacing[8] },
+  groupFooter: { paddingHorizontal: spacing[4], paddingTop: spacing[6] },
 });

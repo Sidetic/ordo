@@ -56,7 +56,7 @@ const PRESETS: Record<TextVariant, Preset> = {
   subhead: { family: "sans", size: fontSize.sm, weight: "600", lineHeight: lineHeight.normal },
   footnote: { family: "sans", size: fontSize.sm, weight: "500", lineHeight: lineHeight.normal },
   caption: { family: "display", size: fontSize.xs, weight: "500", lineHeight: lineHeight.normal, letterSpacing: 0.2 },
-  label: { family: "display", size: fontSize["2xs"], weight: "600", lineHeight: lineHeight.normal, letterSpacing: 1.4, uppercase: true },
+  label: { family: "display", size: fontSize.xs, weight: "600", lineHeight: lineHeight.normal, letterSpacing: 1.2, uppercase: true },
   mono: { family: "mono", size: fontSize.sm, weight: "400", lineHeight: lineHeight.normal },
   monoSmall: { family: "mono", size: fontSize.xs, weight: "400", lineHeight: lineHeight.normal },
 };

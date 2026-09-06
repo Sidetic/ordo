@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing[12],
-    paddingVertical: spacing[14],
+    paddingVertical: spacing[12],
     paddingLeft: spacing[16],
     paddingRight: spacing[8],
   },
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   content: { flex: 1, minWidth: 0 },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: spacing[6], marginTop: spacing[8] },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: spacing[6], marginTop: spacing[6] },
   count: { flexShrink: 1 },
   statusIcon: { marginLeft: spacing[2] },
   moreBtn: {

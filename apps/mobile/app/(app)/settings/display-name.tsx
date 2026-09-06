@@ -52,11 +52,7 @@ export default function ChangeDisplayNameScreen() {
         style={{ flex: 1 }}
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-          <SettingsGroup
-            label="Change display name"
-            compact
-            footer="This is shown on your account. It isn't used to sign in, and it doesn't need to be unique."
-          >
+          <SettingsGroup compact footer="Shown on your account. Not used to sign in.">
             <SettingsForm style={styles.form}>
               <Input
                 label="Display name"
@@ -69,7 +65,7 @@ export default function ChangeDisplayNameScreen() {
                 error={formError || undefined}
               />
               <Button
-                label="Save display name"
+                label="Save"
                 block
                 size="lg"
                 onPress={submit}
@@ -85,5 +81,5 @@ export default function ChangeDisplayNameScreen() {
 }
 
 const styles = {
-  form: { padding: spacing[16], gap: spacing[16] },
+  form: { padding: spacing[16], gap: spacing[12] },
 };

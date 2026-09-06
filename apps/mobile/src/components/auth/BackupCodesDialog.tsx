@@ -70,9 +70,7 @@ export function BackupCodesDialog({
               iconColor={palette.accent}
               iconBackground={palette.accentSoft}
               title="Save your backup codes"
-              subtitle="Each code signs you in once. Download them now — they won't be shown again."
-              titleVariant="title1"
-              subtitleVariant="body"
+              subtitle="Each code works once. Download them now — they won't be shown again."
               style={styles.header}
             />
 
@@ -122,13 +120,13 @@ const styles = StyleSheet.create({
     maxHeight: "88%",
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radius["3xl"],
-    paddingHorizontal: spacing[24],
-    paddingTop: spacing[24],
+    paddingHorizontal: spacing[20],
+    paddingTop: spacing[20],
     paddingBottom: spacing[16],
   },
   header: { marginBottom: 0 },
   grid: {
-    marginTop: spacing[20],
+    marginTop: spacing[16],
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radius.lg,
     paddingVertical: spacing[12],
@@ -142,5 +140,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[6],
     letterSpacing: 0.4,
   },
-  actions: { gap: spacing[4], marginTop: spacing[20] },
+  actions: { gap: spacing[4], marginTop: spacing[16] },
 });

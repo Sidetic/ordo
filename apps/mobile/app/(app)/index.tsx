@@ -283,7 +283,7 @@ export default function BookmarksScreen() {
                   <EmptyState
                     icon="bookmark-outline"
                     title="No bookmarks yet"
-                    message="Save a link to start reading. Keep it here or file it in a folder whenever you want."
+                    message="Save a link to start reading."
                     action={<Button label="Save bookmark" onPress={() => setAddOpen(true)} />}
                   />
                 </View>
@@ -330,12 +330,11 @@ export default function BookmarksScreen() {
       ) : null}
 
       <FloatingPanel visible={createMenuOpen} onDismiss={() => setCreateMenuOpen(false)}>
-        <PanelHeader title="Create" />
+        <PanelHeader title="Create" style={styles.createTitle} />
         <View style={styles.createMenuActions}>
           <PressableScale
             accessibilityRole="button"
             accessibilityLabel="Save bookmark"
-            accessibilityHint="Add a link to your library."
             style={[styles.createMenuAction, { backgroundColor: palette.surfaceSecondary }]}
             onPress={() => {
               setCreateMenuOpen(false);
@@ -343,16 +342,12 @@ export default function BookmarksScreen() {
             }}
           >
             <Ionicons name="bookmark-outline" size={20} color={palette.accent} />
-            <View style={styles.createMenuCopy}>
-              <Text variant="bodyStrong">Save bookmark</Text>
-              <Text variant="footnote" color="tertiary">Add a link to your library.</Text>
-            </View>
+            <Text variant="bodyStrong" style={styles.createMenuCopy}>Save bookmark</Text>
             <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
           </PressableScale>
           <PressableScale
             accessibilityRole="button"
             accessibilityLabel="New folder"
-            accessibilityHint="Organize bookmarks into a folder."
             style={[styles.createMenuAction, { backgroundColor: palette.surfaceSecondary }]}
             onPress={() => {
               setCreateMenuOpen(false);
@@ -360,10 +355,7 @@ export default function BookmarksScreen() {
             }}
           >
             <Ionicons name="folder-outline" size={20} color={palette.accent} />
-            <View style={styles.createMenuCopy}>
-              <Text variant="bodyStrong">New folder</Text>
-              <Text variant="footnote" color="tertiary">Organize bookmarks into a folder.</Text>
-            </View>
+            <Text variant="bodyStrong" style={styles.createMenuCopy}>New folder</Text>
             <Ionicons name="chevron-forward" size={16} color={palette.textFaint} />
           </PressableScale>
         </View>
@@ -433,14 +425,15 @@ const styles = StyleSheet.create({
   headerAction: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   emptyBookmarks: { minHeight: 300, justifyContent: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
-  createMenuActions: { gap: spacing[8] },
+  createMenuActions: { gap: spacing[6] },
   createMenuAction: {
-    minHeight: 64,
+    minHeight: 52,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing[12],
-    paddingHorizontal: spacing[16],
+    paddingHorizontal: spacing[14],
     borderRadius: 12,
   },
   createMenuCopy: { flex: 1 },
+  createTitle: { marginBottom: spacing[8] },
 });

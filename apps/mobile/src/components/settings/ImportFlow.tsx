@@ -178,14 +178,11 @@ export function ImportFlow({
 
   return (
     <>
-      <SettingsGroup
-        label="Import"
-        footer="Titles stay as they were in the file. Article text fills in in the background."
-      >
+      <SettingsGroup label="Import">
         <SettingRow
           icon="download-outline"
           label="Import from file"
-          description="Brave, Chrome, Firefox, Safari, Raindrop, Pocket, or an Ordo backup"
+          description="HTML, JSON, CSV, or a browser export"
           onPress={pickFile}
           showChevron
           divider={false}
@@ -206,27 +203,21 @@ export function ImportFlow({
           keyboardShouldPersistTaps="handled"
         >
           {phase === "uploading" || (phase === "active" && !job && !jobQuery.isError) ? (
-            <BusyState
-              title="Reading file"
-              subtitle="Preparing a preview…"
-            />
+            <BusyState title="Reading file" />
           ) : jobQuery.isError ? (
             <ErrorState
               message={errorMessage(jobQuery.error, "This import no longer exists.")}
               onRetry={() => reset(false)}
             />
           ) : job?.status === "parsing" ? (
-            <BusyState
-              title="Reading file"
-              subtitle={job.fileName ? job.fileName : "Preparing a preview…"}
-            />
+            <BusyState title="Reading file" subtitle={job.fileName || undefined} />
           ) : job?.status === "failed" ? (
             <ErrorState
               message={job.failure ?? "The file could not be read."}
               onRetry={() => reset(true)}
             />
           ) : job?.status === "committing" ? (
-            <BusyState title="Saving bookmarks" subtitle="Adding them to your library…" />
+            <BusyState title="Saving bookmarks" />
           ) : job?.status === "completed" && job.result ? (
             <SuccessState result={job.result} onDone={() => reset(true)} />
           ) : preview ? (
@@ -247,7 +238,7 @@ export function ImportFlow({
               confirming={busy}
             />
           ) : (
-            <BusyState title="Reading file" subtitle="Preparing a preview…" />
+            <BusyState title="Reading file" />
           )}
         </ScrollView>
       </FloatingPanel>
@@ -255,7 +246,7 @@ export function ImportFlow({
   );
 }
 
-function BusyState({ title, subtitle }: { title: string; subtitle: string }) {
+function BusyState({ title, subtitle }: { title: string; subtitle?: string }) {
   const { palette } = useTheme();
   return (
     <View>
@@ -318,9 +309,6 @@ function SuccessState({
         title="Import complete"
         subtitle={lines.length > 0 ? lines.join(" · ") : "Nothing new to add."}
       />
-      <Text variant="footnote" color="tertiary" style={styles.footnote}>
-        Article text is filling in in the background.
-      </Text>
       {failures.length > 0 ? (
         <View style={styles.samples}>
           {failures.slice(0, 4).map((failure, i) => (
@@ -383,9 +371,9 @@ function PreviewState({
         title={empty ? "No bookmarks in this file" : alreadyAll ? "Already in your library" : `${count} new bookmark${count === 1 ? "" : "s"}`}
         subtitle={
           empty
-            ? "The file was readable, but it didn't contain any http(s) links."
+            ? "No http(s) links in this file."
             : alreadyAll
-              ? "Every bookmark in this file is already saved."
+              ? "Everything here is already saved."
               : fileName ?? undefined
         }
       />
@@ -395,13 +383,6 @@ function PreviewState({
         <Metric label="Already saved" value={preview.uniqueDuplicates} />
         {preview.invalidRows > 0 ? <Metric label="Skipped" value={preview.invalidRows} /> : null}
       </View>
-
-      {preview.duplicateSamples.length > 0 && preview.uniqueDuplicates > 0 ? (
-        <Text variant="footnote" color="tertiary" style={styles.note} numberOfLines={3}>
-          Already saved: {preview.duplicateSamples.map((s) => s.title || s.url).join(", ")}
-          {preview.uniqueDuplicates > preview.duplicateSamples.length ? "…" : ""}
-        </Text>
-      ) : null}
 
       {preview.newFolders.length > 0 ? (
         <Text variant="footnote" color="tertiary" style={styles.note} numberOfLines={3}>
@@ -431,7 +412,7 @@ function PreviewState({
       {lockedMatches.length > 0 ? (
         <View style={styles.lockBox}>
           <Text variant="footnote" color="secondary">
-            Unlock these folders to import into them.
+            Unlock to import into these folders.
           </Text>
           {lockedMatches.map((folder) => (
             <SettingRow
@@ -468,22 +449,22 @@ function PreviewState({
           <SettingRow
             icon="options-outline"
             label="Advanced"
-            description={advanced ? "Duplicates and all-or-nothing" : undefined}
             onPress={onAdvanced}
             value={advanced ? "Hide" : "Show"}
             divider={false}
           />
           {advanced ? (
             <View style={styles.advancedBody}>
-              <Text variant="label" color="secondary" style={styles.advancedLabel}>
-                When a bookmark already exists
+              <Text variant="label" color="secondary">
+                Duplicates
               </Text>
               <Segmented options={POLICY_OPTIONS} value={policy} onChange={onPolicy} />
               <SettingRow
                 icon="shield-checkmark-outline"
                 label="All at once"
-                description={atomic ? "Import everything or nothing" : "Keep rows that succeed"}
+                description={atomic ? "Everything or nothing" : "Keep rows that succeed"}
                 right={<Toggle value={atomic} onValueChange={onAtomic} />}
+                rightFit="content"
                 divider={false}
               />
             </View>
@@ -507,25 +488,23 @@ function Metric({ label, value }: { label: string; value: number }) {
 }
 
 const styles = StyleSheet.create({
-  busy: { alignItems: "center", paddingVertical: spacing[16] },
+  busy: { alignItems: "center", paddingVertical: spacing[12] },
   metrics: {
     flexDirection: "row",
-    gap: spacing[12],
+    gap: spacing[8],
     marginBottom: spacing[8],
   },
   metric: {
     flex: 1,
     borderRadius: radius.lg,
-    paddingVertical: spacing[10],
+    paddingVertical: spacing[8],
     alignItems: "center",
     gap: spacing[2],
   },
   note: { marginTop: spacing[4] },
-  footnote: { textAlign: "center", marginBottom: spacing[16] },
-  samples: { marginTop: spacing[10], gap: spacing[4] },
+  samples: { marginTop: spacing[8], gap: spacing[4] },
   lockBox: { marginTop: spacing[12] },
   actions: { gap: spacing[4], marginTop: spacing[16] },
   advancedWrap: { marginTop: spacing[8] },
   advancedBody: { gap: spacing[10], paddingBottom: spacing[4] },
-  advancedLabel: { marginTop: spacing[4] },
 });

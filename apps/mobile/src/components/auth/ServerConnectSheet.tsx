@@ -207,8 +207,6 @@ export function ServerConnectSheet({
         iconColor={palette.blue}
         iconBackground="rgba(79,125,166,0.14)"
         title="Server URL"
-        subtitle="A health check runs before you switch."
-        titleVariant="title2"
       />
 
       <Input
@@ -310,7 +308,7 @@ export function ServerConnectSheet({
 }
 
 const styles = StyleSheet.create({
-  recents: { marginTop: spacing[16], gap: spacing[8] },
+  recents: { marginTop: spacing[12], gap: spacing[8] },
   recentRow: {
     minHeight: 44,
     borderWidth: 1,
@@ -323,7 +321,7 @@ const styles = StyleSheet.create({
   },
   recentCopy: { flex: 1, minWidth: 0 },
   currentRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: spacing[10] },
-  actions: { flexDirection: "row", alignItems: "center", marginTop: spacing[20] },
+  actions: { flexDirection: "row", alignItems: "center", marginTop: spacing[16] },
   changeBtn: {
     paddingHorizontal: spacing[20],
     flexDirection: "row",

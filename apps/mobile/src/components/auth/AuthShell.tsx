@@ -35,9 +35,9 @@ export function AuthShell({ title, subtitle, children, footer, style }: AuthShel
   const compactLandscape = isLandscape && !isTablet && !isWideLayout;
   const topPadding = insets.top + (compactLandscape ? spacing[16] : spacing[24]);
   const bottomPadding = insets.bottom + (compactLandscape ? spacing[16] : spacing[24]);
-  const contentTopMargin = compactLandscape ? spacing[20] : spacing[28];
-  const footerTopMargin = compactLandscape ? spacing[20] : spacing[24];
-  const titleTopMargin = compactLandscape ? spacing[14] : spacing[20];
+  const contentTopMargin = compactLandscape ? spacing[16] : spacing[24];
+  const footerTopMargin = compactLandscape ? spacing[16] : spacing[20];
+  const titleTopMargin = compactLandscape ? spacing[12] : spacing[16];
   const subtitleTopMargin = compactLandscape ? spacing[4] : spacing[6];
   const horizontalPadding = isWideLayout ? spacing[32] : spacing[24];
 
@@ -49,7 +49,7 @@ export function AuthShell({ title, subtitle, children, footer, style }: AuthShel
       </Text>
       {subtitle ? (
         <Text
-          variant="body"
+          variant="footnote"
           color="secondary"
           align="center"
           style={{ marginTop: subtitleTopMargin }}

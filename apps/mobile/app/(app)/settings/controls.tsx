@@ -37,14 +37,13 @@ export default function ControlsScreen() {
     <SettingsPage title="Controls">
       <SettingsScrollView>
         <SettingsGroup
-          label="Bookmarks"
+          label="Create button"
           compact
-          footer="These actions apply to the create button on the main Bookmarks page."
+          footer="On the Bookmarks screen."
         >
           <SettingRow
             icon="hand-left-outline"
             label="Tap"
-            description="Choose what happens when you tap the create button."
             right={
               <SettingsSelect
                 title="Tap action"
@@ -57,7 +56,6 @@ export default function ControlsScreen() {
           <SettingRow
             icon="finger-print-outline"
             label="Press and hold"
-            description="Choose a shortcut for pressing and holding the create button."
             right={
               <SettingsSelect
                 title="Press and hold action"

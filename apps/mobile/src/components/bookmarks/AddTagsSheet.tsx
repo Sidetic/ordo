@@ -73,14 +73,7 @@ export function AddTagsSheet({
   return (
     <>
       <FloatingPanel visible={visible} onDismiss={onDismiss}>
-        <PanelHeader
-          title="Add tags"
-          subtitle={
-            count === 1
-              ? "These tags will be added to the selected bookmark."
-              : `These tags will be added to ${count} bookmarks.`
-          }
-        />
+        <PanelHeader title="Add tags" />
         <TagSelectList
           selectedIds={selectedIds}
           onToggle={toggle}
@@ -113,5 +106,5 @@ export function AddTagsSheet({
 
 const styles = StyleSheet.create({
   error: { marginTop: spacing[12] },
-  actions: { flexDirection: "row", gap: spacing[10], marginTop: spacing[20] },
+  actions: { flexDirection: "row", gap: spacing[10], marginTop: spacing[16] },
 });

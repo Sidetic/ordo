@@ -34,9 +34,9 @@ const FORMAT_OPTIONS: ReadonlyArray<{ value: ExportFormat; label: string }> = [
 ];
 
 const FORMAT_HINTS: Record<ExportFormat, string> = {
-  json: "Everything — folders, tags, and read state. Best for Ordo backups and moving servers.",
-  html: "The browser bookmark format. Best for importing into Chrome, Firefox, or Safari.",
-  csv: "Plain columns, one bookmark per row. Best for spreadsheets and Raindrop.io.",
+  json: "Full backup — folders, tags, and read state.",
+  html: "Browser bookmark file.",
+  csv: "One bookmark per row.",
 };
 
 export default function DataScreen() {
@@ -90,28 +90,28 @@ export default function DataScreen() {
 
   const exportLabel = (() => {
     const fmt = format.toUpperCase();
-    if (isLibrary) return more ? `Export library as ${fmt}` : "Export library";
+    if (isLibrary) return more ? `Export as ${fmt}` : "Export library";
     if (selectedFolderIds.length === 1) {
       const name =
         folders.find((f) => f.id === selectedFolderIds[0])?.name.split(" / ").pop() ?? "folder";
       return more ? `Export ${name} as ${fmt}` : `Export ${name}`;
     }
     return more
-      ? `Export ${selectedFolderIds.length} folders as ${fmt}`
+      ? `Export ${selectedFolderIds.length} as ${fmt}`
       : `Export ${selectedFolderIds.length} folders`;
   })();
 
   const exportFooter = more
     ? lockedInScope.length > 0
       ? isLibrary
-        ? `Excluded until unlocked: ${lockedInScope.map((f) => f.name).join(", ")}.`
+        ? `Locked until unlocked: ${lockedInScope.map((f) => f.name).join(", ")}.`
         : lockedInScope.length === 1
-          ? "This folder is locked. Unlock it, then export."
+          ? "Unlock this folder, then export."
           : "Unlock locked folders, then export."
       : isLibrary
         ? undefined
-        : "Unfiled bookmarks aren't included when you pick folders."
-    : "JSON backup of your library. Open More for HTML, CSV, or specific folders.";
+        : "Unfiled bookmarks aren't included."
+    : "JSON backup of your library.";
 
   const exportMutation = useMutation({
     mutationFn: async () => {
@@ -149,21 +149,18 @@ export default function DataScreen() {
           <SettingRow
             icon="ellipsis-horizontal"
             label="More options"
-            description={more ? "Format and folders" : "HTML, CSV, or choose folders"}
             onPress={() => setMore((open) => !open)}
             value={more ? "Hide" : "Show"}
             divider={more}
           />
           {more ? (
             <>
-              <Text variant="caption" color="secondary" style={styles.sectionCaption}>
-                WHAT TO EXPORT
-              </Text>
               <SettingRow
                 icon="library-outline"
                 label="Entire library"
-                description="All folders below, plus unfiled bookmarks"
+                description="Including unfiled"
                 right={radio(isLibrary)}
+                rightFit="content"
                 onPress={() => setSelectedFolderIds([])}
               />
               {folders.map((folder, index) => {
@@ -175,7 +172,6 @@ export default function DataScreen() {
                       key={folder.id}
                       icon="lock-closed-outline"
                       label={folder.name}
-                      description="Locked — excluded until unlocked"
                       value="Unlock"
                       onPress={() => setUnlockTarget({ folder, source: "export" })}
                       divider={!last}
@@ -187,21 +183,15 @@ export default function DataScreen() {
                     key={folder.id}
                     icon={folder.protected ? "lock-open-outline" : "folder-outline"}
                     label={folder.name}
-                    description={
-                      folder.protected
-                        ? `${folder.bookmarkCount} bookmarks · unlocked`
-                        : `${folder.bookmarkCount} bookmarks`
-                    }
+                    description={`${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}`}
                     right={check(selectedFolderIds.includes(folder.id))}
+                    rightFit="content"
                     onPress={() => toggleFolder(folder.id)}
                     divider={!last}
                   />
                 );
               })}
               <View style={styles.pad}>
-                <Text variant="caption" color="secondary" style={styles.labelGap}>
-                  FILE FORMAT
-                </Text>
                 <Segmented options={FORMAT_OPTIONS} value={format} onChange={setFormat} />
                 <Text variant="footnote" color="tertiary" style={styles.tightTop}>
                   {FORMAT_HINTS[format]}
@@ -242,7 +232,5 @@ export default function DataScreen() {
 
 const styles = StyleSheet.create({
   pad: { padding: spacing[16] },
-  tightTop: { marginTop: spacing[4] },
-  labelGap: { marginBottom: spacing[8] },
-  sectionCaption: { paddingTop: spacing[8], paddingHorizontal: spacing[16] },
+  tightTop: { marginTop: spacing[8] },
 });

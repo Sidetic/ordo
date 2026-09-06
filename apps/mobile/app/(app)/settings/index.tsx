@@ -32,56 +32,49 @@ export default function SettingsScreen() {
           <SettingRow
             icon="person-circle-outline"
             label="Account"
-            description="Profile, email, password, and authenticator"
             onPress={() => router.push("/settings/account")}
             showChevron
           />
           <SettingRow
             icon="color-palette-outline"
             label="Appearance"
-            description="Theme, display, and navigation"
             onPress={() => router.push("/settings/appearance")}
             showChevron
           />
           <SettingRow
             icon="options-outline"
             label="Controls"
-            description="Button shortcuts and gestures"
             onPress={() => router.push("/settings/controls")}
             showChevron
           />
           <SettingRow
             icon="phone-portrait-outline"
             label="Active sessions"
-            description="Devices signed in to your account"
             onPress={() => router.push("/settings/sessions")}
             showChevron
           />
           <SettingRow
             icon="server-outline"
             label="Server"
-            description="Connection and self-hosting"
             onPress={() => router.push("/settings/server")}
             showChevron
           />
           <SettingRow
             icon="swap-horizontal-outline"
             label="Data"
-            description="Import and export bookmarks"
             onPress={() => router.push("/settings/data")}
             showChevron
           />
           <SettingRow
             icon="information-circle-outline"
             label="About"
-            description="Version, updates, and project links"
             onPress={() => router.push("/settings/about")}
             showChevron
             divider={false}
           />
         </SettingsGroup>
 
-        <SettingsGroup label="Account">
+        <SettingsGroup>
           <View style={styles.signout}>
             <Button
               label="Sign out"
@@ -100,7 +93,7 @@ export default function SettingsScreen() {
         onDismiss={() => setConfirmingLogout(false)}
         icon="log-out-outline"
         title="Sign out?"
-        message="You'll need to sign in again to access your bookmarks."
+        message="You'll need to sign in again."
         confirmLabel="Sign out"
         loading={logout.isPending}
         dismissible={!logout.isPending}

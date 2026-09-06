@@ -218,7 +218,7 @@ export default function TagDetailScreen() {
           <EmptyState
             icon="pricetag-outline"
             title="No bookmarks with this tag"
-            message="Save a bookmark with this tag, or pick a different one."
+            message="Save a bookmark with this tag, or pick another."
           />
         </ScreenContent>
       ) : list.isLoading ? (
@@ -295,7 +295,7 @@ export default function TagDetailScreen() {
       />
 
       <FloatingPanel visible={tagActionsOpen} onDismiss={() => setTagActionsOpen(false)}>
-        <PanelHeader title={anchor?.name ?? "Tag"} />
+        <PanelHeader title={anchor?.name ?? "Tag"} style={styles.tagActionsTitle} />
         <SheetActionRow
           icon="create-outline"
           label="Edit tag"
@@ -313,6 +313,7 @@ export default function TagDetailScreen() {
             setTimeout(() => setDeleteTagOpen(true), 100);
           }}
         />
+        <Button label="Cancel" variant="ghost" block onPress={() => setTagActionsOpen(false)} style={styles.tagActionsCancel} />
       </FloatingPanel>
 
       <EditTagPanel
@@ -331,7 +332,7 @@ export default function TagDetailScreen() {
               : `Delete "${anchor.name}"?`
             : ""
         }
-        message="The tag is removed everywhere. Bookmarks are kept."
+        message="The tag is removed. Bookmarks are kept."
         confirmLabel="Delete tag"
         loading={deleteTag.isPending}
         onConfirm={() => {
@@ -385,4 +386,6 @@ const styles = StyleSheet.create({
   iconBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   headerActions: { flexDirection: "row", alignItems: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
+  tagActionsTitle: { marginBottom: spacing[8] },
+  tagActionsCancel: { marginTop: spacing[8] },
 });

@@ -100,7 +100,7 @@ export function MfaStepUpPanel({
         autoFocus
         onComplete={(next) => void submit(next)}
       />
-      <View style={{ height: spacing[20] }} />
+      <View style={{ height: spacing[16] }} />
       <Button
         label={confirmLabel}
         variant={confirmVariant}

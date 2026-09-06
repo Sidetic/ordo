@@ -83,11 +83,7 @@ function ChangeEmailForm() {
         style={{ flex: 1 }}
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-          <SettingsGroup
-            label="Change email"
-            compact
-            footer={otpRequestFooter(smtpConfigured, "email-change")}
-          >
+          <SettingsGroup compact footer={otpRequestFooter(smtpConfigured, "email-change")}>
             <SettingsForm style={styles.form}>
               <OtpDeliveryHint smtpConfigured={smtpConfigured} compact />
               <Input
@@ -123,7 +119,7 @@ function ChangeEmailForm() {
               />
 
               <Button
-                label="Send verification code"
+                label="Send code"
                 block
                 size="lg"
                 onPress={submit}
@@ -138,5 +134,5 @@ function ChangeEmailForm() {
 }
 
 const styles = {
-  form: { padding: spacing[16], gap: spacing[16] },
+  form: { padding: spacing[16], gap: spacing[12] },
 };

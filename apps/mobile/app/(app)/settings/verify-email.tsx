@@ -102,11 +102,7 @@ function VerifyEmailChangeForm({ email }: { email: string }) {
         style={{ flex: 1 }}
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-          <SettingsGroup
-            label="Verification"
-            compact
-            footer={otpEnterHelper(smtpConfigured, email || undefined)}
-          >
+          <SettingsGroup compact footer={otpEnterHelper(smtpConfigured, email || undefined)}>
             <SettingsForm style={styles.form}>
               <OtpDeliveryHint smtpConfigured={smtpConfigured} compact />
               <OtpInput
@@ -145,5 +141,5 @@ function VerifyEmailChangeForm({ email }: { email: string }) {
 }
 
 const styles = {
-  form: { padding: spacing[16], gap: spacing[16] },
+  form: { padding: spacing[16], gap: spacing[12] },
 };

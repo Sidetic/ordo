@@ -57,7 +57,7 @@ export default function ChangePasswordScreen() {
         style={{ flex: 1 }}
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-          <SettingsGroup label="Change password" compact footer="Changing your password signs out every device, including this one.">
+          <SettingsGroup compact footer="This signs out every device, including this one.">
             <SettingsForm style={styles.form}>
               <Input
                 label="Current password"
@@ -112,6 +112,6 @@ export default function ChangePasswordScreen() {
 }
 
 const styles = {
-  form: { padding: spacing[16], gap: spacing[16] },
+  form: { padding: spacing[16], gap: spacing[12] },
   formError: { textAlign: "center" as const },
 };

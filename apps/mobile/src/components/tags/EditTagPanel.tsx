@@ -67,7 +67,7 @@ export function EditTagPanel({ visible, tag, onDismiss }: EditTagPanelProps) {
 
   return (
     <FloatingPanel visible={visible && !!tag} onDismiss={onDismiss}>
-      <PanelHeader title="Edit tag" subtitle={tag?.name} />
+      <PanelHeader title="Edit tag" />
       <Input
         value={name}
         onChangeText={setName}
@@ -77,7 +77,7 @@ export function EditTagPanel({ visible, tag, onDismiss }: EditTagPanelProps) {
         returnKeyType="done"
         onSubmitEditing={() => void save()}
       />
-      <Text variant="label" color="tertiary" style={styles.label}>COLOR</Text>
+      <Text variant="label" color="tertiary" style={styles.label}>Color</Text>
       <TagColorPicker value={color} onChange={setColor} />
       <View style={styles.actions}>
         <Button label="Cancel" variant="secondary" onPress={onDismiss} style={{ flex: 1 }} />
@@ -88,6 +88,6 @@ export function EditTagPanel({ visible, tag, onDismiss }: EditTagPanelProps) {
 }
 
 const styles = StyleSheet.create({
-  label: { marginTop: spacing[16], marginBottom: spacing[10] },
-  actions: { flexDirection: "row", gap: spacing[10], marginTop: spacing[20] },
+  label: { marginTop: spacing[12], marginBottom: spacing[8] },
+  actions: { flexDirection: "row", gap: spacing[10], marginTop: spacing[16] },
 });

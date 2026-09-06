@@ -190,7 +190,7 @@ export function AddBookmarkSheet({
             <PanelHeader title="Save bookmark" />
             {allowFolderSelection ? (
               <View style={styles.destinationRow}>
-                <Text variant="label" color="tertiary">DESTINATION</Text>
+                <Text variant="label" color="tertiary">Destination</Text>
                 <SettingsSelect
                   value={selectedDestination}
                   options={destinationOptions}
@@ -219,7 +219,7 @@ export function AddBookmarkSheet({
             />
 
             <View style={styles.tagsRow}>
-              <Text variant="label" color="tertiary">TAGS</Text>
+              <Text variant="label" color="tertiary">Tags</Text>
               <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel={showTagPicker ? "Hide tag picker" : "Show tag picker"}
@@ -295,13 +295,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing[12],
-    marginBottom: spacing[16],
+    marginBottom: spacing[12],
   },
   tagsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: spacing[14],
+    marginTop: spacing[12],
     marginBottom: spacing[6],
   },
   selectedTagWrap: {
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: "row",
     gap: spacing[10],
-    marginTop: spacing[20],
+    marginTop: spacing[16],
   },
   action: { flex: 1 },
   saveAction: { flex: 1.4 },

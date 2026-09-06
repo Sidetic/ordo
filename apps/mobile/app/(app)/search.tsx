@@ -223,8 +223,8 @@ export default function SearchScreen() {
               title="Search your library"
               message={
                 (allTags?.length ?? 0) > 0
-                  ? "Find bookmarks by title, URL, or article content, or pick a tag."
-                  : "Find bookmarks by title, URL, or article content."
+                  ? "Search by title, URL, article, or tag."
+                  : "Search by title, URL, or article."
               }
             />
           </View>

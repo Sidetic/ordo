@@ -79,14 +79,10 @@ export default function DeleteAccountScreen() {
       >
         <SettingsScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           <SettingsGroup
-            label="Danger zone"
             compact
-            footer="All bookmarks, folders, and sessions will be permanently deleted. This can't be undone."
+            footer="Bookmarks, folders, and sessions are permanently deleted."
           >
             <SettingsForm style={styles.form}>
-              <Text variant="body" color="secondary">
-                Enter your password and type {DELETE_ACCOUNT_CONFIRMATION} to confirm.
-              </Text>
               <Input
                 label="Password"
                 value={currentPassword}
@@ -129,7 +125,7 @@ export default function DeleteAccountScreen() {
         visible={mfaOpen}
         onDismiss={() => setMfaOpen(false)}
         title="Delete account?"
-        description="Enter a current authenticator or backup code. This can't be undone."
+        description="Enter an authenticator or backup code. This can't be undone."
         confirmLabel="Delete account"
         confirmVariant="danger"
         onConfirm={async (code) => {
@@ -147,5 +143,5 @@ export default function DeleteAccountScreen() {
 }
 
 const styles = {
-  form: { padding: spacing[16], gap: spacing[16] },
+  form: { padding: spacing[16], gap: spacing[12] },
 };

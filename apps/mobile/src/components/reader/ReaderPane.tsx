@@ -656,7 +656,7 @@ function ReaderPaneInner({
             <EmptyState
               icon="lock-closed-outline"
               title="This folder is locked"
-              message="Unlock the folder to read this bookmark."
+              message="Unlock the folder to read it."
             />
           )}
         </ScreenContent>
@@ -768,8 +768,8 @@ function ReaderPaneInner({
                   <Skeleton width="100%" height={16} />
                   <Skeleton width="92%" height={16} style={{ marginTop: spacing[8] }} />
                   <Skeleton width="68%" height={16} style={{ marginTop: spacing[8] }} />
-                  <Text variant="body" color="secondary" style={styles.preparingText}>
-                    Preparing this page for reading…
+                  <Text variant="footnote" color="secondary" style={styles.preparingText}>
+                    Preparing this page…
                   </Text>
                 </View>
               ) : (
@@ -777,7 +777,6 @@ function ReaderPaneInner({
                   compact
                   icon="reader-outline"
                   title="No readable content"
-                  message="No readable content was captured for this page."
                   action={<Button label="Open original" onPress={handleOpenOriginal} />}
                 />
                 )}
@@ -933,7 +932,7 @@ export function ReaderPanePlaceholder() {
       <EmptyState
         icon="reader-outline"
         title="Select a bookmark"
-        message="Choose a bookmark from the list to preview it here."
+        message="Choose a bookmark from the list."
       />
     </View>
   );

@@ -99,14 +99,14 @@ export function SelectionTools({
         : `Delete ${bookmarks.length} bookmarks?`;
 
   const deleteMessage = mixed
-    ? "Folders and everything in them will be permanently deleted, along with the selected bookmarks."
+    ? "Folders and their bookmarks will be deleted, along with the selected bookmarks."
     : foldersOnly
       ? folders.some((folder) => folder.bookmarkCount > 0)
-        ? "This will permanently delete the folders and every bookmark inside them."
-        : "These folders will be permanently deleted."
+        ? "Folders and every bookmark inside them will be deleted."
+        : "These folders will be deleted."
       : bookmarks.length === 1
-        ? "This bookmark will be permanently deleted."
-        : "These bookmarks will be permanently deleted.";
+        ? "This bookmark will be deleted."
+        : "These bookmarks will be deleted.";
 
   const actions: SelectionAction[] = [];
   if (active) {

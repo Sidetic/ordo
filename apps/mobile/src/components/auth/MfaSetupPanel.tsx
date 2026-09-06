@@ -62,7 +62,7 @@ export function MfaSetupPanel({
     return (
       <View style={styles.block}>
         <Text variant="body" color="secondary">
-          Use an authenticator app such as Aegis, Authy, or Google Authenticator.
+          Use an authenticator app to generate login codes.
         </Text>
         <Button label="Set up authenticator" block size="lg" loading={starting} onPress={start} />
         {error ? (

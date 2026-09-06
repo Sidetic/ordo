@@ -133,14 +133,14 @@ export default function AccountScreen() {
           accessibilityLabel="Profile picture"
           style={{
             alignSelf: "center",
-            paddingBottom: spacing[24],
+            paddingBottom: spacing[16],
             opacity: busy ? 0.6 : 1,
           }}
         >
           <UserAvatar user={user} size={72} />
         </Pressable>
 
-        <SettingsGroup label="Account details" compact>
+        <SettingsGroup compact>
           <SettingRow
             icon="person-outline"
             label="Display name"
@@ -181,7 +181,6 @@ export default function AccountScreen() {
           <SettingRow
             icon="trash-outline"
             label="Delete account"
-            description="Permanently deletes your account and data."
             destructive
             onPress={() => router.push("/settings/delete-account")}
             showChevron
@@ -217,6 +216,6 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  menuTitle: { marginBottom: spacing[12] },
+  menuTitle: { marginBottom: spacing[8] },
   menuCancel: { marginTop: spacing[8] },
 });

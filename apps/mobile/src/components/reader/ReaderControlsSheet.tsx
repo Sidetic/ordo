@@ -81,7 +81,7 @@ export function ReaderControlsSheet({
 }: ReaderControlsSheetProps) {
   return (
     <FloatingPanel visible={visible} onDismiss={onDismiss} maxWidth={420}>
-      <PanelHeader title="Reader settings" style={styles.title} />
+      <PanelHeader title="Reader" style={styles.title} />
 
       <ControlGroup label="Text size" accessibilityHint="Changes the article text size.">
         <Segmented
@@ -111,7 +111,7 @@ export function ReaderControlsSheet({
         <SettingRow
           icon="contrast-outline"
           label="AMOLED black"
-          description={effectiveDark ? "Use pure black surfaces while reading." : "Available when dark mode is active."}
+          description={effectiveDark ? undefined : "Available in dark mode"}
           right={
             <Toggle
               value={preferences.amoled && effectiveDark}
@@ -119,6 +119,7 @@ export function ReaderControlsSheet({
               disabled={!effectiveDark}
             />
           }
+          rightFit="content"
           divider={false}
         />
       </View>
@@ -128,7 +129,7 @@ export function ReaderControlsSheet({
 
 const styles = StyleSheet.create({
   title: { marginBottom: spacing[12] },
-  group: { marginBottom: spacing[14] },
+  group: { marginBottom: spacing[12] },
   groupControl: { marginTop: spacing[6] },
-  amoledRow: { marginTop: spacing[2], marginHorizontal: -spacing[20] },
+  amoledRow: { marginTop: spacing[2], marginHorizontal: -spacing[16] },
 });

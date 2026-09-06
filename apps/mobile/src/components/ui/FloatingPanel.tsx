@@ -111,6 +111,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radius["2xl"],
-    padding: spacing[20],
+    padding: spacing[16],
   },
 });

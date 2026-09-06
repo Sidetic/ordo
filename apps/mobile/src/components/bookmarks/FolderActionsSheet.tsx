@@ -412,10 +412,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted, onSe
 
       {folder && mode === "lockChoice" ? (
         <>
-          <PanelHeader
-            title="Lock folder"
-            subtitle="Choose how you want to unlock this folder."
-          />
+          <PanelHeader title="Lock folder" />
           {error ? <Text variant="footnote" color="danger" style={styles.error}>{error}</Text> : null}
           {serverInfo.data && !lockTypesSupported ? (
             <Text variant="footnote" color="tertiary" style={styles.staleServer}>
@@ -448,10 +445,10 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted, onSe
             }
             subtitle={
               lockType === "pattern"
-                ? (savedPattern.length ? "Draw the same pattern again." : "Draw a pattern connecting at least 4 dots.")
+                ? (savedPattern.length ? "Draw the same pattern again." : "Connect at least 4 dots.")
                 : lockType === "pin"
                   ? (savedPin ? "Enter the same PIN again." : "Choose 4 or 6 digits.")
-                  : "Use at least 4 characters."
+                  : "At least 4 characters."
             }
           />
           {lockType === "pattern" ? (
@@ -541,8 +538,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted, onSe
             iconColor={palette.danger}
             iconBackground={palette.dangerSoft}
             title="Remove lock?"
-            subtitle="This folder will no longer require authentication to open."
-            subtitleVariant="body"
+            subtitle="Anyone on this device can open it."
           />
           {(folder.lockType ?? "password") === "device" ? (
             error ? <Text variant="footnote" color="danger" align="center">{error}</Text> : null
@@ -639,8 +635,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted, onSe
             iconColor={palette.danger}
             iconBackground={palette.dangerSoft}
             title="Remove lock?"
-            subtitle="Enter your account password to remove this folder's lock."
-            subtitleVariant="body"
+            subtitle="Enter your account password."
           />
           <Input
             label="Account password"
@@ -683,10 +678,7 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted, onSe
 
       {folder && mode === "icon" ? (
         <>
-          <PanelHeader
-            title="Choose an icon"
-            subtitle="Pick an icon that makes this folder easy to spot."
-          />
+          <PanelHeader title="Choose an icon" />
           <FolderIconPicker value={icon} onChange={setIcon} />
           {error ? <Text variant="footnote" color="danger" style={styles.error}>{error}</Text> : null}
           <View style={styles.actions}>
@@ -705,10 +697,9 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted, onSe
             title={`Delete ${folder.name}?`}
             subtitle={
               folder.bookmarkCount > 0
-                ? `This will permanently delete the folder and its ${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}.`
-                : "This folder will be permanently deleted."
+                ? `Also deletes ${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}.`
+                : "This folder will be deleted."
             }
-            subtitleVariant="body"
           />
           {error ? <Text variant="footnote" color="danger" align="center" style={styles.error}>{error}</Text> : null}
           <View style={styles.actions}>
@@ -725,7 +716,7 @@ const styles = StyleSheet.create({
   menuHeader: { marginBottom: spacing[8] },
   error: { marginTop: spacing[10] },
   menuCancel: { marginTop: spacing[8] },
-  actions: { gap: spacing[8], marginTop: spacing[20] },
+  actions: { gap: spacing[8], marginTop: spacing[16] },
   forgot: { alignSelf: "center", marginTop: spacing[10] },
   confirmInput: { marginTop: spacing[12] },
   pinBoxes: { marginTop: spacing[16] },

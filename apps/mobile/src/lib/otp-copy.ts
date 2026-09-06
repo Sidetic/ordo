@@ -9,12 +9,12 @@ export function otpRequestFooter(
 ): string {
   if (smtpConfigured === false) {
     return kind === "email-change"
-      ? "This server isn't sending mail. The code will be printed in the server console."
-      : "If an account exists, the reset code will be printed in the server console.";
+      ? "The code will print in the server console."
+      : "If the account exists, the code prints in the server console.";
   }
   return kind === "email-change"
-    ? "A verification code will be sent to your new address."
-    : "If an account exists, we'll email a reset code.";
+    ? "We'll send a code to the new address."
+    : "If the account exists, we'll email a reset code.";
 }
 
 export function otpSentToast(
@@ -32,15 +32,15 @@ export function otpEnterHelper(
   address?: string,
 ): string {
   if (smtpConfigured === false) {
-    return "Enter the 6-digit code printed in the server console.";
+    return "Enter the 6-digit code from the server console.";
   }
   if (address) return `Enter the code sent to ${address}.`;
-  return "Enter the 6-digit code sent to your inbox.";
+  return "Enter the 6-digit code from your inbox.";
 }
 
 export function otpVerifySubtitle(smtpConfigured: boolean | undefined): string {
   if (smtpConfigured === false) {
-    return "This server isn't sending mail. Enter the 6-digit code from the server console.";
+    return "Enter the 6-digit code from the server console.";
   }
-  return "We sent a 6-digit code to your inbox. Enter it below to continue.";
+  return "Enter the 6-digit code from your inbox.";
 }

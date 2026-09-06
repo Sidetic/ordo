@@ -95,7 +95,7 @@ export default function RegisterScreen() {
             label="Display name"
             value={displayName}
             onChangeText={setDisplayName}
-            placeholder="How should we greet you?"
+            placeholder="Your name"
             textContentType="name"
             autoComplete="name"
             autoCapitalize="words"

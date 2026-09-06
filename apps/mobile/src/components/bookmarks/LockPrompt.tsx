@@ -49,9 +49,9 @@ export interface LockPromptProps extends UnlockFormProps {
 }
 
 function unlockSubtitle(lockType: FolderLockType | null | undefined, digits: FolderPinLength): string {
-  if (lockType === "device") return "Use Face ID, a fingerprint, or your device passcode.";
+  if (lockType === "device") return "Face ID, fingerprint, or device passcode.";
   if (lockType === "pattern") return "Draw your pattern.";
-  if (lockType === "pin") return `Enter your ${digits}-digit PIN.`;
+  if (lockType === "pin") return `${digits}-digit PIN.`;
   return "Enter the folder password.";
 }
 
@@ -277,7 +277,7 @@ export function UnlockForm({
         </>
       ) : null}
       <Text variant="caption" color="tertiary" align="center" style={styles.footnote}>
-        Stays unlocked for {UNLOCK_MINUTES} minutes on this device.
+        Unlocked for {UNLOCK_MINUTES} minutes on this device.
       </Text>
       {onCancel ? (
         <>
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[12],
   },
   footnote: {
-    marginTop: spacing[16],
+    marginTop: spacing[12],
   },
   screen: {
     flex: 1,

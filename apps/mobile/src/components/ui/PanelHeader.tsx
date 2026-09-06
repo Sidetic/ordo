@@ -13,7 +13,7 @@ export function PanelHeader({
   icon,
   iconColor,
   iconBackground,
-  titleVariant = "title3",
+  titleVariant = "title2",
   subtitleVariant = "footnote",
   numberOfLines,
   accessory,
@@ -48,6 +48,7 @@ export function PanelHeader({
           variant={subtitleVariant}
           color="secondary"
           align="center"
+          numberOfLines={3}
           style={styles.subtitle}
         >
           {subtitle}
@@ -60,15 +61,15 @@ export function PanelHeader({
 const styles = StyleSheet.create({
   wrap: {
     alignItems: "center",
-    marginBottom: spacing[16],
+    marginBottom: spacing[12],
   },
   icon: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: radius.lg,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing[12],
+    marginBottom: spacing[8],
   },
   titleCluster: {
     flexDirection: "row",
@@ -78,5 +79,5 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
   },
   title: { flexShrink: 1 },
-  subtitle: { marginTop: spacing[4], maxWidth: 280, alignSelf: "center" },
+  subtitle: { marginTop: spacing[4], alignSelf: "stretch" },
 });

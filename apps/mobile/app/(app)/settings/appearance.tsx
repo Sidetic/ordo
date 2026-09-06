@@ -46,7 +46,6 @@ export default function AppearanceScreen() {
           <SettingRow
             icon="color-palette-outline"
             label="Theme"
-            description="Choose how Ordo looks on this device."
             right={
               <SettingsSelect
                 title="Theme"
@@ -63,7 +62,7 @@ export default function AppearanceScreen() {
           <SettingRow
             icon="contrast-outline"
             label="AMOLED black"
-            description={isDarkActive ? "Use pure black surfaces in dark mode." : "Available when dark mode is active."}
+            description={isDarkActive ? undefined : "Available in dark mode"}
             right={
               <Toggle
                 value={amoled && isDarkActive}
@@ -71,6 +70,7 @@ export default function AppearanceScreen() {
                 disabled={!isDarkActive}
               />
             }
+            rightFit="content"
             divider={false}
           />
         </SettingsGroup>
@@ -79,7 +79,6 @@ export default function AppearanceScreen() {
           <SettingRow
             icon="navigate-outline"
             label="Navigation style"
-            description="Choose how primary destinations are presented."
             right={
               <SettingsSelect
                 title="Navigation style"
@@ -92,8 +91,8 @@ export default function AppearanceScreen() {
           <SettingRow
             icon="list-outline"
             label="Show labels"
-            description="Display destination names below navigation icons."
             right={<Toggle value={showNavigationLabels} onValueChange={setShowNavigationLabels} />}
+            rightFit="content"
             divider={false}
           />
         </SettingsGroup>
