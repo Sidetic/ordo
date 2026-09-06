@@ -6,6 +6,7 @@ import {
   normalizeTagColor,
   bookmarkContentKind,
   type BookmarkDto,
+  type ContentKindOverride,
   type ExtractionReason,
   type FetchStatus,
   type FolderDto,
@@ -109,6 +110,8 @@ const EXTRACTION_REASONS: readonly ExtractionReason[] = [
   "fetch_error",
 ];
 
+const CONTENT_KIND_OVERRIDES: readonly ContentKindOverride[] = ["article", "web"];
+
 export type BookmarkDtoFields = Pick<
   Bookmark,
   | "id"
@@ -122,6 +125,7 @@ export type BookmarkDtoFields = Pick<
   | "fetchStatus"
   | "extractionReason"
   | "extractionVersion"
+  | "contentKindOverride"
   | "author"
   | "publishedAt"
   | "readingTimeMinutes"
@@ -158,6 +162,9 @@ export function toBookmarkDto(b: BookmarkDtoFields): BookmarkDto {
   const extractionReason = EXTRACTION_REASONS.includes(b.extractionReason as ExtractionReason)
     ? (b.extractionReason as ExtractionReason)
     : null;
+  const contentKindOverride = CONTENT_KIND_OVERRIDES.includes(b.contentKindOverride as ContentKindOverride)
+    ? (b.contentKindOverride as ContentKindOverride)
+    : null;
   return {
     id: b.id,
     folderId: b.folderId,
@@ -169,7 +176,8 @@ export function toBookmarkDto(b: BookmarkDtoFields): BookmarkDto {
     contentMarkdown: b.contentMarkdown,
     fetchStatus,
     extractionReason,
-    contentKind: bookmarkContentKind(fetchStatus, extractionReason),
+    contentKind: bookmarkContentKind(fetchStatus, extractionReason, contentKindOverride),
+    contentKindOverride,
     extractionVersion: b.extractionVersion,
     author: b.author,
     publishedAt: b.publishedAt?.toISOString() ?? null,

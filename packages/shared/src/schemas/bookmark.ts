@@ -32,9 +32,15 @@ export const UpdateBookmarkSchema = z
       .min(0, { message: "Reading progress must be between 0 and 1." })
       .max(1, { message: "Reading progress must be between 0 and 1." })
       .optional(),
+    /** `article` / `web` forces presentation; `null` clears the override. */
+    contentKindOverride: z.enum(["article", "web"]).nullable().optional(),
   })
   .refine(
-    (v) => v.folderId !== undefined || v.isRead !== undefined || v.readProgress !== undefined,
+    (v) =>
+      v.folderId !== undefined ||
+      v.isRead !== undefined ||
+      v.readProgress !== undefined ||
+      v.contentKindOverride !== undefined,
     {
       message: "Provide at least one field to update.",
     },

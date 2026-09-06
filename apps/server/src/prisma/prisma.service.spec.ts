@@ -230,6 +230,7 @@ describe("PrismaService legacy schema migration", () => {
       "readingTimeMinutes",
       "readProgress",
       "completedAt",
+      "contentKindOverride",
     ]) {
       expect(bookmarkCols.some((c) => c.name === column)).toBe(true);
     }

@@ -121,6 +121,9 @@ export type FetchStatus = "pending" | "ok" | "unsupported" | "failed";
  */
 export type ContentKind = "article" | "web" | "media" | "file";
 
+/** User-forced presentation. `null` means use automatic classification. */
+export type ContentKindOverride = "article" | "web";
+
 /**
  * Machine-readable reason a bookmark's extraction ended in `unsupported` or
  * `failed`. Stored alongside `fetchStatus` so clients can explain themselves.
@@ -137,11 +140,13 @@ export type ExtractionReason =
   | "interrupted" // extraction was pending when the server stopped
   | "fetch_error"; // network/HTTP failure while fetching
 
-/** Map extraction outcome to the surface the client should open. */
+/** Map extraction outcome (and an optional user override) to the surface. */
 export function bookmarkContentKind(
   fetchStatus: FetchStatus,
   extractionReason: ExtractionReason | null,
+  override: ContentKindOverride | null = null,
 ): ContentKind | null {
+  if (override === "article" || override === "web") return override;
   if (fetchStatus === "pending") return null;
   if (fetchStatus === "ok") return "article";
   if (extractionReason === "social_video_or_app") return "media";
@@ -162,8 +167,10 @@ export interface BookmarkDto {
   fetchStatus: FetchStatus;
   /** Why extraction ended in `unsupported`/`failed`; null when it succeeded. */
   extractionReason: ExtractionReason | null;
-  /** Presentation kind derived from fetchStatus + extractionReason; null while pending. */
+  /** Presentation kind after applying contentKindOverride; null while pending with no override. */
   contentKind: ContentKind | null;
+  /** User-forced article/website classification; null uses automatic detection. */
+  contentKindOverride?: ContentKindOverride | null;
   /** Pipeline version that produced the stored content (null = pre-versioning). */
   extractionVersion: number | null;
   author: string | null;

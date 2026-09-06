@@ -127,6 +127,45 @@ export function useMarkBookmarkRead() {
   });
 }
 
+/** Force a bookmark to open as an article or a website, or clear the override. */
+export function useSetContentKind() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      folderId,
+      contentKindOverride,
+    }: {
+      id: string;
+      folderId: string | null;
+      contentKindOverride: "article" | "web" | null;
+    }) => bookmarksApi.update(id, { contentKindOverride }, { folderId }),
+    onMutate: ({ id, contentKindOverride }) => {
+      updateBookmarkEverywhere(qc, id, (bookmark) => ({
+        ...bookmark,
+        contentKindOverride,
+        contentKind:
+          contentKindOverride ??
+          (bookmark.fetchStatus === "ok"
+            ? "article"
+            : bookmark.fetchStatus === "pending"
+              ? null
+              : bookmark.contentKind === "media" || bookmark.contentKind === "file"
+                ? bookmark.contentKind
+                : "web"),
+        fetchStatus:
+          contentKindOverride === "article" && bookmark.fetchStatus !== "ok"
+            ? "pending"
+            : bookmark.fetchStatus,
+      }));
+    },
+    onSuccess: (updated) => {
+      updateBookmarkEverywhere(qc, updated.id, (bookmark) => ({ ...bookmark, ...updated }));
+      void qc.invalidateQueries({ queryKey: qk.bookmark(updated.id) });
+    },
+  });
+}
+
 export function useDeleteBookmark(folderId: string | null) {
   return {
     mutate: (

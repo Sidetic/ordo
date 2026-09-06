@@ -157,6 +157,8 @@ model Bookmark {
   extractionReason String?
   /** Pipeline version that produced the stored content; null = pre-versioning. */
   extractionVersion Int?
+  /** User-forced article/website classification (`article` | `web`); null = automatic. */
+  contentKindOverride String?
   author          String?
   publishedAt     DateTime?
   readingTimeMinutes Int?

@@ -6,6 +6,7 @@ const P = (i: number) =>
 const SAMPLE_HTML = `<!DOCTYPE html>
 <html><head>
   <title>Example Article — My Site</title>
+  <meta property="og:type" content="article">
   <meta property="og:title" content="The Real Title">
   <meta name="description" content="A short summary of the article.">
   <meta name="author" content="Jane Doe">
@@ -332,10 +333,46 @@ describe("ReaderService", () => {
       await expectUnsupported("https://example.com/pricing", "not_an_article");
     });
 
-    it("extracts a long essay published at the site root", async () => {
+    it("extracts a long essay published at the site root when it declares itself an article", async () => {
       mockFetch(SAMPLE_HTML);
       const result = await reader.extract("https://grugbrain.dev/");
       expect(result.title).toBe("The Real Title");
+    });
+
+    it("does not auto-classify an unmarked long essay as an article", async () => {
+      mockFetch(`<!DOCTYPE html><html><head>
+        <title>Example Article — My Site</title>
+        <meta property="og:title" content="The Real Title">
+        <meta name="description" content="A short summary of the article.">
+      </head><body>
+        <article><h1>The Real Title</h1>${P(1)}${P(2)}${P(3)}${P(4)}${P(5)}${P(6)}${P(7)}${P(8)}</article>
+      </body></html>`);
+      await expectUnsupported("https://grugbrain.dev/", "not_an_article");
+    });
+
+    it("extracts an unmarked essay when the user forced article classification", async () => {
+      mockFetch(`<!DOCTYPE html><html><head>
+        <title>Example Article — My Site</title>
+        <meta property="og:title" content="The Real Title">
+      </head><body>
+        <article><h1>The Real Title</h1>${P(1)}${P(2)}${P(3)}${P(4)}${P(5)}${P(6)}${P(7)}${P(8)}</article>
+      </body></html>`);
+      const result = await reader.extract("https://grugbrain.dev/", { forceArticle: true });
+      expect(result.title).toBe("The Real Title");
+      expect(result.contentText).toMatch(/Paragraph 2/);
+    });
+
+    it("fetches a commerce URL when the user forced article classification", async () => {
+      mockFetch(SAMPLE_HTML);
+      const result = await reader.extract("https://www.amazon.com/dp/B00TEST123", { forceArticle: true });
+      expect(result.title).toBe("The Real Title");
+    });
+
+    it("still rejects social destinations when article classification is forced", async () => {
+      mockFetchNeverCalled();
+      await expect(reader.extract("https://www.youtube.com/watch?v=abc", { forceArticle: true })).rejects.toMatchObject({
+        reason: "social_video_or_app",
+      });
     });
 
     it("rejects a link-heavy site root after fetching, not by URL alone", async () => {

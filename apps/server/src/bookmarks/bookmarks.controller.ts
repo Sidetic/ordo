@@ -122,6 +122,7 @@ export class BookmarksController {
       folderId?: string | null;
       isRead?: boolean;
       readProgress?: number;
+      contentKindOverride?: "article" | "web" | null;
     },
     @Req() req: Request,
   ): Promise<BookmarkDto> {

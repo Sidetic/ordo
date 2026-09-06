@@ -288,6 +288,41 @@ describe("Bookmarks & Folders (e2e)", () => {
       expect(rejected.body.contentKind).toBe("web");
     });
 
+    it("lets the user mark and unmark a bookmark as an article", async () => {
+      const { agent } = await setup();
+      const res = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/js-only/app" })
+        .expect(201);
+      let stored = await ctx.prisma.bookmark.findUnique({ where: { id: res.body.id } });
+      for (let attempt = 0; attempt < 20 && stored?.fetchStatus === "pending"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        stored = await ctx.prisma.bookmark.findUnique({ where: { id: res.body.id } });
+      }
+      expect(stored?.fetchStatus).toBe("unsupported");
+
+      const marked = await agent
+        .patch(`/api/bookmarks/${res.body.id}`)
+        .send({ contentKindOverride: "article" })
+        .expect(200);
+      expect(marked.body.contentKindOverride).toBe("article");
+      expect(marked.body.contentKind).toBe("article");
+
+      const unmarked = await agent
+        .patch(`/api/bookmarks/${res.body.id}`)
+        .send({ contentKindOverride: "web" })
+        .expect(200);
+      expect(unmarked.body.contentKindOverride).toBe("web");
+      expect(unmarked.body.contentKind).toBe("web");
+
+      const cleared = await agent
+        .patch(`/api/bookmarks/${res.body.id}`)
+        .send({ contentKindOverride: null })
+        .expect(200);
+      expect(cleared.body.contentKindOverride).toBeNull();
+      expect(cleared.body.contentKind).toBe("web");
+    });
+
     it("creates an unfiled bookmark with an explicit null folderId", async () => {
       const { agent } = await setup();
       const res = await agent

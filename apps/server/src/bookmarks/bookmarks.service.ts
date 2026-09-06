@@ -36,6 +36,7 @@ const LIST_SELECT = {
   fetchStatus: true,
   extractionReason: true,
   extractionVersion: true,
+  contentKindOverride: true,
   author: true,
   publishedAt: true,
   readingTimeMinutes: true,
@@ -192,7 +193,12 @@ export class BookmarksService implements OnApplicationBootstrap {
   async update(
     userId: string,
     bookmarkId: string,
-    changes: { folderId?: string | null; isRead?: boolean; readProgress?: number },
+    changes: {
+      folderId?: string | null;
+      isRead?: boolean;
+      readProgress?: number;
+      contentKindOverride?: "article" | "web" | null;
+    },
     tokens: readonly string[],
   ): Promise<BookmarkDto> {
     const bookmark = await this.prisma.bookmark.findFirst({
@@ -210,6 +216,9 @@ export class BookmarksService implements OnApplicationBootstrap {
       isRead?: boolean;
       readProgress?: number;
       completedAt?: Date | null;
+      contentKindOverride?: string | null;
+      fetchStatus?: string;
+      extractionReason?: string | null;
     } = {};
     if (changes.isRead !== undefined) {
       data.isRead = changes.isRead;
@@ -236,12 +245,30 @@ export class BookmarksService implements OnApplicationBootstrap {
         data.folderId = changes.folderId;
       }
     }
+    if (changes.contentKindOverride !== undefined) {
+      data.contentKindOverride = changes.contentKindOverride;
+      if (changes.contentKindOverride === "article" && !bookmark.contentHtml) {
+        data.fetchStatus = "pending";
+        data.extractionReason = null;
+      }
+    }
 
     const updated = await this.prisma.bookmark.update({
       where: { id: bookmarkId },
       data,
       select: LIST_SELECT,
     });
+    if (changes.contentKindOverride === "article" && !bookmark.contentHtml) {
+      this.extraction.enqueue([
+        {
+          bookmarkId,
+          url: bookmark.url,
+          userId,
+          mode: "full",
+          forceArticle: true,
+        },
+      ]);
+    }
     return toBookmarkDto(updated);
   }
 
@@ -444,7 +471,7 @@ export class BookmarksService implements OnApplicationBootstrap {
               { extractionVersion: { lt: EXTRACTION_VERSION } },
             ],
           },
-          select: { id: true, url: true, userId: true },
+          select: { id: true, url: true, userId: true, contentKindOverride: true },
           orderBy: { id: "asc" },
           take: REFRESH_BATCH_SIZE,
         });
@@ -456,6 +483,7 @@ export class BookmarksService implements OnApplicationBootstrap {
             url: row.url,
             userId: row.userId,
             mode: "full" as const,
+            forceArticle: row.contentKindOverride === "article",
           })),
           false,
         );

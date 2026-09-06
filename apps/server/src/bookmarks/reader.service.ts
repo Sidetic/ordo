@@ -39,6 +39,14 @@ export interface ExtractedContent {
   contentText: string;
 }
 
+export interface ExtractOptions {
+  /**
+   * User forced this bookmark to be an article. Skips the high-confidence
+   * article-evidence gate (og:type / JSON-LD Article) and still tries Readability.
+   */
+  forceArticle?: boolean;
+}
+
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
 const MAX_REDIRECTS = 5;
@@ -228,21 +236,22 @@ export class ReaderService {
     bulletListMarker: "-",
   });
 
-  async extract(url: string): Promise<ExtractedContent> {
+  async extract(url: string, options: ExtractOptions = {}): Promise<ExtractedContent> {
+    const forceArticle = options.forceArticle === true;
     const domain = this.safeHostname(url);
-    this.rejectUnsupportedDestination(url);
+    this.rejectUnsupportedDestination(url, forceArticle);
 
-    const html = await this.fetchHtml(url);
+    const html = await this.fetchHtml(url, forceArticle);
     // No `runScripts`: embedded scripts are parsed but never executed.
     const document = new JSDOM(html, { url }).window.document;
 
     const signals = collectPageSignals(document);
     const pageKind = classifyPageSignals(signals);
-    if (pageKind) {
+    if (pageKind && !forceArticle) {
       throw new UnsupportedContentError(pageKind, "Page metadata is not an article");
     }
     const articleEvidence = hasArticleEvidence(signals);
-    if (!articleEvidence && hasCommerceCta(document)) {
+    if (!articleEvidence && !forceArticle && hasCommerceCta(document)) {
       throw new UnsupportedContentError("not_an_article", "Page looks like a store, not an article");
     }
 
@@ -257,6 +266,13 @@ export class ReaderService {
 
     this.stripNonContentTags(document);
 
+    // Auto-classify only when the page declares itself an article (~high precision:
+    // og:type=article or JSON-LD Article). Unmarked readable pages stay websites
+    // unless the user promotes them.
+    if (!forceArticle && !articleEvidence) {
+      throw new UnsupportedContentError("not_an_article", "Page does not declare itself an article");
+    }
+
     const readerable = isProbablyReaderable(document);
     let parsed: ReturnType<Readability["parse"]> = null;
     if (readerable) {
@@ -270,9 +286,10 @@ export class ReaderService {
     let contentRoot: Element;
     if (parsed?.content) {
       contentRoot = this.parseFragment(parsed.content);
-    } else if (articleEvidence) {
+    } else if (articleEvidence || forceArticle) {
       // Not readerable, or parse returned nothing. Only a marked <article>
-      // may rescue a page that already declared itself an article.
+      // may rescue a page that already declared itself an article (or a
+      // user-forced extract).
       const fallback = this.narrowArticleFallback(document);
       if (!fallback) {
         throw new UnsupportedContentError("not_an_article", "No readable article content found");
@@ -292,8 +309,8 @@ export class ReaderService {
         `Extracted content is a ${extractedShell.replace(/_/g, " ")} shell`,
       );
     }
-    const minWords = articleEvidence ? MIN_WORDS : MIN_WORDS_UNMARKED;
-    const maxLinkDensity = articleEvidence ? MAX_LINK_DENSITY : MAX_LINK_DENSITY_UNMARKED;
+    const minWords = articleEvidence || forceArticle ? MIN_WORDS : MIN_WORDS_UNMARKED;
+    const maxLinkDensity = articleEvidence || forceArticle ? MAX_LINK_DENSITY : MAX_LINK_DENSITY_UNMARKED;
     if (wordCount(text) < minWords) {
       throw new UnsupportedContentError("too_short", "Extracted content is too short to read");
     }
@@ -335,7 +352,7 @@ export class ReaderService {
   }
 
   /** Classify destinations an article reader can never handle before fetching. */
-  private rejectUnsupportedDestination(url: string): void {
+  private rejectUnsupportedDestination(url: string, forceArticle = false): void {
     let parsed: URL;
     try {
       parsed = new URL(url);
@@ -343,9 +360,11 @@ export class ReaderService {
       throw new Error(`Invalid URL: ${url}`);
     }
     const reason = classifyDestination(parsed);
-    if (reason) {
-      throw new UnsupportedContentError(reason, `${parsed.hostname} is not an article source`);
-    }
+    if (!reason) return;
+    // Files and social/app destinations still cannot be articles, even if the
+    // user promoted the bookmark. Commerce/search URL gates can be overridden.
+    if (forceArticle && reason === "not_an_article") return;
+    throw new UnsupportedContentError(reason, `${parsed.hostname} is not an article source`);
   }
 
   /** Detect obvious JS-only/error/interstitial shells by their telltale text. */
@@ -516,7 +535,7 @@ export class ReaderService {
     return null;
   }
 
-  private async fetchHtml(url: string): Promise<string> {
+  private async fetchHtml(url: string, forceArticle = false): Promise<string> {
     let current = new URL(url);
     let res: Response | null = null;
     for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
@@ -534,7 +553,7 @@ export class ReaderService {
       if (!location) break;
       if (redirects === MAX_REDIRECTS) throw new Error("Too many redirects");
       current = new URL(location, current);
-      this.rejectUnsupportedDestination(current.toString());
+      this.rejectUnsupportedDestination(current.toString(), forceArticle);
     }
     if (!res) throw new Error(`Request to ${url} returned no response`);
     if (!res.ok) {

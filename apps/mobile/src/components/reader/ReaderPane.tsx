@@ -53,7 +53,7 @@ import { resolvePalette, type Palette } from "../../theme/theme";
 import { queryClient } from "../../lib/query-client";
 import { bookmarksApi } from "../../lib/api/bookmarks";
 import { findBookmarkInCache, updateBookmarkEverywhere } from "../../lib/cache-helpers";
-import { useBookmarkDetail, useToggleRead } from "../../hooks/use-bookmarks";
+import { useBookmarkDetail, useSetContentKind, useToggleRead } from "../../hooks/use-bookmarks";
 import { useFolders } from "../../hooks/queries";
 import { useReaderPreferences } from "../../hooks/use-reader-preferences";
 import { useSettingsStore } from "../../store/settings";
@@ -63,7 +63,12 @@ import { haptics } from "../../lib/haptics";
 import { layout, spacing } from "../../theme/tokens";
 import { toast } from "../ui/toast-store";
 import { BookmarkBrowser } from "../browser/BookmarkBrowser";
-import { canReadInOrdo } from "../../lib/bookmark-reader";
+import {
+  bookmarkCanBeArticle,
+  bookmarkIsArticle,
+  bookmarkOpensAsWebsite,
+  canReadInOrdo,
+} from "../../lib/bookmark-reader";
 import { copyLink } from "../../lib/copy-link";
 
 export interface ReaderPaneProps {
@@ -140,15 +145,13 @@ function ReaderPaneInner({
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
 
-  const cached = useMemo(
-    () => (bookmarkId ? findBookmarkInCache(queryClient, bookmarkId) : undefined),
-    [bookmarkId],
-  );
-  const cachedTerminal =
-    cached?.fetchStatus === "unsupported" || cached?.fetchStatus === "failed";
+  const cached = bookmarkId ? findBookmarkInCache(queryClient, bookmarkId) : undefined;
+  const skipWebsiteDetail =
+    (cached?.fetchStatus === "unsupported" || cached?.fetchStatus === "failed") &&
+    cached.contentKindOverride !== "article";
   const detail = useBookmarkDetail(
     bookmarkId ?? "",
-    !!bookmarkId && !cachedTerminal,
+    !!bookmarkId && !skipWebsiteDetail,
     cached?.folderId,
   );
   const { data: folders } = useFolders();
@@ -168,8 +171,6 @@ function ReaderPaneInner({
     !!bookmark?.contentMarkdown;
   const hasContent = hasHtml || legacyMarkdown;
   const preparingContent = bookmark?.fetchStatus === "pending";
-  const terminalExternal =
-    bookmark?.fetchStatus === "unsupported" || bookmark?.fetchStatus === "failed";
   // Ok row whose detail (HTML) hasn't arrived yet, or failed to arrive.
   const waitingForHtml =
     !hasContent && bookmark?.fetchStatus === "ok" && detail.isLoading;
@@ -194,6 +195,7 @@ function ReaderPaneInner({
   );
 
   const toggleRead = useToggleRead(bookmark?.folderId ?? null);
+  const setContentKind = useSetContentKind();
   const markedRef = useRef<string | null>(null);
 
   // Auto-mark read on open — filed and unfiled (folderId null) alike.
@@ -272,10 +274,29 @@ function ReaderPaneInner({
     void copyLink(bookmark.url);
   };
 
-  /* ---------------- unsupported/failed: in-app website view ---------------- */
+  const handleClassify = (asArticle: boolean) => {
+    if (!bookmark) return;
+    haptics.light();
+    setContentKind.mutate(
+      {
+        id: bookmark.id,
+        folderId: bookmark.folderId,
+        contentKindOverride: asArticle ? "article" : "web",
+      },
+      {
+        onSuccess: () => {
+          setSurface("auto");
+          toast.success(asArticle ? "Saved as an article" : "Saved as a website");
+        },
+        onError: (err) => toast.error(errorMessage(err, "Couldn't update this bookmark.")),
+      },
+    );
+  };
+
+  /* ---------------- non-articles: in-app website view ---------------- */
 
   const showWebsiteView =
-    surface === "browser" || (surface === "auto" && terminalExternal);
+    surface === "browser" || (surface === "auto" && !!bookmark && bookmarkOpensAsWebsite(bookmark));
   const showReadInOrdo = !!bookmark && canReadInOrdo(bookmark);
   const palette = showWebsiteView ? appPalette : readerPalette;
   const effectiveDark = palette.mode === "dark";
@@ -690,6 +711,13 @@ function ReaderPaneInner({
           >
             {showReadInOrdo ? (
               <Button label="Read in Ordo" block onPress={() => setSurface("reader")} />
+            ) : bookmarkCanBeArticle(bookmark) ? (
+              <Button
+                label="Mark as article"
+                block
+                onPress={() => handleClassify(true)}
+                loading={setContentKind.isPending}
+              />
             ) : null}
             <Button
               label="Open in browser"
@@ -889,6 +917,25 @@ function ReaderPaneInner({
                 onPress={() => {
                   setActionPanel(null);
                   setSurface("reader");
+                }}
+              />
+            ) : null}
+            {bookmark && bookmarkIsArticle(bookmark) ? (
+              <SheetActionRow
+                icon="globe-outline"
+                label="This is not an article"
+                onPress={() => {
+                  setActionPanel(null);
+                  handleClassify(false);
+                }}
+              />
+            ) : bookmark && bookmarkCanBeArticle(bookmark) ? (
+              <SheetActionRow
+                icon="reader-outline"
+                label="Mark as article"
+                onPress={() => {
+                  setActionPanel(null);
+                  handleClassify(true);
                 }}
               />
             ) : null}

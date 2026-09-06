@@ -122,4 +122,44 @@ describe("ExtractionService", () => {
     expect(snap.total).toBe(5);
     expect(snap.completed).toBe(3);
   });
+
+  it("retries with forceArticle if the bookmark is marked as an article after an unforced miss", async () => {
+    const extract = jest
+      .fn()
+      .mockRejectedValueOnce(new UnsupportedContentError("not_an_article", "unmarked"))
+      .mockResolvedValueOnce({
+        title: "Forced",
+        description: null,
+        author: null,
+        publishedAt: null,
+        domain: "grugbrain.dev",
+        readingTimeMinutes: 1,
+        contentHtml: "<p>Forced essay.</p>",
+        contentMarkdown: "Forced essay.",
+        contentText: "Forced essay.",
+      });
+    const prisma = {
+      bookmark: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValueOnce({ contentKindOverride: null })
+          .mockResolvedValueOnce({ contentHtml: null, contentText: null })
+          .mockResolvedValueOnce({ contentKindOverride: "article", contentHtml: null })
+          .mockResolvedValueOnce({ contentKindOverride: "article" }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        count: jest.fn().mockResolvedValue(0),
+      },
+    };
+    const service = new ExtractionService(
+      prisma as never,
+      { extract, classifyShellText: () => null } as never,
+      { refreshSafely: () => undefined } as never,
+    );
+
+    await service.enrichBookmark("bookmark-1", "https://grugbrain.dev/");
+
+    expect(extract).toHaveBeenNthCalledWith(1, "https://grugbrain.dev/", { forceArticle: false });
+    expect(extract).toHaveBeenNthCalledWith(2, "https://grugbrain.dev/", { forceArticle: true });
+    expect(extract).toHaveBeenCalledTimes(2);
+  });
 });

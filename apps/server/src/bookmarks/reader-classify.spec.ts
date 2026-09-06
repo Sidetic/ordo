@@ -78,6 +78,9 @@ describe("reader-classify", () => {
       expect(bookmarkContentKind("unsupported", "non_html_content")).toBe("file");
       expect(bookmarkContentKind("unsupported", "not_an_article")).toBe("web");
       expect(bookmarkContentKind("failed", "fetch_error")).toBe("web");
+      expect(bookmarkContentKind("ok", null, "web")).toBe("web");
+      expect(bookmarkContentKind("unsupported", "not_an_article", "article")).toBe("article");
+      expect(bookmarkContentKind("pending", null, "article")).toBe("article");
     });
   });
 });

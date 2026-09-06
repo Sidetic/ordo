@@ -19,6 +19,8 @@ export interface ExtractionTask {
   url: string;
   userId: string;
   mode: ExtractionMode;
+  /** Re-extract with the user's "this is an article" override. */
+  forceArticle?: boolean;
 }
 
 const CONCURRENCY = 8;
@@ -87,9 +89,19 @@ export class ExtractionService {
   }
 
   /** Run one extraction immediately (tests + callers that already hold the slot). */
-  async enrichBookmark(bookmarkId: string, url: string, mode: ExtractionMode = "full"): Promise<void> {
+  async enrichBookmark(
+    bookmarkId: string,
+    url: string,
+    mode: ExtractionMode = "full",
+    forceArticle = false,
+  ): Promise<void> {
+    const existingOverride = await this.prisma.bookmark.findUnique({
+      where: { id: bookmarkId },
+      select: { contentKindOverride: true },
+    });
+    const force = forceArticle || existingOverride?.contentKindOverride === "article";
     try {
-      const extracted = await this.reader.extract(url);
+      const extracted = await this.reader.extract(url, { forceArticle: force });
       // updateMany: a row deleted mid-flight is a harmless no-op.
       await this.prisma.bookmark.updateMany({
         where: { id: bookmarkId },
@@ -169,6 +181,15 @@ export class ExtractionService {
             `Could not update extraction status for bookmark ${bookmarkId}: ${(updateError as Error).message}`,
           );
         });
+      if (!force) {
+        const latest = await this.prisma.bookmark.findUnique({
+          where: { id: bookmarkId },
+          select: { contentKindOverride: true, contentHtml: true },
+        });
+        if (latest?.contentKindOverride === "article" && !latest.contentHtml) {
+          await this.enrichBookmark(bookmarkId, url, mode, true);
+        }
+      }
     }
   }
 
@@ -179,7 +200,7 @@ export class ExtractionService {
       const task = this.queue.splice(index, 1)[0];
       this.active += 1;
       this.bumpHost(task.url, 1);
-      void this.enrichBookmark(task.bookmarkId, task.url, task.mode).finally(() => {
+      void this.enrichBookmark(task.bookmarkId, task.url, task.mode, task.forceArticle).finally(() => {
         this.active -= 1;
         this.bumpHost(task.url, -1);
         this.queuedIds.delete(task.bookmarkId);

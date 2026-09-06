@@ -57,7 +57,7 @@ export const bookmarksApi = {
 
   update: (
     id: string,
-    body: { folderId?: string | null; isRead?: boolean; readProgress?: number },
+    body: { folderId?: string | null; isRead?: boolean; readProgress?: number; contentKindOverride?: "article" | "web" | null },
     opts?: { folderId?: string | null },
   ) =>
     api.patch<typeof BookmarkRoutes.update.response>(

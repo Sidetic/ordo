@@ -437,7 +437,12 @@ export const BookmarkRoutes = {
   update: {
     path: `${API_PREFIX}/bookmarks/:id`,
     method: "PATCH",
-    body: {} as { folderId?: string | null; isRead?: boolean; readProgress?: number },
+    body: {} as {
+      folderId?: string | null;
+      isRead?: boolean;
+      readProgress?: number;
+      contentKindOverride?: "article" | "web" | null;
+    },
     query: {} as Empty,
     params: {} as { id: string },
     response: {} as BookmarkDto,
