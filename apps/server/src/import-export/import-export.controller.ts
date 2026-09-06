@@ -111,7 +111,8 @@ export class ImportExportController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
     const file = await this.exports.export(user.userId, body, getPresentedFolderTokens(req));
-    res.setHeader("content-type", file.contentType);    res.setHeader("content-disposition", `attachment; filename="${file.filename}"`);
+    res.setHeader("content-type", file.contentType);
+    res.setHeader("content-disposition", `attachment; filename="${file.filename}"`);
     return new StreamableFile(file.stream);
   }
 }

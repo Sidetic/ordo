@@ -24,6 +24,7 @@ import type {
   CommitImportInput,
   CreateFolderInput,
   ExportRequestInput,
+  ExtractionProgressDto,
   ImportJobDto,
   RemoveFolderPasswordInput,
   SetFolderPasswordInput,
@@ -405,6 +406,14 @@ export const BookmarkRoutes = {
     query: {} as { q: string; tagIds?: string; cursor?: string; limit?: number },
     params: {} as Empty,
     response: {} as CursorPage<BookmarkDto>,
+  },
+  extractionProgress: {
+    path: `${API_PREFIX}/bookmarks/extraction-progress`,
+    method: "GET",
+    body: {} as Empty,
+    query: {} as Empty,
+    params: {} as Empty,
+    response: {} as ExtractionProgressDto,
   },
   detail: {
     path: `${API_PREFIX}/bookmarks/:id`,

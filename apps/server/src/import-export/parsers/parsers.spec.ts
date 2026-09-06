@@ -82,6 +82,38 @@ describe("parseNetscapeHtml", () => {
     expect(result.entries[0].createdAt).toBe(new Date(1700000001 * 1000).toISOString());
   });
 
+  it("strips Brave/Chrome toolbar and Other bookmarks wrappers", () => {
+    const brave = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>
+    <DT><H3 PERSONAL_TOOLBAR_FOLDER="true">Bookmarks bar</H3>
+    <DL><p>
+        <DT><A HREF="https://example.com/bar">On the bar</A>
+        <DT><H3>Work</H3>
+        <DL><p>
+            <DT><A HREF="https://example.com/job">Job</A>
+        </DL><p>
+    </DL><p>
+    <DT><H3>Other bookmarks</H3>
+    <DL><p>
+        <DT><A HREF="https://example.com/other">Loose</A>
+        <DT><H3>Recipes</H3>
+        <DL><p>
+            <DT><A HREF="https://example.com/soup">Soup</A>
+        </DL><p>
+    </DL><p>
+</DL><p>`;
+    const result = parseNetscapeHtml(brave);
+    expect(result.entries.map((e) => e.folderPath)).toEqual([[], ["Work"], [], ["Recipes"]]);
+  });
+
+  it("decodes numeric HTML entities in titles", () => {
+    const html = `<DL><p><DT><A HREF="https://example.com/x">A &#38; B &#x27;s</A></DL>`;
+    const result = parseNetscapeHtml(html);
+    expect(result.entries[0].title).toBe("A & B 's");
+  });
+
   it("collects unusable rows with reasons", () => {
     const result = parseNetscapeHtml(sample);
     expect(result.invalid).toHaveLength(2);

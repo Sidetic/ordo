@@ -136,6 +136,12 @@ export interface ImportInvalidSample {
   url: string | null;
 }
 
+/** A URL from the file that already exists in the library (preview sample). */
+export interface ImportDuplicateSample {
+  url: string;
+  title: string;
+}
+
 /** Summary computed after parsing, shown before confirming an import. */
 export interface ImportPreviewDto {
   format: ImportFormat;
@@ -144,6 +150,10 @@ export interface ImportPreviewDto {
   invalidRows: number;
   /** Rows whose normalized URL already exists in the account. */
   duplicates: number;
+  /** Distinct URLs in the file that are new to the library. */
+  uniqueNew: number;
+  /** Distinct URLs in the file that already exist in the library. */
+  uniqueDuplicates: number;
   /** Repeats of the same normalized URL within the file itself. */
   withinFileDuplicates: number;
   newFolders: string[];
@@ -151,6 +161,14 @@ export interface ImportPreviewDto {
   /** Existing protected folders matched by name — unlock to import into them. */
   lockedFolderMatches: string[];
   invalidSamples: ImportInvalidSample[];
+  duplicateSamples: ImportDuplicateSample[];
+}
+
+/** Live background article-fetch progress for the signed-in user. */
+export interface ExtractionProgressDto {
+  pending: number;
+  total: number;
+  completed: number;
 }
 
 /** Row-level outcome after a commit. */

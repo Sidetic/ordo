@@ -102,10 +102,50 @@ export function safeHostname(url: string): string {
 /** Decode the handful of HTML entities bookmark exports actually use. */
 export function decodeEntities(text: string): string {
   return text
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => codePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec: string) => codePoint(Number(dec)))
     .replace(/&quot;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&");
+}
+
+function codePoint(value: number): string {
+  if (!Number.isFinite(value) || value <= 0 || value > 0x10ffff) return "";
+  return String.fromCodePoint(value);
+}
+
+/**
+ * Browser toolbar / "other bookmarks" roots. Netscape files wrap real folders
+ * in these; stripping the first matching segment keeps Ordo folders user-named.
+ */
+const BROWSER_ROOT_FOLDERS = new Set(
+  [
+    "bookmarks bar",
+    "bookmarks toolbar",
+    "bookmarks menu",
+    "other bookmarks",
+    "mobile bookmarks",
+    "unsorted bookmarks",
+    "favorites bar",
+    "autres favoris",
+    "weitere lesezeichen",
+    "otros marcadores",
+    "altri segnalibri",
+    "outros favoritos",
+    "другие закладки",
+    "其他书签",
+    "その他のブックマーク",
+    "다른 북마크",
+  ].map((n) => n.toLocaleLowerCase("en-US")),
+);
+
+/** Drop a leading browser-root folder name from a Netscape path. */
+export function stripBrowserRootFolders(segments: readonly string[]): string[] {
+  if (segments.length === 0) return [];
+  const [first, ...rest] = segments;
+  if (BROWSER_ROOT_FOLDERS.has(first.trim().toLocaleLowerCase("en-US"))) return rest;
+  return [...segments];
 }

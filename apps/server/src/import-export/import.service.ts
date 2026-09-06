@@ -23,7 +23,6 @@ import { randomUUID } from "node:crypto";
 import {
   DEFAULT_TAG_COLOR,
   ErrorCode,
-  EXTRACTION_VERSION,
   IMPORT_EXPORT,
   MAX_TAGS_PER_BOOKMARK,
   TAG_NAME_MAX_LENGTH,
@@ -39,15 +38,10 @@ import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { TokenService } from "../auth/token.service.js";
 import { AppError } from "../common/errors/app-error.js";
-import { ReaderService, UnsupportedContentError } from "../bookmarks/reader.service.js";
+import { ExtractionService } from "../bookmarks/extraction.service.js";
 import { detectAndParse } from "./parsers/index.js";
 import type { InvalidRow, ParsedEntry, ParsedFolder } from "./parsers/parse-utils.js";
 import { flattenFolderName, safeHostname } from "./parsers/parse-utils.js";
-
-/** Background re-extraction tuning; mirrors bookmarks.service values. */
-const ENRICH_BATCH_SIZE = 50;
-const ENRICH_CONCURRENCY = 2;
-const ENRICH_DELAY_MS = 250;
 
 interface FolderRow {
   id: string;
@@ -97,7 +91,7 @@ export class ImportService implements OnApplicationBootstrap, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tokens: TokenService,
-    private readonly reader: ReaderService,
+    private readonly extraction: ExtractionService,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -233,17 +227,32 @@ export class ImportService implements OnApplicationBootstrap, OnModuleDestroy {
     const ownedFolders = await this.loadFolders(userId);
 
     let duplicates = 0;
+    let uniqueDuplicates = 0;
     let withinFileDuplicates = 0;
     const seen = new Set<string>();
     const newFolders = new Set<string>();
     const existingFolders = new Set<string>();
     const lockedFolderMatches = new Set<string>();
+    const duplicateSamples: ImportPreviewDto["duplicateSamples"] = [];
 
     for (const entry of entries) {
       const norm = normalizeUrlForMatch(entry.url);
-      if (existingUrls.has(norm)) duplicates += 1;
-      if (seen.has(norm)) withinFileDuplicates += 1;
+      const intraFile = seen.has(norm);
+      if (intraFile) withinFileDuplicates += 1;
       seen.add(norm);
+
+      if (existingUrls.has(norm)) {
+        duplicates += 1;
+        if (!intraFile) {
+          uniqueDuplicates += 1;
+          if (duplicateSamples.length < IMPORT_EXPORT.MAX_INVALID_SAMPLES) {
+            duplicateSamples.push({
+              url: entry.url.slice(0, 200),
+              title: entry.title.slice(0, 120),
+            });
+          }
+        }
+      }
 
       const name = flattenFolderName(entry.folderPath);
       if (!name) continue;
@@ -267,11 +276,14 @@ export class ImportService implements OnApplicationBootstrap, OnModuleDestroy {
       validRows: entries.length,
       invalidRows: invalid.length,
       duplicates,
+      uniqueNew: seen.size - uniqueDuplicates,
+      uniqueDuplicates,
       withinFileDuplicates,
       newFolders: [...newFolders].sort(),
       existingFolders: [...existingFolders].sort(),
       lockedFolderMatches: [...lockedFolderMatches].sort(),
       invalidSamples: invalid.slice(0, IMPORT_EXPORT.MAX_INVALID_SAMPLES),
+      duplicateSamples,
     };
   }
 
@@ -310,7 +322,16 @@ export class ImportService implements OnApplicationBootstrap, OnModuleDestroy {
         },
       });
 
-      void this.enrichCreated(plan.creates.map((c) => ({ id: c.id, url: c.entry.url })));
+      if (plan.creates.length > 0) {
+        this.extraction.enqueue(
+          plan.creates.map((c) => ({
+            bookmarkId: c.id,
+            url: c.entry.url,
+            userId,
+            mode: "content" as const,
+          })),
+        );
+      }
     } catch (err) {
       const message = err instanceof AppError ? err.message : "The import could not be completed.";
       if (!(err instanceof AppError)) {
@@ -630,56 +651,6 @@ export class ImportService implements OnApplicationBootstrap, OnModuleDestroy {
     }
   }
 
-  /**
-   * Re-extract article content for imported bookmarks without touching the
-   * imported title/metadata (keep the source's naming, regain the body).
-   */
-  private async enrichCreated(created: Array<{ id: string; url: string }>): Promise<void> {
-    for (let i = 0; i < created.length; i += ENRICH_BATCH_SIZE) {
-      const batch = created.slice(i, i + ENRICH_BATCH_SIZE);
-      const workers = Array.from({ length: ENRICH_CONCURRENCY }, async (_, slot) => {
-        for (let j = slot; j < batch.length; j += ENRICH_CONCURRENCY) {
-          const { id, url } = batch[j];
-          await this.enrichOne(id, url);
-        }
-      });
-      await Promise.all(workers);
-      if (i + ENRICH_BATCH_SIZE < created.length) {
-        await new Promise((resolve) => setTimeout(resolve, ENRICH_DELAY_MS));
-      }
-    }
-  }
-
-  private async enrichOne(bookmarkId: string, url: string): Promise<void> {
-    try {
-      const extracted = await this.reader.extract(url);
-      await this.prisma.bookmark.updateMany({
-        where: { id: bookmarkId },
-        data: {
-          contentHtml: extracted.contentHtml,
-          contentMarkdown: extracted.contentMarkdown,
-          contentText: extracted.contentText,
-          readingTimeMinutes: extracted.readingTimeMinutes,
-          fetchStatus: "ok",
-          extractionReason: null,
-          extractionVersion: EXTRACTION_VERSION,
-        },
-      });
-    } catch (err) {
-      const unsupported = err instanceof UnsupportedContentError;
-      await this.prisma.bookmark
-        .updateMany({
-          where: { id: bookmarkId },
-          data: {
-            fetchStatus: unsupported ? "unsupported" : "failed",
-            extractionReason: unsupported ? err.reason : "fetch_error",
-            extractionVersion: EXTRACTION_VERSION,
-          },
-        })
-        .catch(() => undefined);
-    }
-  }
-
   // --- helpers ---
 
   private async loadFolders(userId: string): Promise<FolderRow[]> {
@@ -728,7 +699,7 @@ function toJobDto(job: ImportJobRow): ImportJobDto {
   let preview: ImportPreviewDto | null = null;
   let result: ImportResultDto | null = null;
   try {
-    preview = job.preview ? (JSON.parse(job.preview) as ImportPreviewDto) : null;
+    preview = job.preview ? normalizePreview(JSON.parse(job.preview) as Partial<ImportPreviewDto>) : null;
   } catch {
     preview = null;
   }
@@ -746,5 +717,25 @@ function toJobDto(job: ImportJobRow): ImportJobDto {
     preview,
     failure: job.failure,
     result,
+  };
+}
+
+function normalizePreview(raw: Partial<ImportPreviewDto>): ImportPreviewDto {
+  const duplicates = raw.duplicates ?? 0;
+  const uniqueDuplicates = raw.uniqueDuplicates ?? duplicates;
+  return {
+    format: raw.format ?? "netscape-html",
+    totalRows: raw.totalRows ?? 0,
+    validRows: raw.validRows ?? 0,
+    invalidRows: raw.invalidRows ?? 0,
+    duplicates,
+    uniqueNew: raw.uniqueNew ?? Math.max(0, (raw.validRows ?? 0) - uniqueDuplicates),
+    uniqueDuplicates,
+    withinFileDuplicates: raw.withinFileDuplicates ?? 0,
+    newFolders: raw.newFolders ?? [],
+    existingFolders: raw.existingFolders ?? [],
+    lockedFolderMatches: raw.lockedFolderMatches ?? [],
+    invalidSamples: raw.invalidSamples ?? [],
+    duplicateSamples: raw.duplicateSamples ?? [],
   };
 }

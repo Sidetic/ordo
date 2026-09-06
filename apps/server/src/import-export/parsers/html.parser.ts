@@ -8,7 +8,7 @@
  */
 import { isSupportedUrl } from "@ordo/shared";
 import type { InvalidRow, ParseResult, ParsedEntry } from "./parse-utils";
-import { coerceDate, decodeEntities, sanitizeTitle } from "./parse-utils";
+import { coerceDate, decodeEntities, sanitizeTitle, stripBrowserRootFolders } from "./parse-utils";
 
 interface TagMatch {
   tag: string;
@@ -17,14 +17,11 @@ interface TagMatch {
   index: number;
 }
 
-const TAG_RE = /<(\/?)(dl|h3|a)\b([^>]*)>/gi;
-const ATTR_RE = /([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi;
-
 function readAttrs(source: string): Record<string, string> {
   const attrs: Record<string, string> = {};
-  ATTR_RE.lastIndex = 0;
+  const attrRe = /([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi;
   let m: RegExpExecArray | null;
-  while ((m = ATTR_RE.exec(source)) !== null) {
+  while ((m = attrRe.exec(source)) !== null) {
     const name = m[1].toLowerCase();
     attrs[name] = decodeEntities(m[2] ?? m[3] ?? m[4] ?? "");
   }
@@ -59,9 +56,9 @@ export function parseNetscapeHtml(html: string): ParseResult {
   const stack: (string | null)[] = [];
   let pendingFolder: string | null = null;
 
-  TAG_RE.lastIndex = 0;
+  const tagRe = /<(\/?)(dl|h3|a)\b([^>]*)>/gi;
   let m: RegExpExecArray | null;
-  while ((m = TAG_RE.exec(html)) !== null) {
+  while ((m = tagRe.exec(html)) !== null) {
     const match: TagMatch = {
       tag: m[2].toLowerCase(),
       closing: m[1] === "/",
@@ -80,16 +77,19 @@ export function parseNetscapeHtml(html: string): ParseResult {
     }
 
     if (match.tag === "h3" && !match.closing) {
-      pendingFolder =
-        sanitizeTitle(textUntil(html, TAG_RE.lastIndex, /<\/h3>/i)) || null;
+      const attrs = readAttrs(match.attrs);
+      const name = sanitizeTitle(textUntil(html, tagRe.lastIndex, /<\/h3>/i));
+      const transparent =
+        truthyAttr(attrs.personal_toolbar_folder) || truthyAttr(attrs.unfiled_bookmarks_folder);
+      pendingFolder = transparent ? null : name || null;
       continue;
     }
 
     if (match.tag === "a" && !match.closing) {
       const attrs = readAttrs(match.attrs);
-      const title = sanitizeTitle(textUntil(html, TAG_RE.lastIndex, /<\/a>/i));
+      const title = sanitizeTitle(textUntil(html, tagRe.lastIndex, /<\/a>/i));
       const href = (attrs.href ?? "").trim();
-      const folderPath = stack.filter((s): s is string => s !== null);
+      const folderPath = stripBrowserRootFolders(stack.filter((s): s is string => s !== null));
 
       if (!href) {
         invalid.push({ line: countLine(html, match.index), reason: "Missing URL.", url: null });
@@ -138,4 +138,8 @@ export function parseNetscapeHtml(html: string): ParseResult {
   }
 
   return { format: "netscape-html", entries, invalid, folders: [] };
+}
+
+function truthyAttr(value: string | undefined): boolean {
+  return (value ?? "").trim().toLowerCase() === "true";
 }

@@ -20,6 +20,7 @@ import {
   UpdateBookmarkTagsSchema,
   type BookmarkDto,
   type CursorPage,
+  type ExtractionProgressDto,
 } from "@ordo/shared";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe.js";
 import { AuthGuard } from "../auth/auth.guard.js";
@@ -29,6 +30,7 @@ import {
 } from "../common/decorators/current-user.decorator.js";
 import { getPresentedFolderTokens } from "../common/utils/folder-tokens.js";
 import { BookmarksService } from "./bookmarks.service.js";
+import { ExtractionService } from "./extraction.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
 import { RateLimit } from "../common/rate-limit/rate-limit.decorator.js";
 
@@ -37,6 +39,7 @@ import { RateLimit } from "../common/rate-limit/rate-limit.decorator.js";
 export class BookmarksController {
   constructor(
     private readonly bookmarks: BookmarksService,
+    private readonly extraction: ExtractionService,
     private readonly access: FolderAccessService,
   ) {}
 
@@ -93,6 +96,11 @@ export class BookmarksController {
       tagIds: this.parseTagIds(rawTagIds),
       folderTokens: getPresentedFolderTokens(req),
     });
+  }
+
+  @Get("extraction-progress")
+  async extractionProgress(@CurrentUser() user: AuthContext): Promise<ExtractionProgressDto> {
+    return this.extraction.progress(user.userId);
   }
 
   @Get(":id")

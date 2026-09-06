@@ -11,10 +11,9 @@ import {
 } from "@ordo/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { AppError } from "../common/errors/app-error.js";
-import { ReaderService, UnsupportedContentError } from "./reader.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
 import { TagsService } from "./tags.service.js";
-import { TagSuggestionService } from "./tag-suggestion.service.js";
+import { ExtractionService } from "./extraction.service.js";
 import { toBookmarkDto, toBookmarkDetailDto } from "../common/mappers.js";
 import {
   clampLimit,
@@ -54,9 +53,8 @@ const LIST_SELECT = {
 
 type ListItem = Prisma.BookmarkGetPayload<{ select: typeof LIST_SELECT }>;
 
-/** Background refresh tuning: low concurrency, small batches, finite spacing. */
+/** Background refresh tuning: small batches, finite spacing. */
 const REFRESH_BATCH_SIZE = 50;
-const REFRESH_CONCURRENCY = 2;
 const REFRESH_DELAY_MS = 250;
 /** Hard stop so a pathological database can never loop forever. */
 const REFRESH_MAX_BATCHES = 500;
@@ -67,10 +65,9 @@ export class BookmarksService implements OnApplicationBootstrap {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly reader: ReaderService,
+    private readonly extraction: ExtractionService,
     private readonly access: FolderAccessService,
     private readonly tags: TagsService,
-    private readonly tagSuggestions: TagSuggestionService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -107,7 +104,7 @@ export class BookmarksService implements OnApplicationBootstrap {
       },
       select: LIST_SELECT,
     });
-    void this.enrichBookmark(bookmark.id, url);
+    this.extraction.enqueue([{ bookmarkId: bookmark.id, url, userId, mode: "full" }]);
     return toBookmarkDto(bookmark);
   }
 
@@ -311,90 +308,12 @@ export class BookmarksService implements OnApplicationBootstrap {
 
   // --- internals ---
 
-  private async enrichBookmark(bookmarkId: string, url: string): Promise<void> {
-    try {
-      const extracted = await this.reader.extract(url);
-      // updateMany: a row deleted mid-flight is a harmless no-op.
-      await this.prisma.bookmark.updateMany({
-        where: { id: bookmarkId },
-        data: {
-          title: extracted.title,
-          description: extracted.description,
-          domain: extracted.domain,
-          author: extracted.author,
-          publishedAt: extracted.publishedAt ? new Date(extracted.publishedAt) : null,
-          readingTimeMinutes: extracted.readingTimeMinutes,
-          contentHtml: extracted.contentHtml,
-          contentMarkdown: extracted.contentMarkdown,
-          contentText: extracted.contentText,
-          fetchStatus: "ok",
-          extractionReason: null,
-          extractionVersion: EXTRACTION_VERSION,
-        },
-      });
-      // Suggestions derive from the freshly stored content; failures are
-      // logged and never affect the bookmark or its extraction status.
-      this.tagSuggestions.refreshSafely(bookmarkId);
-    } catch (err) {
-      // Typed rejections are stored as `unsupported` with the reason; anything
-      // else (network, HTTP errors, parse crashes) is a plain failure.
-      const unsupported = err instanceof UnsupportedContentError;
-      const reason = unsupported ? err.reason : "fetch_error";
-      this.logger.warn(
-        `Extraction ${unsupported ? "rejected" : "failed"} for bookmark ${bookmarkId} (${this.safeHostname(url)}): ${reason} — ${(err as Error).message}`,
-      );
-      const existing = await this.prisma.bookmark.findUnique({
-        where: { id: bookmarkId },
-        select: { contentHtml: true, contentText: true },
-      });
-      const storedContentIsShell = existing?.contentText
-        ? this.reader.classifyShellText(existing.contentText) !== null
-        : false;
-      const definitivelyUnreadable =
-        unsupported &&
-        (storedContentIsShell ||
-          ["social_video_or_app", "js_required", "too_short", "not_an_article"].includes(reason));
-      await this.prisma.bookmark
-        .updateMany({
-          where: { id: bookmarkId },
-          data: definitivelyUnreadable || (unsupported && !existing?.contentHtml)
-            ? {
-                fetchStatus: "unsupported",
-                extractionReason: reason,
-                extractionVersion: EXTRACTION_VERSION,
-                contentHtml: null,
-                contentMarkdown: null,
-                contentText: null,
-                readingTimeMinutes: null,
-              }
-            : existing?.contentHtml
-              ? {
-                  // A transient fetch/interstitial failure must not destroy a
-                  // readable capture from the previous extraction version.
-                  fetchStatus: "ok",
-                  extractionReason: null,
-                  extractionVersion: EXTRACTION_VERSION,
-                }
-              : {
-                  fetchStatus: "failed",
-                  extractionReason: reason,
-                  extractionVersion: EXTRACTION_VERSION,
-                },
-        })
-        .catch((updateError: unknown) => {
-          this.logger.error(
-            `Could not update extraction status for bookmark ${bookmarkId}: ${(updateError as Error).message}`,
-          );
-        });
-    }
-  }
-
   /**
    * Re-extract bookmarks whose content predates the current pipeline version
    * (including rows left unversioned by an interrupted boot). Runs in small
-   * batches with low concurrency and a finite delay; because every outcome —
-   * ok, unsupported, or failed — stamps the current version, rows are retried
-   * at most once per version and never loop within a boot.
+   * batches through the shared queue; because every outcome — ok, unsupported,
+   * or failed — stamps the current version, rows are retried at most once per
+   * version and never loop within a boot.
    */
   private async refreshStaleExtractions(): Promise<void> {
     try {
@@ -407,19 +326,22 @@ export class BookmarksService implements OnApplicationBootstrap {
               { extractionVersion: { lt: EXTRACTION_VERSION } },
             ],
           },
-          select: { id: true, url: true },
+          select: { id: true, url: true, userId: true },
           orderBy: { id: "asc" },
           take: REFRESH_BATCH_SIZE,
         });
         if (stale.length === 0) return;
 
-        const workers = Array.from({ length: REFRESH_CONCURRENCY }, async (_, slot) => {
-          for (let i = slot; i < stale.length; i += REFRESH_CONCURRENCY) {
-            const { id, url } = stale[i];
-            await this.enrichBookmark(id, url);
-          }
-        });
-        await Promise.all(workers);
+        this.extraction.enqueue(
+          stale.map((row) => ({
+            bookmarkId: row.id,
+            url: row.url,
+            userId: row.userId,
+            mode: "full" as const,
+          })),
+          false,
+        );
+        await this.extraction.whenIdle();
 
         if (stale.length < REFRESH_BATCH_SIZE) return;
         await new Promise((resolve) => setTimeout(resolve, REFRESH_DELAY_MS));

@@ -4,6 +4,7 @@ import { FoldersController } from "./folders.controller.js";
 import { FoldersService } from "./folders.service.js";
 import { BookmarksController } from "./bookmarks.controller.js";
 import { BookmarksService } from "./bookmarks.service.js";
+import { ExtractionService } from "./extraction.service.js";
 import { ReaderService } from "./reader.service.js";
 import { FolderTokenService } from "./folder-token.service.js";
 import { FolderAccessService } from "./folder-access.service.js";
@@ -17,11 +18,13 @@ import { TagSuggestionService } from "./tag-suggestion.service.js";
   providers: [
     FoldersService,
     BookmarksService,
+    ExtractionService,
     ReaderService,
     FolderTokenService,
     FolderAccessService,
     TagsService,
     TagSuggestionService,
   ],
+  exports: [ExtractionService],
 })
 export class BookmarksModule {}

@@ -100,8 +100,8 @@ describe("ImportService.commit", () => {
       $transaction: jest.fn((fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),
     };
     const tokens = { hash: jest.fn((t: string) => `hash-${t}`) };
-    const reader = { extract: jest.fn().mockResolvedValue(null) };
-    const service = new ImportService(prisma as never, tokens as never, reader as never);
+    const extraction = { enqueue: jest.fn() };
+    const service = new ImportService(prisma as never, tokens as never, extraction as never);
 
     const run = async (
       entries: ParsedEntry[],
@@ -229,6 +229,34 @@ describe("ImportService.commit", () => {
         ]),
       }),
     );
+  });
+
+  it("preview counts unique new urls separately from already-saved ones", async () => {
+    const { prisma, service } = setup();
+    prisma.importJob.create.mockResolvedValue({ id: "j1" });
+    prisma.importJob.update.mockResolvedValue({});
+    prisma.bookmark.findMany.mockResolvedValue([{ url: "https://example.com/dup" }]);
+    prisma.folder.findMany.mockResolvedValue([]);
+
+    await service.createJob(
+      "u1",
+      "brave.html",
+      `<DL><p>
+        <DT><A HREF="https://example.com/dup">Old</A>
+        <DT><A HREF="https://example.com/fresh">New</A>
+      </DL>`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const previewCall = prisma.importJob.update.mock.calls.find(
+      (call: unknown[]) => (call[0] as { data: { preview?: string } }).data?.preview,
+    );
+    expect(previewCall).toBeTruthy();
+    const preview = JSON.parse(
+      (previewCall[0] as { data: { preview: string } }).data.preview,
+    ) as { uniqueNew: number; uniqueDuplicates: number; duplicateSamples: Array<{ title: string }> };
+    expect(preview.uniqueNew).toBe(1);
+    expect(preview.uniqueDuplicates).toBe(1);
+    expect(preview.duplicateSamples[0].title).toBe("Old");
   });
 });
 
