@@ -2,9 +2,10 @@
  * Multi-select for library rows. Long-press enters the mode with one item;
  * further taps toggle. Android back exits without acting.
  */
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BackHandler } from "react-native";
 import { useFocusEffect } from "expo-router";
+import { create } from "zustand";
 import { haptics } from "../lib/haptics";
 
 export type SelectionKey = `bookmark:${string}` | `folder:${string}`;
@@ -18,6 +19,10 @@ export function folderKey(id: string): SelectionKey {
 }
 
 export const SELECTION_LONG_PRESS_MS = 400;
+export const SELECTION_BAR_HEIGHT = 64;
+
+/** Layout chrome reads this so the tab bar can hide while a screen is selecting. */
+export const useSelectionUiStore = create<{ active: boolean }>(() => ({ active: false }));
 
 export function useSelectionMode() {
   const [active, setActive] = useState(false);
@@ -62,15 +67,29 @@ export function useSelectionMode() {
     [bump],
   );
 
+  const activeRef = useRef(active);
+  const focusedRef = useRef(false);
+  activeRef.current = active;
+
+  useEffect(() => {
+    if (focusedRef.current) useSelectionUiStore.setState({ active });
+  }, [active]);
+
   useFocusEffect(
     useCallback(() => {
-      if (!active) return undefined;
+      focusedRef.current = true;
+      useSelectionUiStore.setState({ active: activeRef.current });
       const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+        if (!activeRef.current) return false;
         exit();
         return true;
       });
-      return () => subscription.remove();
-    }, [active, exit]),
+      return () => {
+        focusedRef.current = false;
+        subscription.remove();
+        useSelectionUiStore.setState({ active: false });
+      };
+    }, [exit]),
   );
 
   return {

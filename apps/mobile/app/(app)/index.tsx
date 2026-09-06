@@ -7,7 +7,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../src/components/ui/Header";
 import { SelectionHeader } from "../../src/components/bookmarks/SelectionHeader";
 import { SelectionTools } from "../../src/components/bookmarks/SelectionTools";
-import { SELECTION_BAR_HEIGHT } from "../../src/components/bookmarks/SelectionActionBar";
 import { FAB, FABLayer } from "../../src/components/ui/FAB";
 import { FloatingPanel } from "../../src/components/ui/FloatingPanel";
 import { PanelHeader } from "../../src/components/ui/PanelHeader";
@@ -57,7 +56,7 @@ type LibraryItem =
 export default function BookmarksScreen() {
   const { palette } = useTheme();
   const router = useRouter();
-  const { visible: floatingNavigation, clearance: bottomClearance } = useFloatingDockMetrics();
+  const { visible: floatingNavigation, clearance: bottomClearance, bottom: dockInset, selectionClearance } = useFloatingDockMetrics();
   const folders = useFolders();
   const tags = useTags();
   const bookmarks = useInfiniteBookmarks(null);
@@ -296,9 +295,11 @@ export default function BookmarksScreen() {
             }
             contentContainerStyle={{
               paddingTop: spacing[8],
-              paddingBottom:
-                (floatingNavigation ? bottomClearance : spacing[96]) +
-                (selection.active ? SELECTION_BAR_HEIGHT + spacing[16] : 0),
+              paddingBottom: selection.active
+                ? selectionClearance
+                : floatingNavigation
+                  ? bottomClearance
+                  : spacing[96],
             }}
             refreshing={(bookmarks.isFetching || folders.isFetching || tags.isFetching) && !bookmarks.isLoading}
             onRefresh={refresh}
@@ -409,7 +410,7 @@ export default function BookmarksScreen() {
         folders={selectedFolders}
         fromFolderId={null}
         onFinished={selection.exit}
-        bottom={floatingNavigation ? bottomClearance : spacing[20]}
+        bottom={dockInset}
         maxWidth={layout.maxContentWidth}
       />
     </View>

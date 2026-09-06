@@ -5,8 +5,7 @@ import { PressableScale } from "../ui/PressableScale";
 import { Text } from "../ui/Text";
 import { useTheme } from "../../theme/ThemeProvider";
 import { layout, radius, spacing } from "../../theme/tokens";
-
-export const SELECTION_BAR_HEIGHT = 64;
+import { SELECTION_BAR_HEIGHT } from "../../hooks/use-selection";
 
 export interface SelectionAction {
   key: string;

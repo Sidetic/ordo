@@ -9,7 +9,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../src/components/ui/Header";
 import { SelectionHeader } from "../../src/components/bookmarks/SelectionHeader";
 import { SelectionTools } from "../../src/components/bookmarks/SelectionTools";
-import { SELECTION_BAR_HEIGHT } from "../../src/components/bookmarks/SelectionActionBar";
 import { BookmarkActionsSheet } from "../../src/components/bookmarks/BookmarkActionsSheet";
 import { MoveSheet } from "../../src/components/bookmarks/MoveSheet";
 import { EditTagsSheet } from "../../src/components/tags/EditTagsSheet";
@@ -43,6 +42,8 @@ export default function SearchScreen() {
     visible: floatingNavigation,
     sideNavigation,
     clearance: bottomClearance,
+    bottom: dockInset,
+    selectionClearance,
   } = useFloatingDockMetrics();
   const routeQuery = Array.isArray(params.query) ? params.query[0] ?? "" : params.query ?? "";
   const selectedBookmarkId = Array.isArray(params.bookmark)
@@ -122,12 +123,13 @@ export default function SearchScreen() {
     });
   };
 
-  const listContentPadding =
-    (floatingNavigation
+  const listContentPadding = selection.active
+    ? selectionClearance
+    : floatingNavigation
       ? bottomClearance
       : sideNavigation
         ? spacing[32]
-        : spacing[96]) + (selection.active ? SELECTION_BAR_HEIGHT + spacing[16] : 0);
+        : spacing[96];
   const listPane = (
     <FlashList
       data={items}
@@ -316,7 +318,7 @@ export default function SearchScreen() {
           }
           selection.exit();
         }}
-        bottom={floatingNavigation ? bottomClearance : spacing[20]}
+        bottom={dockInset}
         maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth}
       />
     </View>

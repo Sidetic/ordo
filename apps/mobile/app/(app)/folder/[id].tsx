@@ -11,7 +11,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../../src/components/ui/Header";
 import { SelectionHeader } from "../../../src/components/bookmarks/SelectionHeader";
 import { SelectionTools } from "../../../src/components/bookmarks/SelectionTools";
-import { SELECTION_BAR_HEIGHT } from "../../../src/components/bookmarks/SelectionActionBar";
 import { FAB, FABLayer } from "../../../src/components/ui/FAB";
 import { Button } from "../../../src/components/ui/Button";
 import { PressableScale } from "../../../src/components/ui/PressableScale";
@@ -37,6 +36,7 @@ import {
 } from "../../../src/hooks/use-bookmarks";
 import { useResponsiveLayout } from "../../../src/hooks/use-responsive-layout";
 import { bookmarkKey, useSelectionMode } from "../../../src/hooks/use-selection";
+import { useFloatingDockMetrics } from "../../../src/hooks/use-floating-dock-metrics";
 import { useTheme } from "../../../src/theme/ThemeProvider";
 import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
@@ -50,6 +50,7 @@ export default function FolderDetailScreen() {
   const { palette } = useTheme();
   const router = useRouter();
   const { hasDetailPane } = useResponsiveLayout();
+  const { bottom: dockInset, selectionClearance } = useFloatingDockMetrics();
   const { id, bookmark } = useLocalSearchParams<{ id: string; bookmark?: string }>();
   const routeId = Array.isArray(id) ? id[0] : id;
   const selectedBookmarkId = Array.isArray(bookmark) ? bookmark[0] : bookmark;
@@ -131,7 +132,7 @@ export default function FolderDetailScreen() {
     });
   };
 
-  const listContentPadding = spacing[96] + (selection.active ? SELECTION_BAR_HEIGHT + spacing[16] : 0);
+  const listContentPadding = selection.active ? selectionClearance : spacing[96];
   const listPane = (
     <FlashList
       data={items}
@@ -368,7 +369,7 @@ export default function FolderDetailScreen() {
           }
           selection.exit();
         }}
-        bottom={spacing[20]}
+        bottom={dockInset}
         maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth}
       />
 

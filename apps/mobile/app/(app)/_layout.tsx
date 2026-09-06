@@ -32,6 +32,7 @@ export default function AppLayout() {
     floating,
     compact,
     sideNavigation,
+    hideBottomNav,
     bottom: floatingBottom,
     height: floatingHeight,
   } = useFloatingDockMetrics();
@@ -200,6 +201,9 @@ export default function AppLayout() {
       tabBarHeight,
     ],
   );
+  const visibleTabBarStyle = hideBottomNav
+    ? { ...tabBarStyle, display: "none" as const }
+    : tabBarStyle;
   const hiddenOptions = React.useMemo(
     () =>
       sideNavigation
@@ -267,7 +271,7 @@ export default function AppLayout() {
           tabBarInactiveTintColor: palette.textTertiary,
           tabBarShowLabel: showNavigationLabels,
           tabBarActiveBackgroundColor: "transparent",
-          tabBarStyle,
+          tabBarStyle: visibleTabBarStyle,
           sceneStyle:
             sideNavigation && floating
               ? { marginStart: railInset + railWidth + spacing[12] }
