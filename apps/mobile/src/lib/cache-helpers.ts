@@ -3,7 +3,8 @@
  * full refetches — this is what keeps the UI snappy and lists stable.
  */
 import type { QueryClient, InfiniteData } from "@tanstack/react-query";
-import type { BookmarkDetailDto, BookmarkDto, CursorPage } from "@ordo/shared";
+import type { BookmarkDetailDto, BookmarkDto, CursorPage, FolderDto } from "@ordo/shared";
+import { qk } from "./api/query-keys";
 
 type BookmarkData = InfiniteData<CursorPage<BookmarkDto>, string | null>;
 
@@ -55,7 +56,7 @@ export function prependBookmarkToPages(
   bookmark: BookmarkDto,
 ) {
   qc.setQueriesData<BookmarkData>({ queryKey }, (data) => {
-    if (!data) return data;
+    if (!data?.pages[0]) return data;
     const firstPage = data.pages[0];
     const updatedFirst: CursorPage<BookmarkDto> = {
       ...firstPage,
@@ -63,6 +64,44 @@ export function prependBookmarkToPages(
     };
     return { ...data, pages: [updatedFirst, ...data.pages.slice(1)] };
   });
+}
+
+/** Prepend a bookmark unless it is already in the list (used to restore after undo). */
+export function insertBookmarkIfAbsent(
+  qc: QueryClient,
+  queryKey: readonly unknown[],
+  bookmark: BookmarkDto,
+) {
+  qc.setQueriesData<BookmarkData>({ queryKey }, (data) => {
+    if (!data?.pages[0]) return data;
+    if (data.pages.some((page) => page.items.some((item) => item.id === bookmark.id))) return data;
+    const firstPage = data.pages[0];
+    return {
+      ...data,
+      pages: [{ ...firstPage, items: [bookmark, ...firstPage.items] }, ...data.pages.slice(1)],
+    };
+  });
+}
+
+/** Adjust a folder's cached bookmark/unread counts. No-op for unfiled (null). */
+export function bumpFolderCount(
+  qc: QueryClient,
+  id: string | null,
+  bookmarkDelta: number,
+  unreadDelta: number,
+) {
+  if (!id) return;
+  qc.setQueryData<FolderDto[]>(qk.folders, (old) =>
+    (old ?? []).map((folder) =>
+      folder.id === id
+        ? {
+            ...folder,
+            bookmarkCount: Math.max(0, folder.bookmarkCount + bookmarkDelta),
+            unreadCount: Math.max(0, folder.unreadCount + unreadDelta),
+          }
+        : folder,
+    ),
+  );
 }
 
 /** Re-key helper: all bookmark list caches for any folder (for global effects). */

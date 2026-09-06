@@ -8,10 +8,6 @@ import { SheetActionRow } from "../ui/SheetActionRow";
 import { useTheme } from "../../theme/ThemeProvider";
 import { spacing } from "../../theme/tokens";
 import { copyLink } from "../../lib/copy-link";
-import { bookmarkCanBeArticle, bookmarkIsArticle } from "../../lib/bookmark-reader";
-import { useSetContentKind } from "../../hooks/use-bookmarks";
-import { toast } from "../ui/toast-store";
-import { errorMessage } from "../../lib/error-message";
 import type { BookmarkDto } from "@ordo/shared";
 
 export interface BookmarkActionsSheetProps {
@@ -35,7 +31,6 @@ export function BookmarkActionsSheet({
 }: BookmarkActionsSheetProps) {
   const { palette } = useTheme();
   const router = useRouter();
-  const setContentKind = useSetContentKind();
   const [mode, setMode] = useState<"menu" | "delete" | "deleted">("menu");
   const pendingDelete = useRef<{ undo: () => void; commit: () => void } | null>(null);
 
@@ -146,45 +141,6 @@ export function BookmarkActionsSheet({
               onDismiss();
             }}
           />
-          {bookmarkIsArticle(bookmark) ? (
-            <SheetActionRow
-              icon="globe-outline"
-              label="This is not an article"
-              onPress={() => {
-                setContentKind.mutate(
-                  {
-                    id: bookmark.id,
-                    folderId: bookmark.folderId,
-                    contentKindOverride: "web",
-                  },
-                  {
-                    onSuccess: () => toast.success("Saved as a website"),
-                    onError: (err) => toast.error(errorMessage(err, "Couldn't update this bookmark.")),
-                  },
-                );
-                onDismiss();
-              }}
-            />
-          ) : bookmarkCanBeArticle(bookmark) ? (
-            <SheetActionRow
-              icon="reader-outline"
-              label="Mark as article"
-              onPress={() => {
-                setContentKind.mutate(
-                  {
-                    id: bookmark.id,
-                    folderId: bookmark.folderId,
-                    contentKindOverride: "article",
-                  },
-                  {
-                    onSuccess: () => toast.success("Saved as an article"),
-                    onError: (err) => toast.error(errorMessage(err, "Couldn't update this bookmark.")),
-                  },
-                );
-                onDismiss();
-              }}
-            />
-          ) : null}
           <SheetActionRow
             icon="link-outline"
             label="Copy link"

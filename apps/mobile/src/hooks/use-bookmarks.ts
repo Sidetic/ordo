@@ -14,6 +14,7 @@ import { queryClient } from "../lib/query-client";
 import { useFolderTokenStore } from "../store/folder-tokens";
 import { qk } from "../lib/api/query-keys";
 import {
+  bumpFolderCount,
   prependBookmarkToPages,
   removeBookmarkFromPages,
   removeBookmarksEverywhere,
@@ -21,6 +22,7 @@ import {
   updateBookmarkInPages,
   updateBookmarksEverywhere,
 } from "../lib/cache-helpers";
+import { deleteBookmarksUndoable } from "../lib/undoable-bookmark-delete";
 import {
   BATCH_ITEM_LIMIT,
   DEFAULT_PAGE_SIZE,
@@ -34,22 +36,6 @@ const EXTRACTION_POLL_MS = 1_500;
 
 function hasPendingBookmark(data?: InfiniteData<CursorPage<BookmarkDto>>): boolean {
   return data?.pages.some((page) => page.items.some((bookmark) => bookmark.fetchStatus === "pending")) ?? false;
-}
-
-/** Decrement a folder's bookmarkCount + unreadCount in the folders cache. No-op for unfiled (null). */
-function bumpFolderCount(id: string | null, bookmarkDelta: number, unreadDelta: number) {
-  if (!id) return;
-  queryClient.setQueryData<FolderDto[]>(qk.folders, (old) =>
-    (old ?? []).map((f) =>
-      f.id === id
-        ? {
-            ...f,
-            bookmarkCount: Math.max(0, f.bookmarkCount + bookmarkDelta),
-            unreadCount: Math.max(0, f.unreadCount + unreadDelta),
-          }
-        : f,
-    ),
-  );
 }
 
 export function useInfiniteBookmarks(folderId: string | null, enabled = true) {
@@ -97,7 +83,7 @@ export function useCreateBookmark() {
       bookmarksApi.create(url, folderId, tagIds),
     onSuccess: (bookmark) => {
       prependBookmarkToPages(qc, qk.bookmarks(bookmark.folderId), bookmark);
-      bumpFolderCount(bookmark.folderId, +1, bookmark.isRead ? 0 : +1);
+      bumpFolderCount(qc, bookmark.folderId, +1, bookmark.isRead ? 0 : +1);
       if (bookmark.tags.length > 0) {
         void qc.invalidateQueries({ queryKey: ["tags"] });
       }
@@ -114,7 +100,7 @@ export function useToggleRead(folderId: string | null) {
       const prev = qc.getQueryData(qk.bookmarks(folderId));
       const prevFolders = qc.getQueryData<FolderDto[]>(qk.folders);
       updateBookmarkInPages(qc, qk.bookmarks(folderId), id, (b) => ({ ...b, isRead }));
-      bumpFolderCount(folderId, 0, isRead ? -1 : +1);
+      bumpFolderCount(qc, folderId, 0, isRead ? -1 : +1);
       return { prev, prevFolders };
     },
     onError: (_e, _v, ctx) => {
@@ -142,31 +128,17 @@ export function useMarkBookmarkRead() {
 }
 
 export function useDeleteBookmark(folderId: string | null) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => bookmarksApi.remove(id, { folderId }),
-    onMutate: (id) => {
-      const prev = qc.getQueryData(qk.bookmarks(folderId));
-      const prevFolders = qc.getQueryData<FolderDto[]>(qk.folders);
-      let unreadDelta = 0;
-      const list = qc.getQueryData<{ pages: { items: BookmarkDto[] }[] }>(qk.bookmarks(folderId));
-      const target = list?.pages.flatMap((p) => p.items).find((b) => b.id === id);
-      if (target && !target.isRead) unreadDelta = -1;
-      removeBookmarkFromPages(qc, qk.bookmarks(folderId), id);
-      bumpFolderCount(folderId, -1, unreadDelta);
-      return { prev, prevFolders };
-    },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(qk.bookmarks(folderId), ctx.prev);
-      if (ctx?.prevFolders) qc.setQueryData(qk.folders, ctx.prevFolders);
-    },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["tags"] });
-      // Tag-filtered and search lists may have contained the deleted row.
-      void qc.invalidateQueries({ queryKey: ["bookmarks", "tagged"] });
-      void qc.invalidateQueries({ queryKey: ["bookmarks", "search"] });
-    },
-  });
+  return {
+    mutate: (
+      bookmark: BookmarkDto,
+      opts?: { onDeleted?: () => void; showToast?: boolean },
+    ) =>
+      deleteBookmarksUndoable([bookmark], {
+        scopeFolderId: folderId,
+        onDeleted: opts?.onDeleted,
+        showToast: opts?.showToast,
+      }),
+  };
 }
 
 export function useMoveBookmark(fromFolderId: string | null) {
@@ -192,8 +164,8 @@ export function useMoveBookmark(fromFolderId: string | null) {
         prependBookmarkToPages(qc, qk.bookmarks(toFolderId), { ...target, folderId: toFolderId });
       }
       removeBookmarkFromPages(qc, qk.bookmarks(fromFolderId), id);
-      bumpFolderCount(fromFolderId, -1, unreadDelta);
-      bumpFolderCount(toFolderId, +1, target && !target.isRead ? +1 : 0);
+      bumpFolderCount(qc, fromFolderId, -1, unreadDelta);
+      bumpFolderCount(qc, toFolderId, +1, target && !target.isRead ? +1 : 0);
       return { prev, prevDestination, prevFolders, toFolderId };
     },
     onError: (_e, _v, ctx) => {

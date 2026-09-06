@@ -20,6 +20,7 @@ export interface Toast {
   duration: number;
   /** Allow swipe-to-dismiss. */
   swipeable: boolean;
+  onDismiss?: () => void;
 }
 
 export interface ShowToastOptions {
@@ -27,6 +28,8 @@ export interface ShowToastOptions {
   action?: ToastAction;
   duration?: number;
   swipeable?: boolean;
+  /** Called once when the toast leaves, including after its action is pressed. */
+  onDismiss?: () => void;
 }
 
 interface ToastState {
@@ -37,7 +40,7 @@ interface ToastState {
 
 let counter = 0;
 
-export const useToastStore = create<ToastState>((set) => ({
+export const useToastStore = create<ToastState>((set, get) => ({
   toasts: [],
   show: (message, opts) => {
     const id = `t${++counter}`;
@@ -48,16 +51,24 @@ export const useToastStore = create<ToastState>((set) => ({
       action: opts?.action,
       duration: opts?.duration ?? 3200,
       swipeable: opts?.swipeable ?? true,
+      onDismiss: opts?.onDismiss,
     };
     set((s) => ({ toasts: [...s.toasts, toast] }));
     return id;
   },
-  dismiss: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+  dismiss: (id) => {
+    const current = get().toasts.find((item) => item.id === id);
+    if (!current) return;
+    set((s) => ({ toasts: s.toasts.filter((item) => item.id !== id) }));
+    current.onDismiss?.();
+  },
 }));
 
 /** Imperative API for non-React call sites (mutations, watchers). */
 export const toast = {
   show: (message: string, opts?: ShowToastOptions) => useToastStore.getState().show(message, opts),
-  success: (message: string) => useToastStore.getState().show(message, { tone: "success" }),
-  error: (message: string) => useToastStore.getState().show(message, { tone: "danger" }),
+  success: (message: string, opts?: Omit<ShowToastOptions, "tone">) =>
+    useToastStore.getState().show(message, { ...opts, tone: "success" }),
+  error: (message: string, opts?: Omit<ShowToastOptions, "tone">) =>
+    useToastStore.getState().show(message, { ...opts, tone: "danger" }),
 };

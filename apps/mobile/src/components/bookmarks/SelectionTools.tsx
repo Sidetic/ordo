@@ -13,13 +13,13 @@ import { useBatchBookmarks } from "../../hooks/use-bookmarks";
 import { useBatchFolders } from "../../hooks/use-folders";
 import { copyLinks } from "../../lib/copy-link";
 import {
-  deletedBookmarksToast,
   deletedFoldersToast,
   markedAsReadToast,
   markedAsUnreadToast,
 } from "../../lib/copy";
 import { errorMessage } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
+import { deleteBookmarksUndoable } from "../../lib/undoable-bookmark-delete";
 import { toast } from "../ui/toast-store";
 import { layout } from "../../theme/tokens";
 
@@ -104,9 +104,7 @@ export function SelectionTools({
       ? folders.some((folder) => folder.bookmarkCount > 0)
         ? "Folders and every bookmark inside them will be deleted."
         : "These folders will be deleted."
-      : bookmarks.length === 1
-        ? "This bookmark will be deleted."
-        : "These bookmarks will be deleted.";
+      : "You can undo this.";
 
   const actions: SelectionAction[] = [];
   if (active) {
@@ -167,6 +165,15 @@ export function SelectionTools({
   }
 
   const confirmDelete = async () => {
+    if (bookmarksOnly) {
+      haptics.medium();
+      const targets = [...bookmarks];
+      setDeleteOpen(false);
+      onFinished();
+      deleteBookmarksUndoable(targets, { scopeFolderId: fromFolderId });
+      return;
+    }
+
     try {
       haptics.medium();
       if (bookmarks.length > 0) {
@@ -184,10 +191,8 @@ export function SelectionTools({
       }
       if (mixed) {
         toast.success("Deleted");
-      } else if (foldersOnly) {
-        toast.success(deletedFoldersToast(folders.length));
       } else {
-        toast.success(deletedBookmarksToast(bookmarks.length));
+        toast.success(deletedFoldersToast(folders.length));
       }
       setDeleteOpen(false);
       onFinished();
