@@ -33,6 +33,7 @@ import {
   type ImportJobDto,
   type ImportPreviewDto,
   type ImportResultDto,
+  normalizeImportPreview,
 } from "@ordo/shared";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -699,7 +700,7 @@ function toJobDto(job: ImportJobRow): ImportJobDto {
   let preview: ImportPreviewDto | null = null;
   let result: ImportResultDto | null = null;
   try {
-    preview = job.preview ? normalizePreview(JSON.parse(job.preview) as Partial<ImportPreviewDto>) : null;
+    preview = job.preview ? normalizeImportPreview(JSON.parse(job.preview) as Partial<ImportPreviewDto>) : null;
   } catch {
     preview = null;
   }
@@ -717,25 +718,5 @@ function toJobDto(job: ImportJobRow): ImportJobDto {
     preview,
     failure: job.failure,
     result,
-  };
-}
-
-function normalizePreview(raw: Partial<ImportPreviewDto>): ImportPreviewDto {
-  const duplicates = raw.duplicates ?? 0;
-  const uniqueDuplicates = raw.uniqueDuplicates ?? duplicates;
-  return {
-    format: raw.format ?? "netscape-html",
-    totalRows: raw.totalRows ?? 0,
-    validRows: raw.validRows ?? 0,
-    invalidRows: raw.invalidRows ?? 0,
-    duplicates,
-    uniqueNew: raw.uniqueNew ?? Math.max(0, (raw.validRows ?? 0) - uniqueDuplicates),
-    uniqueDuplicates,
-    withinFileDuplicates: raw.withinFileDuplicates ?? 0,
-    newFolders: raw.newFolders ?? [],
-    existingFolders: raw.existingFolders ?? [],
-    lockedFolderMatches: raw.lockedFolderMatches ?? [],
-    invalidSamples: raw.invalidSamples ?? [],
-    duplicateSamples: raw.duplicateSamples ?? [],
   };
 }

@@ -1,8 +1,25 @@
-import { normalizeUrlForMatch } from "@ordo/shared";
+import { normalizeImportPreview, normalizeUrlForMatch } from "@ordo/shared";
 import { detectImportFormat } from "./index.js";
 import { parseNetscapeHtml } from "./html.parser.js";
 import { detectCsvProfile, parseCsv, splitCsv } from "./csv.parser.js";
 import { looksLikeOrdoJson, parseOrdoJson } from "./json.parser.js";
+
+describe("normalizeImportPreview", () => {
+  it("turns a pre-revamp preview into a UI-safe shape", () => {
+    const preview = normalizeImportPreview({
+      format: "netscape-html",
+      totalRows: 96,
+      validRows: 96,
+      invalidRows: 0,
+      duplicates: 1,
+      withinFileDuplicates: 0,
+    });
+    expect(preview?.duplicateSamples).toEqual([]);
+    expect(preview?.newFolders).toEqual([]);
+    expect(preview?.uniqueNew).toBe(95);
+    expect(preview?.uniqueDuplicates).toBe(1);
+  });
+});
 
 describe("normalizeUrlForMatch", () => {
   it("lowercases scheme and host and drops default ports", () => {

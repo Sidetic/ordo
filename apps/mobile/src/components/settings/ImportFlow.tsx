@@ -6,7 +6,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { DuplicatePolicy, FolderDto, ImportJobDto, ImportPreviewDto } from "@ordo/shared";
-import { IMPORT_EXPORT } from "@ordo/shared";
+import { IMPORT_EXPORT, normalizeImportPreview } from "@ordo/shared";
 import { FloatingPanel } from "../ui/FloatingPanel";
 import { PanelHeader } from "../ui/PanelHeader";
 import { SettingRow } from "../ui/SettingRow";
@@ -85,7 +85,7 @@ export function ImportFlow({
   });
 
   const job: ImportJobDto | undefined = jobQuery.data;
-  const preview = job?.status === "ready" ? job.preview : null;
+  const preview = job?.status === "ready" ? normalizeImportPreview(job.preview) : null;
 
   const lockedMatches = useMemo(() => {
     if (!preview) return [] as FolderDto[];
@@ -291,6 +291,7 @@ function SuccessState({
   onDone: () => void;
 }) {
   const { palette } = useTheme();
+  const failures = result.failures ?? [];
   const lines: string[] = [];
   if (result.imported > 0) {
     lines.push(result.imported === 1 ? "1 added" : `${result.imported} added`);
@@ -320,9 +321,9 @@ function SuccessState({
       <Text variant="footnote" color="tertiary" style={styles.footnote}>
         Article text is filling in in the background.
       </Text>
-      {result.failures.length > 0 ? (
+      {failures.length > 0 ? (
         <View style={styles.samples}>
-          {result.failures.slice(0, 4).map((failure, i) => (
+          {failures.slice(0, 4).map((failure, i) => (
             <Text key={i} variant="caption" color="tertiary" numberOfLines={2}>
               {failure.url ? `${failure.url} — ` : ""}
               {failure.reason}

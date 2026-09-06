@@ -293,4 +293,38 @@ describe("ImportService.getJob", () => {
     });
     expect(prisma.importJob.deleteMany).toHaveBeenCalledWith({ where: { id: "j1" } });
   });
+
+  it("fills missing preview arrays so older jobs stay renderable", async () => {
+    const prisma = {
+      importJob: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "j1",
+          status: "ready",
+          fileName: "brave.html",
+          preview: JSON.stringify({
+            format: "netscape-html",
+            totalRows: 2,
+            validRows: 2,
+            invalidRows: 0,
+            duplicates: 1,
+            withinFileDuplicates: 0,
+            newFolders: [],
+            existingFolders: [],
+            lockedFolderMatches: [],
+            invalidSamples: [],
+          }),
+          failure: null,
+          result: null,
+          createdAt: new Date(),
+          expiresAt: new Date(Date.now() + 60_000),
+        }),
+        deleteMany: jest.fn(),
+      },
+    };
+    const service = new ImportService(prisma as never, {} as never, {} as never);
+    const job = await service.getJob("u1", "j1");
+    expect(job.preview?.duplicateSamples).toEqual([]);
+    expect(job.preview?.uniqueDuplicates).toBe(1);
+    expect(job.preview?.uniqueNew).toBe(1);
+  });
 });
