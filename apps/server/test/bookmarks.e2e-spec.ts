@@ -302,18 +302,30 @@ describe("Bookmarks & Folders (e2e)", () => {
       expect(stored?.fetchStatus).toBe("unsupported");
 
       const marked = await agent
-        .patch(`/api/bookmarks/${res.body.id}`)
+        .put(`/api/bookmarks/${res.body.id}/content-kind`)
         .send({ contentKindOverride: "article" })
         .expect(200);
       expect(marked.body.contentKindOverride).toBe("article");
       expect(marked.body.contentKind).toBe("article");
 
       const unmarked = await agent
-        .patch(`/api/bookmarks/${res.body.id}`)
+        .put(`/api/bookmarks/${res.body.id}/content-kind`)
         .send({ contentKindOverride: "web" })
         .expect(200);
       expect(unmarked.body.contentKindOverride).toBe("web");
       expect(unmarked.body.contentKind).toBe("web");
+
+      const viaPatch = await agent
+        .patch(`/api/bookmarks/${res.body.id}`)
+        .send({ contentKindOverride: "article" })
+        .expect(200);
+      expect(viaPatch.body.contentKindOverride).toBe("article");
+
+      const empty = await agent
+        .put(`/api/bookmarks/${res.body.id}/content-kind`)
+        .send({})
+        .expect(400);
+      expect(empty.body.error.message).toMatch(/Required|invalid|article|web/i);
 
       const cleared = await agent
         .patch(`/api/bookmarks/${res.body.id}`)

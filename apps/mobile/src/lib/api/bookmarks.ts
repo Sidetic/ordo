@@ -66,6 +66,17 @@ export const bookmarksApi = {
       opts,
     ),
 
+  setContentKind: (
+    id: string,
+    contentKindOverride: "article" | "web",
+    opts?: { folderId?: string | null },
+  ) =>
+    api.put<typeof BookmarkRoutes.setContentKind.response>(
+      buildPath(BookmarkRoutes.setContentKind.path, { id }),
+      { contentKindOverride },
+      opts,
+    ),
+
   remove: (id: string, opts?: { folderId?: string | null }) =>
     api.delete<typeof BookmarkRoutes.remove.response>(
       buildPath(BookmarkRoutes.remove.path, { id }),

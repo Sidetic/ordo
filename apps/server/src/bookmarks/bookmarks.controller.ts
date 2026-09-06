@@ -19,6 +19,7 @@ import {
   BatchBookmarksSchema,
   UpdateBookmarkSchema,
   UpdateBookmarkTagsSchema,
+  SetBookmarkContentKindSchema,
   type BatchBookmarksInput,
   type BookmarkDto,
   type CursorPage,
@@ -123,6 +124,18 @@ export class BookmarksController {
       isRead?: boolean;
       readProgress?: number;
       contentKindOverride?: "article" | "web" | null;
+    },
+    @Req() req: Request,
+  ): Promise<BookmarkDto> {
+    return this.bookmarks.update(user.userId, id, body, getPresentedFolderTokens(req));
+  }
+
+  @Put(":id/content-kind")
+  async setContentKind(
+    @CurrentUser() user: AuthContext,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(SetBookmarkContentKindSchema)) body: {
+      contentKindOverride: "article" | "web";
     },
     @Req() req: Request,
   ): Promise<BookmarkDto> {

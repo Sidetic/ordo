@@ -47,6 +47,12 @@ export const UpdateBookmarkSchema = z
   );
 export type UpdateBookmarkInput = z.infer<typeof UpdateBookmarkSchema>;
 
+/** Dedicated classify payload — required so an empty PATCH cannot silently strip it. */
+export const SetBookmarkContentKindSchema = z.object({
+  contentKindOverride: z.enum(["article", "web"]),
+});
+export type SetBookmarkContentKindInput = z.infer<typeof SetBookmarkContentKindSchema>;
+
 /** Without a `folderId` (or with `null`), only unfiled bookmarks are marked read. */
 export const MarkAllReadSchema = z.object({
   folderId,

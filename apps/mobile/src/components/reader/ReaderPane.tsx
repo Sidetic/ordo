@@ -933,7 +933,7 @@ function ReaderPaneInner({
             {bookmark && bookmarkIsArticle(bookmark) ? (
               <SheetActionRow
                 icon="globe-outline"
-                label="This is not an article"
+                label="Mark as website"
                 onPress={() => {
                   setActionPanel(null);
                   handleClassify(false);

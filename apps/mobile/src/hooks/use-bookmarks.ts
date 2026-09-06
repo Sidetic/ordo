@@ -138,8 +138,8 @@ export function useSetContentKind() {
     }: {
       id: string;
       folderId: string | null;
-      contentKindOverride: "article" | "web" | null;
-    }) => bookmarksApi.update(id, { contentKindOverride }, { folderId }),
+      contentKindOverride: "article" | "web";
+    }) => bookmarksApi.setContentKind(id, contentKindOverride, { folderId }),
     onMutate: ({ id, contentKindOverride }) => {
       updateBookmarkEverywhere(qc, id, (bookmark) => ({
         ...bookmark,
