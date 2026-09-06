@@ -160,7 +160,7 @@ export default function BookmarksScreen() {
       <View style={styles.headerActions}>
         {tagCount > 0 ? (
           <PressableScale
-            style={styles.headerAction}
+            style={styles.tagsLink}
             onPress={() => {
               haptics.light();
               router.push("/tags");
@@ -170,7 +170,10 @@ export default function BookmarksScreen() {
             accessibilityLabel={`Tags, ${tagCount} ${tagCount === 1 ? "tag" : "tags"}`}
             accessibilityHint="Browse and manage tags."
           >
-            <Ionicons name="pricetags-outline" size={22} color={palette.text} />
+            <Ionicons name="pricetags-outline" size={11} color={palette.textTertiary} />
+            <Text variant="label" color="secondary">
+              Tags
+            </Text>
           </PressableScale>
         ) : null}
         {hasUnread ? (
@@ -416,8 +419,15 @@ export default function BookmarksScreen() {
 const styles = StyleSheet.create({
   content: { flex: 1, width: "100%" },
   center: { flex: 1, width: "100%", justifyContent: "center" },
-  headerActions: { flexDirection: "row", alignItems: "center" },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: spacing[4] },
   headerAction: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  tagsLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[6],
+    height: 32,
+    paddingHorizontal: spacing[4],
+  },
   emptyBookmarks: { minHeight: 300, justifyContent: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
   createMenuActions: { gap: spacing[6] },
