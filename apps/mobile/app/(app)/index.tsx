@@ -23,6 +23,7 @@ import { FolderActionsSheet } from "../../src/components/bookmarks/FolderActions
 import { CreateFolderPanel } from "../../src/components/bookmarks/CreateFolderPanel";
 import { MoveSheet } from "../../src/components/bookmarks/MoveSheet";
 import { BookmarkRow } from "../../src/components/bookmarks/BookmarkRow";
+import { ExtractionProgressLine } from "../../src/components/bookmarks/ExtractionProgressLine";
 import { EditTagsSheet } from "../../src/components/tags/EditTagsSheet";
 import { useFolders } from "../../src/hooks/use-folders";
 import { useTags } from "../../src/hooks/use-tags";
@@ -206,6 +207,8 @@ export default function BookmarksScreen() {
           ) : undefined
         }
       />
+
+      <ExtractionProgressLine />
 
       {bookmarks.error && !bookmarks.data ? (
         <ScreenContent maxWidth={layout.maxContentWidth} style={styles.center}>

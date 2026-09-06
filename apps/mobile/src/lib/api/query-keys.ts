@@ -11,6 +11,7 @@ export const qk = {
   folders: ["folders"] as const,
   folder: (id: string) => ["folders", id] as const,
   importJob: (id: string) => ["import", id] as const,
+  extractionProgress: ["bookmarks", "extraction-progress"] as const,
 
   /** `folderId` is null for the unfiled root list ("Bookmarks"). */
   bookmarks: (folderId: string | null) => ["bookmarks", folderId ?? null] as const,

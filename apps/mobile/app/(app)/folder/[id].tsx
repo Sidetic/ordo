@@ -16,6 +16,7 @@ import { ScreenContent } from "../../../src/components/ui/ScreenContent";
 import { EmptyState } from "../../../src/components/ui/EmptyState";
 import { BookmarkListSkeleton } from "../../../src/components/ui/BookmarkListSkeleton";
 import { BookmarkRow } from "../../../src/components/bookmarks/BookmarkRow";
+import { ExtractionProgressLine } from "../../../src/components/bookmarks/ExtractionProgressLine";
 import { AddBookmarkSheet } from "../../../src/components/bookmarks/AddBookmarkSheet";
 import { MoveSheet } from "../../../src/components/bookmarks/MoveSheet";
 import { UnlockScreen } from "../../../src/components/bookmarks/LockPrompt";
@@ -186,6 +187,8 @@ export default function FolderDetailScreen() {
           ) : undefined
         }
       />
+
+      <ExtractionProgressLine maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth} />
 
       {showLocked && folderId ? (
         <ScreenContent maxWidth={layout.maxContentWidth} style={styles.center}>

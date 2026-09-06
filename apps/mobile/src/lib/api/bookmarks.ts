@@ -90,4 +90,9 @@ export const bookmarksApi = {
       { folderId },
       { folderId },
     ),
+
+  extractionProgress: () =>
+    api.get<typeof BookmarkRoutes.extractionProgress.response>(
+      BookmarkRoutes.extractionProgress.path,
+    ),
 };

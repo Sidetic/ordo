@@ -22,6 +22,8 @@ export interface FloatingPanelProps {
   style?: StyleProp<ViewStyle>;
   maxWidth?: number;
   onShow?: () => void;
+  /** When false, the scrim and back button do not close the panel. */
+  dismissible?: boolean;
 }
 
 export function FloatingPanel({
@@ -31,6 +33,7 @@ export function FloatingPanel({
   style,
   maxWidth = 420,
   onShow,
+  dismissible = true,
 }: FloatingPanelProps) {
   const { palette, shadows } = useTheme();
   const { width, height } = useWindowDimensions();
@@ -58,12 +61,12 @@ export function FloatingPanel({
       animationType="fade"
       statusBarTranslucent
       onShow={onShow}
-      onRequestClose={onDismiss}
+      onRequestClose={dismissible ? onDismiss : () => {}}
     >
       <View accessibilityViewIsModal style={styles.root}>
         <Pressable
           style={[StyleSheet.absoluteFill, { backgroundColor: palette.overlay }]}
-          onPress={onDismiss}
+          onPress={dismissible ? onDismiss : undefined}
         />
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}

@@ -27,7 +27,7 @@ export async function downloadExportFile(body: string, filename: string): Promis
   try {
     if (Platform.OS === "android") {
       const contentUri = await FileSystem.getContentUriAsync(path);
-      await Share.share({ title: "Ordo export", message: body, url: contentUri });
+      await Share.share({ title: "Ordo export", url: contentUri });
       return;
     }
     await Share.share({ title: "Ordo export", url: path });

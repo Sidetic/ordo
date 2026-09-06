@@ -13,6 +13,7 @@ import { EmptyState } from "../../src/components/ui/EmptyState";
 import { Button } from "../../src/components/ui/Button";
 import { BookmarkListSkeleton } from "../../src/components/ui/BookmarkListSkeleton";
 import { BookmarkRow } from "../../src/components/bookmarks/BookmarkRow";
+import { ExtractionProgressLine } from "../../src/components/bookmarks/ExtractionProgressLine";
 import { TagChip } from "../../src/components/tags/TagChip";
 import { ReaderPane, ReaderPanePlaceholder } from "../../src/components/reader/ReaderPane";
 import { useInfiniteSearch } from "../../src/hooks/use-bookmarks";
@@ -115,6 +116,7 @@ export default function SearchScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
       <Header title="Search" large />
+      <ExtractionProgressLine maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth} />
       <ScreenContent
         maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth}
         style={styles.content}

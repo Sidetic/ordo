@@ -15,6 +15,7 @@ import { ScreenContent } from "../../../src/components/ui/ScreenContent";
 import { EmptyState } from "../../../src/components/ui/EmptyState";
 import { BookmarkListSkeleton } from "../../../src/components/ui/BookmarkListSkeleton";
 import { BookmarkRow } from "../../../src/components/bookmarks/BookmarkRow";
+import { ExtractionProgressLine } from "../../../src/components/bookmarks/ExtractionProgressLine";
 import { AddBookmarkSheet } from "../../../src/components/bookmarks/AddBookmarkSheet";
 import { BookmarkActionsSheet } from "../../../src/components/bookmarks/BookmarkActionsSheet";
 import { MoveSheet } from "../../../src/components/bookmarks/MoveSheet";
@@ -161,6 +162,8 @@ export default function TagDetailScreen() {
           ) : undefined
         }
       />
+
+      <ExtractionProgressLine maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth} />
 
       {list.error && !list.data ? (
         <ScreenContent maxWidth={layout.maxContentWidth} style={styles.center}>
