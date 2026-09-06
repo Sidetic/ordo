@@ -1,10 +1,8 @@
 /** About, build provenance, updates, and project links. */
 import React from "react";
-import { Linking, StyleSheet, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Linking, StyleSheet } from "react-native";
 import { SettingRow } from "../../../src/components/ui/SettingRow";
 import { Text } from "../../../src/components/ui/Text";
-import { Badge } from "../../../src/components/ui/Badge";
 import { OtaUpdateCard } from "../../../src/components/ui/OtaUpdater";
 import { Toggle } from "../../../src/components/ui/Toggle";
 import {
@@ -15,18 +13,17 @@ import {
 import { useBuildInfo } from "../../../src/hooks/use-build-info";
 import { useOtaUpdate } from "../../../src/hooks/use-ota-update";
 import { useNativeUpdateStore } from "../../../src/store/native-update";
-import { useTheme } from "../../../src/theme/ThemeProvider";
-import { radius, spacing } from "../../../src/theme/tokens";
+import { spacing } from "../../../src/theme/tokens";
 
 const REPO_URL = "https://github.com/axoletlabs/ordo";
 const PUBLISHED_YEAR = 2026;
 
 export default function AboutScreen() {
-  const { palette } = useTheme();
   const build = useBuildInfo();
   const ota = useOtaUpdate();
   const nativeUpdate = useNativeUpdateStore();
   const commit = build.gitHashShort ?? build.gitHash ?? "—";
+  const commitRef = build.gitHash ?? build.gitHashShort;
   const published = ota.runningUpdateCreatedAt;
 
   return (
@@ -38,7 +35,17 @@ export default function AboutScreen() {
           footer={build.gitDirty ? "Built from a working copy with uncommitted changes." : undefined}
         >
           <SettingRow icon="pricetag-outline" label="Version" value={`v${build.version}`} />
-          <SettingRow icon="git-commit-outline" label="Commit" value={commit} divider={false} />
+          <SettingRow
+            icon="git-commit-outline"
+            label="Commit"
+            value={commit}
+            onPress={
+              commitRef
+                ? () => Linking.openURL(`${REPO_URL}/commit/${commitRef}`).catch(() => {})
+                : undefined
+            }
+            divider={false}
+          />
         </SettingsGroup>
 
         <SettingsGroup label="Running">
@@ -46,37 +53,14 @@ export default function AboutScreen() {
             icon="layers-outline"
             label="Origin"
             description={!ota.isEmbeddedLaunch && published ? `Published ${published.toLocaleDateString()}` : undefined}
-            right={
-              <Badge tone={ota.isEmbeddedLaunch ? "neutral" : "blue"}>
-                {ota.isEmbeddedLaunch ? "Embedded" : "OTA"}
-              </Badge>
-            }
-            rightFit="content"
+            value={ota.isEmbeddedLaunch ? "Embedded" : "OTA"}
           />
-          <View style={styles.fingerprint}>
-            <View
-              style={[
-                styles.fingerprintIcon,
-                { backgroundColor: palette.surfaceSecondary, borderRadius: radius.sm },
-              ]}
-            >
-              <Ionicons name="finger-print-outline" size={16} color={palette.accent} />
-            </View>
-            <View style={styles.fingerprintCopy}>
-              <Text variant="bodyStrong">Build fingerprint</Text>
-              <Text
-                variant="monoSmall"
-                color="secondary"
-                selectable
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.8}
-                style={styles.fingerprintValue}
-              >
-                {ota.runtimeVersion ?? "—"}
-              </Text>
-            </View>
-          </View>
+          <SettingRow
+            icon="finger-print-outline"
+            label="Build fingerprint"
+            value={ota.runtimeVersion ?? "—"}
+            divider={false}
+          />
         </SettingsGroup>
 
         <SettingsGroup label="Updates">
@@ -102,7 +86,6 @@ export default function AboutScreen() {
             label="Source"
             value="GitHub"
             onPress={() => Linking.openURL(REPO_URL).catch(() => {})}
-            showChevron
           />
           <SettingRow
             icon="shield-checkmark-outline"
@@ -121,16 +104,5 @@ export default function AboutScreen() {
 }
 
 const styles = StyleSheet.create({
-  fingerprint: {
-    minHeight: 52,
-    paddingHorizontal: spacing[16],
-    paddingVertical: spacing[10],
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[12],
-  },
-  fingerprintIcon: { width: 28, height: 28, alignItems: "center", justifyContent: "center" },
-  fingerprintCopy: { flex: 1, minWidth: 0 },
-  fingerprintValue: { marginTop: spacing[2] },
   footer: { marginTop: spacing[24] },
 });

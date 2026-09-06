@@ -74,7 +74,7 @@ export default function SettingsScreen() {
           />
         </SettingsGroup>
 
-        <SettingsGroup>
+        <SettingsGroup style={styles.signoutGroup}>
           <View style={styles.signout}>
             <Button
               label="Sign out"
@@ -104,5 +104,6 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  signoutGroup: { marginTop: spacing[24] },
   signout: { padding: spacing[16] },
 });
