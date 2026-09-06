@@ -13,7 +13,7 @@ import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metric
 import { useAuthStore } from "../../src/store/auth";
 import { useSettingsStore } from "../../src/store/settings";
 import { MfaEnrollmentScreen } from "../../src/components/auth/MfaEnrollmentScreen";
-import { Text as NativeText, View, useWindowDimensions } from "react-native";
+import { Text as NativeText, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const HIDDEN = {
@@ -23,7 +23,6 @@ const HIDDEN = {
 export default function AppLayout() {
   const { palette, shadows } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
   const { data: serverInfo } = useServerInfo();
@@ -35,6 +34,8 @@ export default function AppLayout() {
     hideBottomNav,
     bottom: floatingBottom,
     height: floatingHeight,
+    windowWidth,
+    windowHeight,
   } = useFloatingDockMetrics();
   const tabBarHeight = showNavigationLabels ? layout.tabBarHeight : layout.touchTargetMin;
   const railWidth = showNavigationLabels
@@ -50,12 +51,15 @@ export default function AppLayout() {
     : layout.compactNavigationRailIconHeight;
   const compactDockLeft = Math.max(0, (windowWidth - compactDockWidth) / 2);
   const compactRailTop = Math.max(0, (windowHeight - compactRailHeight) / 2);
+  const floatingDockTop = Math.max(0, windowHeight - floatingHeight - floatingBottom);
+  const floatingDockWidth = Math.max(0, windowWidth - spacing[16] * 2);
   const railInset = Math.max(insets.left, spacing[8]);
   const tabBarStyle = React.useMemo(
     () => {
-      // React Navigation retains one native tab bar while its position changes.
-      // Every branch supplies concrete geometry so rail and bottom-dock values
-      // cannot leak across an orientation change.
+      // React Navigation keeps one native tab bar when tabBarPosition flips.
+      // Android's old architecture ignores `top: "auto"` for position insets,
+      // so leftover landscape `top` would stick (compact dock in the middle,
+      // full dock at the top). Every inset is a number or `null` (clears Yoga).
       const reset = {
         borderWidth: 0,
         borderTopWidth: 0,
@@ -71,9 +75,9 @@ export default function AppLayout() {
             ...reset,
             position: "relative" as const,
             left: 0,
-            right: "auto" as const,
+            right: null,
             start: 0,
-            end: "auto" as const,
+            end: null,
             top: 0,
             bottom: 0,
             width: railWidth + insets.left,
@@ -93,7 +97,7 @@ export default function AppLayout() {
         const compactGeometry = compact
           ? {
               top: compactRailTop,
-              bottom: "auto" as const,
+              bottom: null,
               height: compactRailHeight,
               marginTop: 0,
               marginBottom: 0,
@@ -111,9 +115,9 @@ export default function AppLayout() {
           ...compactGeometry,
           position: "absolute" as const,
           left: railInset,
-          right: "auto" as const,
+          right: null,
           start: railInset,
-          end: "auto" as const,
+          end: null,
           width: railWidth,
           marginLeft: 0,
           marginRight: 0,
@@ -155,12 +159,12 @@ export default function AppLayout() {
         ...reset,
         position: "absolute" as const,
         left: compact ? compactDockLeft : spacing[16],
-        right: compact ? "auto" as const : spacing[16],
+        right: compact ? null : spacing[16],
         start: compact ? compactDockLeft : spacing[16],
-        end: compact ? "auto" as const : spacing[16],
-        top: "auto" as const,
+        end: compact ? null : spacing[16],
+        top: floatingDockTop,
         bottom: floatingBottom,
-        width: compact ? compactDockWidth : "auto" as const,
+        width: compact ? compactDockWidth : floatingDockWidth,
         height: floatingHeight,
         marginLeft: 0,
         marginRight: 0,
@@ -185,6 +189,8 @@ export default function AppLayout() {
       compactRailHeight,
       compactRailTop,
       floatingBottom,
+      floatingDockTop,
+      floatingDockWidth,
       floatingHeight,
       insets.bottom,
       insets.left,

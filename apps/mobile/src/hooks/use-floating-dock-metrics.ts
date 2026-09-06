@@ -10,7 +10,8 @@ const FLOATING_DOCK_PATHS = new Set(["/", "/search", "/settings"]);
 export function useFloatingDockMetrics() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { useSideNavigation } = useResponsiveLayout();
+  const { useSideNavigation, width: windowWidth, height: windowHeight } =
+    useResponsiveLayout();
   const navigationStyle = useSettingsStore((s) => s.navigationStyle);
   const selectionActive = useSelectionUiStore((s) => s.active);
   const floating = navigationStyle !== "docked";
@@ -29,6 +30,8 @@ export function useFloatingDockMetrics() {
     floating,
     compact,
     sideNavigation: useSideNavigation,
+    windowWidth,
+    windowHeight,
     visible: floating && !useSideNavigation && navigationVisible,
     hideBottomNav,
     bottom,
