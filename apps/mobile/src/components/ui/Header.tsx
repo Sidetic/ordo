@@ -16,11 +16,11 @@ import { layout, spacing } from "../../theme/tokens";
 import { useResponsiveLayout } from "../../hooks/use-responsive-layout";
 
 /** Matches `Text` variant "header" line height (14px × 1.5). */
-const HEADER_LINE_HEIGHT = 21;
+export const HEADER_LINE_HEIGHT = 21;
 /** Clears the 36px back control and a pair of 32px trailing icons. */
-const TITLE_SLOT_INSET = 48;
+export const HEADER_TITLE_INSET = 48;
 
-const titleMetrics: TextStyle = {
+export const headerTitleTextStyle: TextStyle = {
   width: "100%",
   includeFontPadding: false,
   textAlignVertical: "center",
@@ -49,7 +49,7 @@ export function Header({
   right,
   large,
   safeTop = true,
-  maxWidth = layout.maxLibraryWidth,
+  maxWidth = layout.maxContentWidth,
   divider = false,
   onTitleLongPress,
   titleAccessibilityHint,
@@ -73,7 +73,7 @@ export function Header({
   };
 
   const titleEl = (
-    <Text variant="header" align="center" numberOfLines={1} style={titleMetrics}>
+    <Text variant="header" align="center" numberOfLines={1} style={headerTitleTextStyle}>
       {title}
     </Text>
   );
@@ -165,8 +165,8 @@ const styles = StyleSheet.create({
   },
   titleSlot: {
     ...StyleSheet.absoluteFillObject,
-    left: TITLE_SLOT_INSET,
-    right: TITLE_SLOT_INSET,
+    left: HEADER_TITLE_INSET,
+    right: HEADER_TITLE_INSET,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   subtitle: {
     width: "100%",
     marginTop: spacing[2],
-    paddingHorizontal: TITLE_SLOT_INSET,
+    paddingHorizontal: HEADER_TITLE_INSET,
     includeFontPadding: false,
   },
   backBtn: { width: 36, height: 32, alignItems: "center", justifyContent: "center" },

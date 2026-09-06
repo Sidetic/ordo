@@ -1,13 +1,18 @@
 /**
  * Compact header shown while multi-select is active: Cancel, count, Select all.
+ * Uses the same title slot as `Header` so entering selection does not jump the label.
  */
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PressableScale } from "../ui/PressableScale";
 import { Text } from "../ui/Text";
+import { HEADER_LINE_HEIGHT, headerTitleTextStyle } from "../ui/Header";
 import { useTheme } from "../../theme/ThemeProvider";
 import { layout, spacing } from "../../theme/tokens";
+
+/** Clears "Select all" / "Deselect" while keeping the title on the same center as `Header`. */
+const TITLE_SLOT_INSET = 80;
 
 export function SelectionHeader({
   count,
@@ -46,15 +51,17 @@ export function SelectionHeader({
           accessibilityLabel="Cancel selection"
           onPress={onCancel}
           hitSlop={8}
-          style={styles.side}
+          style={[styles.side, styles.left]}
         >
           <Text variant="bodyStrong" color="accent">
             Cancel
           </Text>
         </PressableScale>
-        <Text variant="title3" align="center" numberOfLines={1} style={styles.title}>
-          {title}
-        </Text>
+        <View pointerEvents="none" style={styles.titleSlot}>
+          <Text variant="header" align="center" numberOfLines={1} style={headerTitleTextStyle}>
+            {title}
+          </Text>
+        </View>
         {selectableCount > 0 ? (
           <PressableScale
             accessibilityRole="button"
@@ -67,9 +74,7 @@ export function SelectionHeader({
               {allSelected ? "Deselect" : "Select all"}
             </Text>
           </PressableScale>
-        ) : (
-          <View style={styles.side} />
-        )}
+        ) : null}
       </View>
     </View>
   );
@@ -83,12 +88,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   row: {
-    minHeight: 32,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[8],
+    height: HEADER_LINE_HEIGHT,
+    justifyContent: "center",
   },
-  side: { minWidth: 72, justifyContent: "center" },
-  right: { alignItems: "flex-end" },
-  title: { flex: 1 },
+  titleSlot: {
+    ...StyleSheet.absoluteFillObject,
+    left: TITLE_SLOT_INSET,
+    right: TITLE_SLOT_INSET,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  side: {
+    position: "absolute",
+    top: "50%",
+    marginTop: -16,
+    height: 32,
+    justifyContent: "center",
+    zIndex: 1,
+  },
+  left: { left: 0 },
+  right: { right: 0, alignItems: "flex-end" },
 });

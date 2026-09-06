@@ -180,7 +180,11 @@ export default function SearchScreen() {
           maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth}
         />
       ) : (
-        <Header title="Search" large />
+        <Header
+          title="Search"
+          large
+          maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth}
+        />
       )}
       <ExtractionProgressLine maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth} />
       <ScreenContent
