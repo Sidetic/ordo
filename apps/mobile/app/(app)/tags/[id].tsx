@@ -95,8 +95,7 @@ export default function TagDetailScreen() {
 
   const onDelete = (b: BookmarkDto) => {
     haptics.medium();
-    return deleteBm.mutate(b, {
-      showToast: false,
+    deleteBm.mutate(b, {
       onDeleted: () => {
         if (selectedBookmarkId === b.id) {
           router.replace({ pathname: "/tags/[id]", params: { id: routeId ?? "" } });

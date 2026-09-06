@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { FloatingPanel } from "../ui/FloatingPanel";
@@ -29,7 +29,7 @@ export interface BookmarkActionsSheetProps {
   bookmark: BookmarkDto | null;
   onToggleRead: (bookmark: BookmarkDto) => void;
   onMove: (bookmark: BookmarkDto) => void;
-  onDelete: (bookmark: BookmarkDto) => { undo: () => void; commit: () => void } | void;
+  onDelete: (bookmark: BookmarkDto) => void;
   onEditTags?: (bookmark: BookmarkDto) => void;
 }
 
@@ -45,28 +45,16 @@ export function BookmarkActionsSheet({
   const { palette } = useTheme();
   const router = useRouter();
   const setContentKind = useSetContentKind();
-  const [mode, setMode] = useState<"menu" | "delete" | "deleted">("menu");
-  const pendingDelete = useRef<{ undo: () => void; commit: () => void } | null>(null);
+  const [mode, setMode] = useState<"menu" | "delete">("menu");
 
   useEffect(() => {
-    if (visible) {
-      setMode("menu");
-      return;
-    }
-    pendingDelete.current?.commit();
-    pendingDelete.current = null;
+    if (visible) setMode("menu");
   }, [visible]);
 
   if (!bookmark) return null;
 
-  const dismiss = () => {
-    pendingDelete.current?.commit();
-    pendingDelete.current = null;
-    onDismiss();
-  };
-
   return (
-    <FloatingPanel visible={visible} onDismiss={dismiss}>
+    <FloatingPanel visible={visible} onDismiss={onDismiss}>
       {mode === "delete" ? (
         <>
           <PanelHeader
@@ -83,35 +71,11 @@ export function BookmarkActionsSheet({
               block
               size="lg"
               onPress={() => {
-                pendingDelete.current = onDelete(bookmark) ?? null;
-                setMode("deleted");
+                onDelete(bookmark);
+                onDismiss();
               }}
             />
             <Button label="Cancel" variant="ghost" block onPress={() => setMode("menu")} />
-          </View>
-        </>
-      ) : mode === "deleted" ? (
-        <>
-          <PanelHeader
-            icon="trash-outline"
-            iconColor={palette.danger}
-            iconBackground={palette.dangerSoft}
-            title="Bookmark deleted"
-            subtitle="You can undo this."
-          />
-          <View style={styles.actions}>
-            <Button
-              label="Undo"
-              variant="primary"
-              block
-              size="lg"
-              onPress={() => {
-                pendingDelete.current?.undo();
-                pendingDelete.current = null;
-                setMode("menu");
-              }}
-            />
-            <Button label="Done" variant="ghost" block onPress={dismiss} />
           </View>
         </>
       ) : (
@@ -208,7 +172,7 @@ export function BookmarkActionsSheet({
             tone="danger"
             onPress={() => setMode("delete")}
           />
-          <Button label="Cancel" variant="ghost" block onPress={dismiss} style={styles.menuCancel} />
+          <Button label="Cancel" variant="ghost" block onPress={onDismiss} style={styles.menuCancel} />
         </>
       )}
     </FloatingPanel>

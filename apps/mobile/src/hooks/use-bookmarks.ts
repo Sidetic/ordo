@@ -168,14 +168,10 @@ export function useSetContentKind() {
 
 export function useDeleteBookmark(folderId: string | null) {
   return {
-    mutate: (
-      bookmark: BookmarkDto,
-      opts?: { onDeleted?: () => void; showToast?: boolean },
-    ) =>
+    mutate: (bookmark: BookmarkDto, opts?: { onDeleted?: () => void }) =>
       deleteBookmarksUndoable([bookmark], {
         scopeFolderId: folderId,
         onDeleted: opts?.onDeleted,
-        showToast: opts?.showToast,
       }),
   };
 }

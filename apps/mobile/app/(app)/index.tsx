@@ -108,7 +108,7 @@ export default function BookmarksScreen() {
 
   const onDelete = (bookmark: BookmarkDto) => {
     haptics.medium();
-    return deleteBookmark.mutate(bookmark, { showToast: false });
+    deleteBookmark.mutate(bookmark);
   };
 
   const onMarkAllRead = () => {

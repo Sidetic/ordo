@@ -113,8 +113,7 @@ export default function SearchScreen() {
 
   const onDelete = (bookmark: BookmarkDto) => {
     haptics.medium();
-    return deleteBm.mutate(bookmark, {
-      showToast: false,
+    deleteBm.mutate(bookmark, {
       onDeleted: () => {
         if (selectedBookmarkId === bookmark.id) {
           router.setParams({ bookmark: undefined });
