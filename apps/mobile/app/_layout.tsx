@@ -31,6 +31,7 @@ import { LaunchSplash } from "../src/components/LaunchSplash";
 import { fontAssets } from "../src/theme/tokens";
 import { IncomingShareHandler } from "../src/components/IncomingShareHandler";
 import { AddBookmarkSheet } from "../src/components/bookmarks/AddBookmarkSheet";
+import { returnToShareSender } from "../src/lib/share-target";
 import { useIncomingShareStore } from "../src/store/incoming-share";
 import {
   markRestartSplashPresented,
@@ -120,7 +121,10 @@ function RootShell() {
       {!showSplash && !restarting && routeMatchesAuth && status === "authenticated" ? (
         <AddBookmarkSheet
           visible={!!sharedUrl}
-          onDismiss={clearSharedUrl}
+          onDismiss={() => {
+            clearSharedUrl();
+            returnToShareSender();
+          }}
           folderId={null}
           allowFolderSelection
           initialUrl={sharedUrl ?? undefined}
