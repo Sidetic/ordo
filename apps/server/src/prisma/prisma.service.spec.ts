@@ -231,6 +231,7 @@ describe("PrismaService legacy schema migration", () => {
       "readProgress",
       "completedAt",
       "contentKindOverride",
+      "articleUndoSnapshot",
     ]) {
       expect(bookmarkCols.some((c) => c.name === column)).toBe(true);
     }

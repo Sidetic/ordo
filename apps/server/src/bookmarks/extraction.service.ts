@@ -102,9 +102,11 @@ export class ExtractionService {
     const force = forceArticle || existingOverride?.contentKindOverride === "article";
     try {
       const extracted = await this.reader.extract(url, { forceArticle: force });
-      // updateMany: a row deleted mid-flight is a harmless no-op.
-      await this.prisma.bookmark.updateMany({
-        where: { id: bookmarkId },
+      // Drop a forced capture if the user unmarked while this job was in flight.
+      const written = await this.prisma.bookmark.updateMany({
+        where: force
+          ? { id: bookmarkId, contentKindOverride: "article" }
+          : { id: bookmarkId },
         data:
           mode === "full"
             ? {
@@ -132,7 +134,7 @@ export class ExtractionService {
                 extractionVersion: EXTRACTION_VERSION,
               },
       });
-      this.tagSuggestions.refreshSafely(bookmarkId);
+      if (written.count > 0) this.tagSuggestions.refreshSafely(bookmarkId);
     } catch (err) {
       const unsupported = err instanceof UnsupportedContentError;
       const reason = unsupported ? err.reason : "fetch_error";
@@ -152,7 +154,9 @@ export class ExtractionService {
           ["social_video_or_app", "js_required", "too_short", "not_an_article"].includes(reason));
       await this.prisma.bookmark
         .updateMany({
-          where: { id: bookmarkId },
+          where: force
+            ? { id: bookmarkId, contentKindOverride: "article" }
+            : { id: bookmarkId },
           data:
             definitivelyUnreadable || (unsupported && !existing?.contentHtml)
               ? {

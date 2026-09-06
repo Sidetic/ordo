@@ -141,26 +141,45 @@ export function useSetContentKind() {
       contentKindOverride: "article" | "web";
     }) => bookmarksApi.setContentKind(id, contentKindOverride, { folderId }),
     onMutate: ({ id, contentKindOverride }) => {
-      updateBookmarkEverywhere(qc, id, (bookmark) => ({
-        ...bookmark,
-        contentKindOverride,
-        contentKind:
-          contentKindOverride ??
-          (bookmark.fetchStatus === "ok"
-            ? "article"
-            : bookmark.fetchStatus === "pending"
-              ? null
-              : bookmark.contentKind === "media" || bookmark.contentKind === "file"
-                ? bookmark.contentKind
-                : "web"),
-        fetchStatus:
-          contentKindOverride === "article" && bookmark.fetchStatus !== "ok"
-            ? "pending"
-            : bookmark.fetchStatus,
-      }));
+      updateBookmarkEverywhere(qc, id, (bookmark) => {
+        if (contentKindOverride === "article") {
+          return {
+            ...bookmark,
+            contentKindOverride: "article",
+            contentKind: "article",
+            fetchStatus: bookmark.fetchStatus === "ok" ? "ok" : "pending",
+          };
+        }
+        // Forced extracts snapshot the website row; drop the article capture locally
+        // until the server restore arrives.
+        const restoringForcedArticle =
+          bookmark.contentKindOverride === "article" || bookmark.fetchStatus === "pending";
+        if (restoringForcedArticle) {
+          return {
+            ...bookmark,
+            contentKindOverride: null,
+            contentKind: "web",
+            fetchStatus: "unsupported",
+            extractionReason: bookmark.extractionReason ?? "not_an_article",
+            readingTimeMinutes: null,
+            contentMarkdown: null,
+            contentText: null,
+            ...("contentHtml" in bookmark ? { contentHtml: null } : {}),
+          };
+        }
+        return {
+          ...bookmark,
+          contentKindOverride: "web",
+          contentKind: "web",
+        };
+      });
     },
     onSuccess: (updated) => {
-      updateBookmarkEverywhere(qc, updated.id, (bookmark) => ({ ...bookmark, ...updated }));
+      updateBookmarkEverywhere(qc, updated.id, (bookmark) => ({
+        ...bookmark,
+        ...updated,
+        ...("contentHtml" in bookmark && updated.fetchStatus !== "ok" ? { contentHtml: null } : {}),
+      }));
       void qc.invalidateQueries({ queryKey: qk.bookmark(updated.id) });
     },
   });

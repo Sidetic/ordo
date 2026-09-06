@@ -162,4 +162,40 @@ describe("ExtractionService", () => {
     expect(extract).toHaveBeenNthCalledWith(2, "https://grugbrain.dev/", { forceArticle: true });
     expect(extract).toHaveBeenCalledTimes(2);
   });
+
+  it("does not persist a forced extract after the bookmark is unmarked", async () => {
+    const extract = jest.fn().mockResolvedValue({
+      title: "Forced",
+      description: null,
+      author: null,
+      publishedAt: null,
+      domain: "grugbrain.dev",
+      readingTimeMinutes: 1,
+      contentHtml: "<p>Forced essay.</p>",
+      contentMarkdown: "Forced essay.",
+      contentText: "Forced essay.",
+    });
+    const refreshSafely = jest.fn();
+    const prisma = {
+      bookmark: {
+        findUnique: jest.fn().mockResolvedValue({ contentKindOverride: null }),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        count: jest.fn().mockResolvedValue(0),
+      },
+    };
+    const service = new ExtractionService(
+      prisma as never,
+      { extract, classifyShellText: () => null } as never,
+      { refreshSafely } as never,
+    );
+
+    await service.enrichBookmark("bookmark-1", "https://grugbrain.dev/", "full", true);
+
+    expect(prisma.bookmark.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "bookmark-1", contentKindOverride: "article" },
+      }),
+    );
+    expect(refreshSafely).not.toHaveBeenCalled();
+  });
 });

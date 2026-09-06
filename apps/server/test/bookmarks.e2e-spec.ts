@@ -23,9 +23,12 @@ const FAKE_EXTRACTED = {
 
 function fakeReader() {
   return {
-    extract: async (url: string) => {
+    extract: async (url: string, options?: { forceArticle?: boolean }) => {
       if (url.includes("/js-only")) {
         throw new UnsupportedContentError("js_required", "JavaScript is not enabled");
+      }
+      if (url.includes("/unmarked-essay") && options?.forceArticle !== true) {
+        throw new UnsupportedContentError("not_an_article", "Page does not declare itself an article");
       }
       return { ...FAKE_EXTRACTED };
     },
@@ -312,7 +315,7 @@ describe("Bookmarks & Folders (e2e)", () => {
         .put(`/api/bookmarks/${res.body.id}/content-kind`)
         .send({ contentKindOverride: "web" })
         .expect(200);
-      expect(unmarked.body.contentKindOverride).toBe("web");
+      expect(unmarked.body.contentKindOverride).toBeNull();
       expect(unmarked.body.contentKind).toBe("web");
 
       const viaPatch = await agent
@@ -333,6 +336,67 @@ describe("Bookmarks & Folders (e2e)", () => {
         .expect(200);
       expect(cleared.body.contentKindOverride).toBeNull();
       expect(cleared.body.contentKind).toBe("web");
+    });
+
+    it("restores the original website when a forced article is unmarked", async () => {
+      const { agent } = await setup();
+      const res = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/unmarked-essay" })
+        .expect(201);
+      let stored = await ctx.prisma.bookmark.findUnique({ where: { id: res.body.id } });
+      for (let attempt = 0; attempt < 20 && stored?.fetchStatus === "pending"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        stored = await ctx.prisma.bookmark.findUnique({ where: { id: res.body.id } });
+      }
+      expect(stored).toMatchObject({
+        fetchStatus: "unsupported",
+        extractionReason: "not_an_article",
+        contentHtml: null,
+      });
+      const originalTitle = stored?.title;
+
+      const marked = await agent
+        .put(`/api/bookmarks/${res.body.id}/content-kind`)
+        .send({ contentKindOverride: "article" })
+        .expect(200);
+      expect(marked.body.contentKind).toBe("article");
+      stored = await ctx.prisma.bookmark.findUnique({ where: { id: res.body.id } });
+      for (let attempt = 0; attempt < 20 && stored?.fetchStatus === "pending"; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        stored = await ctx.prisma.bookmark.findUnique({ where: { id: res.body.id } });
+      }
+      expect(stored).toMatchObject({
+        fetchStatus: "ok",
+        title: "Sample Article",
+        contentHtml: "<p>Hello world.</p>",
+        readingTimeMinutes: 4,
+        contentKindOverride: "article",
+      });
+
+      const unmarked = await agent
+        .put(`/api/bookmarks/${res.body.id}/content-kind`)
+        .send({ contentKindOverride: "web" })
+        .expect(200);
+      expect(unmarked.body).toMatchObject({
+        contentKindOverride: null,
+        contentKind: "web",
+        fetchStatus: "unsupported",
+        title: originalTitle,
+        readingTimeMinutes: null,
+      });
+      stored = await ctx.prisma.bookmark.findUnique({ where: { id: res.body.id } });
+      expect(stored).toMatchObject({
+        fetchStatus: "unsupported",
+        extractionReason: "not_an_article",
+        title: originalTitle,
+        contentHtml: null,
+        contentMarkdown: null,
+        contentText: null,
+        readingTimeMinutes: null,
+        contentKindOverride: null,
+        articleUndoSnapshot: null,
+      });
     });
 
     it("creates an unfiled bookmark with an explicit null folderId", async () => {

@@ -307,6 +307,7 @@ const BOOKMARK_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: stri
   ["readProgress", "REAL NOT NULL DEFAULT 0"],
   ["completedAt", "DATETIME"],
   ["contentKindOverride", "TEXT"],
+  ["articleUndoSnapshot", "TEXT"],
 ];
 
 const FOLDER_ADDITIVE_COLUMNS: ReadonlyArray<readonly [name: string, ddl: string]> = [

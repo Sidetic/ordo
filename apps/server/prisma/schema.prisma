@@ -159,6 +159,8 @@ model Bookmark {
   extractionVersion Int?
   /** User-forced article/website classification (`article` | `web`); null = automatic. */
   contentKindOverride String?
+  /** JSON snapshot of the pre-article row, restored when the user unmarks a forced extract. */
+  articleUndoSnapshot String?
   author          String?
   publishedAt     DateTime?
   readingTimeMinutes Int?

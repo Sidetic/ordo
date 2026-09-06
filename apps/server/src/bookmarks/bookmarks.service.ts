@@ -217,8 +217,18 @@ export class BookmarksService implements OnApplicationBootstrap {
       readProgress?: number;
       completedAt?: Date | null;
       contentKindOverride?: string | null;
+      articleUndoSnapshot?: string | null;
       fetchStatus?: string;
       extractionReason?: string | null;
+      title?: string;
+      description?: string | null;
+      author?: string | null;
+      publishedAt?: Date | null;
+      readingTimeMinutes?: number | null;
+      contentHtml?: string | null;
+      contentMarkdown?: string | null;
+      contentText?: string | null;
+      extractionVersion?: number | null;
     } = {};
     if (changes.isRead !== undefined) {
       data.isRead = changes.isRead;
@@ -246,10 +256,25 @@ export class BookmarksService implements OnApplicationBootstrap {
       }
     }
     if (changes.contentKindOverride !== undefined) {
-      data.contentKindOverride = changes.contentKindOverride;
-      if (changes.contentKindOverride === "article" && !bookmark.contentHtml) {
-        data.fetchStatus = "pending";
-        data.extractionReason = null;
+      if (changes.contentKindOverride === "article") {
+        data.contentKindOverride = "article";
+        // Snapshot the website row once so unmark can restore it exactly.
+        if (!bookmark.articleUndoSnapshot && bookmark.fetchStatus !== "ok") {
+          data.articleUndoSnapshot = serializeArticleUndoSnapshot(bookmark);
+        }
+        if (!bookmark.contentHtml) {
+          data.fetchStatus = "pending";
+          data.extractionReason = null;
+        }
+      } else {
+        const snapshot = parseArticleUndoSnapshot(bookmark.articleUndoSnapshot);
+        if (snapshot) {
+          Object.assign(data, restoreArticleUndoSnapshot(snapshot));
+          data.contentKindOverride = null;
+          data.articleUndoSnapshot = null;
+        } else {
+          data.contentKindOverride = changes.contentKindOverride;
+        }
       }
     }
 
@@ -558,4 +583,88 @@ export class BookmarksService implements OnApplicationBootstrap {
       ? {}
       : { AND: tagIds.map((tagId) => ({ tags: { some: { tagId } } })) };
   }
+}
+
+interface ArticleUndoSnapshot {
+  title: string;
+  description: string | null;
+  author: string | null;
+  publishedAt: string | null;
+  readingTimeMinutes: number | null;
+  contentHtml: string | null;
+  contentMarkdown: string | null;
+  contentText: string | null;
+  fetchStatus: string;
+  extractionReason: string | null;
+  extractionVersion: number | null;
+}
+
+function serializeArticleUndoSnapshot(bookmark: {
+  title: string;
+  description: string | null;
+  author: string | null;
+  publishedAt: Date | null;
+  readingTimeMinutes: number | null;
+  contentHtml: string | null;
+  contentMarkdown: string | null;
+  contentText: string | null;
+  fetchStatus: string;
+  extractionReason: string | null;
+  extractionVersion: number | null;
+}): string {
+  const snapshot: ArticleUndoSnapshot = {
+    title: bookmark.title,
+    description: bookmark.description,
+    author: bookmark.author,
+    publishedAt: bookmark.publishedAt?.toISOString() ?? null,
+    readingTimeMinutes: bookmark.readingTimeMinutes,
+    contentHtml: bookmark.contentHtml,
+    contentMarkdown: bookmark.contentMarkdown,
+    contentText: bookmark.contentText,
+    fetchStatus: bookmark.fetchStatus,
+    extractionReason: bookmark.extractionReason,
+    extractionVersion: bookmark.extractionVersion,
+  };
+  return JSON.stringify(snapshot);
+}
+
+function parseArticleUndoSnapshot(raw: string | null | undefined): ArticleUndoSnapshot | null {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as Partial<ArticleUndoSnapshot>;
+    if (typeof value.title !== "string" || typeof value.fetchStatus !== "string") return null;
+    return {
+      title: value.title,
+      description: value.description ?? null,
+      author: value.author ?? null,
+      publishedAt: value.publishedAt ?? null,
+      readingTimeMinutes: value.readingTimeMinutes ?? null,
+      contentHtml: value.contentHtml ?? null,
+      contentMarkdown: value.contentMarkdown ?? null,
+      contentText: value.contentText ?? null,
+      fetchStatus: value.fetchStatus,
+      extractionReason: value.extractionReason ?? null,
+      extractionVersion: value.extractionVersion ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function restoreArticleUndoSnapshot(snapshot: ArticleUndoSnapshot) {
+  return {
+    title: snapshot.title,
+    description: snapshot.description,
+    author: snapshot.author,
+    publishedAt: snapshot.publishedAt ? new Date(snapshot.publishedAt) : null,
+    readingTimeMinutes: snapshot.readingTimeMinutes,
+    contentHtml: snapshot.contentHtml,
+    contentMarkdown: snapshot.contentMarkdown,
+    contentText: snapshot.contentText,
+    fetchStatus: snapshot.fetchStatus,
+    extractionReason: snapshot.extractionReason,
+    extractionVersion: snapshot.extractionVersion,
+    readProgress: 0,
+    completedAt: null,
+  };
 }
