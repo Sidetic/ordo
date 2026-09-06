@@ -124,8 +124,26 @@ export const ExportRequestSchema = z.object({
   format: z.enum(EXPORT_FORMATS),
   /** Restrict the export to one folder; omitted/null exports the library. */
   folderId: z.string().min(1).nullable().optional(),
+  /** Restrict the export to these folders (no unfiled). Empty/omitted = library. */
+  folderIds: z.array(z.string().min(1)).max(1000).optional(),
 });
 export type ExportRequestInput = z.infer<typeof ExportRequestSchema>;
+
+/**
+ * Folder ids to include, or `null` for the whole library (unfiled + eligible
+ * folders). `folderIds` and the older single `folderId` are unioned.
+ */
+export function exportFolderScope(input: ExportRequestInput): string[] | null {
+  const ids: string[] = [];
+  if (input.folderIds) {
+    for (const id of input.folderIds) {
+      if (id) ids.push(id);
+    }
+  }
+  if (input.folderId) ids.push(input.folderId);
+  const unique = [...new Set(ids)];
+  return unique.length > 0 ? unique : null;
+}
 
 export type ImportJobStatus = "parsing" | "ready" | "committing" | "completed" | "failed";
 

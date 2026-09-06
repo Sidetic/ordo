@@ -50,10 +50,10 @@ export const importExportApi = {
     api.delete<{ success: true }>(buildPath(ImportExportRoutes.cancelImport.path, { id })),
 
   /** Returns the raw Response; the filename comes from content-disposition. */
-  requestExport: (format: ExportFormat, folderId: string | null, folderTokens: string[]) =>
+  requestExport: (format: ExportFormat, folderIds: string[], folderTokens: string[]) =>
     api.postBlob(
       ImportExportRoutes.export.path,
-      { format, folderId },
+      { format, ...(folderIds.length > 0 ? { folderIds } : {}) },
       {
         headers: folderTokens.length > 0 ? { [FOLDER_TOKENS_HEADER]: folderTokens.join(",") } : undefined,
         timeoutMs: EXPORT_TIMEOUT_MS,

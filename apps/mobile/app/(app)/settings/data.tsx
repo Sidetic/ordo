@@ -16,7 +16,12 @@ import { toast } from "../../../src/components/ui/toast-store";
 import { useFolders } from "../../../src/hooks/use-folders";
 import { useFolderTokenStore } from "../../../src/store/folder-tokens";
 import { importExportApi } from "../../../src/lib/api/import-export";
-import { downloadExportFile, filenameFromDisposition } from "../../../src/lib/import-export-file";
+import {
+  downloadExportFile,
+  filenameFromDisposition,
+  isExportSaveCanceled,
+  mimeForExportFormat,
+} from "../../../src/lib/import-export-file";
 import { errorMessage } from "../../../src/lib/error-message";
 import { haptics } from "../../../src/lib/haptics";
 import { useTheme } from "../../../src/theme/ThemeProvider";
@@ -45,24 +50,21 @@ export default function DataScreen() {
   };
 
   const [format, setFormat] = useState<ExportFormat>("json");
-  const [scope, setScope] = useState<string>("library");
+  const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   const [more, setMore] = useState(false);
-  const [unlockTarget, setUnlockTarget] = useState<{ folder: FolderDto; source: "export" | "import" } | null>(null);
+  const [unlockTarget, setUnlockTarget] = useState<{ folder: FolderDto; source: "export" | "import" } | null>(
+    null,
+  );
 
+  const isLibrary = selectedFolderIds.length === 0;
   const protectedFolders = useMemo(() => folders.filter((f) => f.protected), [folders]);
 
   const tokensFor = (ids: string[]): string[] =>
     ids.map((id) => tokenFor(id)).filter((t): t is string => Boolean(t));
 
-  const lockedInScope =
-    scope === "library"
-      ? protectedFolders.filter((f) => !tokenFor(f.id))
-      : protectedFolders.filter((f) => f.id === scope && !tokenFor(f.id));
-
-  const scopeName =
-    scope === "library"
-      ? "library"
-      : (folders.find((f) => f.id === scope)?.name.split(" / ").pop() ?? "folder");
+  const lockedInScope = isLibrary
+    ? protectedFolders.filter((f) => !tokenFor(f.id))
+    : protectedFolders.filter((f) => selectedFolderIds.includes(f.id) && !tokenFor(f.id));
 
   const radio = (selected: boolean) => (
     <Ionicons
@@ -72,30 +74,63 @@ export default function DataScreen() {
     />
   );
 
+  const check = (selected: boolean) => (
+    <Ionicons
+      name={selected ? "checkbox" : "square-outline"}
+      size={22}
+      color={selected ? palette.accent : palette.textFaint}
+    />
+  );
+
+  const toggleFolder = (id: string) => {
+    setSelectedFolderIds((current) =>
+      current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
+    );
+  };
+
+  const exportLabel = (() => {
+    const fmt = format.toUpperCase();
+    if (isLibrary) return more ? `Export library as ${fmt}` : "Export library";
+    if (selectedFolderIds.length === 1) {
+      const name =
+        folders.find((f) => f.id === selectedFolderIds[0])?.name.split(" / ").pop() ?? "folder";
+      return more ? `Export ${name} as ${fmt}` : `Export ${name}`;
+    }
+    return more
+      ? `Export ${selectedFolderIds.length} folders as ${fmt}`
+      : `Export ${selectedFolderIds.length} folders`;
+  })();
+
   const exportFooter = more
     ? lockedInScope.length > 0
-      ? scope === "library"
+      ? isLibrary
         ? `Excluded until unlocked: ${lockedInScope.map((f) => f.name).join(", ")}.`
-        : "This folder is locked. Unlock it, then export."
-      : undefined
-    : "JSON backup of your library. Open More for HTML, CSV, or a single folder.";
+        : lockedInScope.length === 1
+          ? "This folder is locked. Unlock it, then export."
+          : "Unlock locked folders, then export."
+      : isLibrary
+        ? undefined
+        : "Unfiled bookmarks aren't included when you pick folders."
+    : "JSON backup of your library. Open More for HTML, CSV, or specific folders.";
 
   const exportMutation = useMutation({
     mutationFn: async () => {
-      const folderId = scope === "library" ? null : scope;
-      const tokens = tokensFor(scope === "library" ? protectedFolders.map((f) => f.id) : [scope]);
-      const res = await importExportApi.requestExport(format, folderId, tokens);
+      const tokens = tokensFor(isLibrary ? protectedFolders.map((f) => f.id) : selectedFolderIds);
+      const res = await importExportApi.requestExport(format, selectedFolderIds, tokens);
       const filename = filenameFromDisposition(
         res.headers.get("content-disposition"),
         format === "json" ? "json" : format,
       );
-      await downloadExportFile(await res.text(), filename);
+      await downloadExportFile(await res.text(), filename, mimeForExportFormat(format));
     },
     onSuccess: () => {
       haptics.success();
       toast.success("Export saved");
     },
-    onError: (err) => toast.error(errorMessage(err, "The export failed.")),
+    onError: (err) => {
+      if (isExportSaveCanceled(err)) return;
+      toast.error(errorMessage(err, "The export failed."));
+    },
   });
 
   return (
@@ -104,11 +139,7 @@ export default function DataScreen() {
         <SettingsGroup label="Export" compact footer={exportFooter}>
           <View style={styles.pad}>
             <Button
-              label={
-                more
-                  ? `Export ${scopeName} as ${format.toUpperCase()}`
-                  : "Export library"
-              }
+              label={exportLabel}
               block
               size="lg"
               loading={exportMutation.isPending}
@@ -118,7 +149,7 @@ export default function DataScreen() {
           <SettingRow
             icon="ellipsis-horizontal"
             label="More options"
-            description={more ? "Format and folder" : "HTML, CSV, or a single folder"}
+            description={more ? "Format and folders" : "HTML, CSV, or choose folders"}
             onPress={() => setMore((open) => !open)}
             value={more ? "Hide" : "Show"}
             divider={more}
@@ -132,8 +163,8 @@ export default function DataScreen() {
                 icon="library-outline"
                 label="Entire library"
                 description="All folders below, plus unfiled bookmarks"
-                right={radio(scope === "library")}
-                onPress={() => setScope("library")}
+                right={radio(isLibrary)}
+                onPress={() => setSelectedFolderIds([])}
               />
               {folders.map((folder, index) => {
                 const unlocked = !folder.protected || Boolean(tokenFor(folder.id));
@@ -161,8 +192,8 @@ export default function DataScreen() {
                         ? `${folder.bookmarkCount} bookmarks · unlocked`
                         : `${folder.bookmarkCount} bookmarks`
                     }
-                    right={radio(scope === folder.id)}
-                    onPress={() => setScope(folder.id)}
+                    right={check(selectedFolderIds.includes(folder.id))}
+                    onPress={() => toggleFolder(folder.id)}
                     divider={!last}
                   />
                 );
@@ -197,7 +228,11 @@ export default function DataScreen() {
         onUnlocked={() => {
           const target = unlockTarget;
           setUnlockTarget(null);
-          if (target?.source === "export") setScope(target.folder.id);
+          if (target?.source === "export") {
+            setSelectedFolderIds((current) =>
+              current.includes(target.folder.id) ? current : [...current, target.folder.id],
+            );
+          }
           toast.success(`Folder unlocked for ${Math.round(TOKEN_TTL.FOLDER_MS / 60_000)} minutes`);
         }}
       />

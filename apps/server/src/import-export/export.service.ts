@@ -3,8 +3,8 @@
  *
  * Exports are metadata-only (no cached article content). Whole-library
  * exports include protected folders only when a valid folder token for each
- * is supplied via the x-folder-tokens header; single-folder exports use the
- * standard x-folder-token. Formats:
+ * is supplied via x-folder-tokens; scoped exports (one or more folder ids)
+ * require every selected protected folder to be unlocked. Formats:
  *  - json : the versioned, lossless "ordo-export" envelope
  *  - html : Netscape bookmark file (flat folders)
  *  - csv  : Ordo's documented CSV profile
@@ -12,7 +12,13 @@
 import { Injectable } from "@nestjs/common";
 import { Readable } from "node:stream";
 import type { Prisma } from "@prisma/client";
-import { ErrorCode, type ExportFormat, type ExportRequestInput } from "@ordo/shared";
+import {
+  ErrorCode,
+  EXPORT_MIME,
+  exportFolderScope,
+  type ExportFormat,
+  type ExportRequestInput,
+} from "@ordo/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { TokenService } from "../auth/token.service.js";
 import { AppError } from "../common/errors/app-error.js";
@@ -60,9 +66,9 @@ export interface ExportFile {
 }
 
 const CONTENT_TYPES: Record<ExportFormat, string> = {
-  json: "application/json; charset=utf-8",
-  html: "text/html; charset=utf-8",
-  csv: "text/csv; charset=utf-8",
+  json: `${EXPORT_MIME.json}; charset=utf-8`,
+  html: `${EXPORT_MIME.html}; charset=utf-8`,
+  csv: `${EXPORT_MIME.csv}; charset=utf-8`,
 };
 
 @Injectable()
@@ -83,22 +89,27 @@ export class ExportService {
       orderBy: [{ pinned: "desc" }, { createdAt: "asc" }],
     });
 
+    const requested = exportFolderScope(input);
+    const includeUnfiled = requested === null;
     let includedFolderIds: string[];
-    let scopedFolderId: string | null = null;
 
-    if (input.folderId) {
-      const folder = folders.find((f) => f.id === input.folderId);
-      if (!folder) throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "This folder no longer exists.");
-      if (folder.passwordHash) {
-        const ok = await this.folderUnlocked(folder.id, folderTokens);
-        if (!ok) {
-          throw new AppError(ErrorCode.FOLDER_PROTECTED, "This folder is locked.", {
-            folderId: folder.id,
-          });
+    if (requested) {
+      const byId = new Map(folders.map((f) => [f.id, f] as const));
+      for (const id of requested) {
+        if (!byId.has(id)) {
+          throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "This folder no longer exists.");
         }
       }
-      includedFolderIds = [folder.id];
-      scopedFolderId = folder.id;
+      for (const id of requested) {
+        const folder = byId.get(id)!;
+        if (!folder.passwordHash) continue;
+        if (await this.folderUnlocked(folder.id, folderTokens)) continue;
+        throw new AppError(ErrorCode.FOLDER_PROTECTED, "This folder is locked.", {
+          folderId: folder.id,
+        });
+      }
+      const requestedSet = new Set(requested);
+      includedFolderIds = folders.filter((f) => requestedSet.has(f.id)).map((f) => f.id);
     } else {
       includedFolderIds = [];
       for (const folder of folders) {
@@ -114,15 +125,15 @@ export class ExportService {
     const filename = `ordo-export-${date}.${input.format}`;
     const includedFolders = folders.filter((f) => includedFolderIds.includes(f.id));
 
-    const libraryWhere: Prisma.BookmarkWhereInput = scopedFolderId
-      ? { userId, folderId: scopedFolderId }
-      : { userId, OR: [{ folderId: null }, { folderId: { in: includedFolderIds } }] };
+    const libraryWhere: Prisma.BookmarkWhereInput = includeUnfiled
+      ? { userId, OR: [{ folderId: null }, { folderId: { in: includedFolderIds } }] }
+      : { userId, folderId: { in: includedFolderIds } };
 
     const stream =
       input.format === "json"
         ? this.jsonStream(includedFolders, libraryWhere)
         : input.format === "html"
-          ? this.htmlStream(userId, includedFolders, scopedFolderId)
+          ? this.htmlStream(userId, includedFolders, includeUnfiled)
           : this.csvStream(includedFolders, libraryWhere);
 
     return { stream, contentType: CONTENT_TYPES[input.format], filename };
@@ -196,7 +207,7 @@ export class ExportService {
   private htmlStream(
     userId: string,
     folders: Array<{ id: string; name: string }>,
-    scopedFolderId: string | null,
+    includeUnfiled: boolean,
   ): Readable {
     const prisma = this.prisma;
 
@@ -208,7 +219,8 @@ export class ExportService {
         folderId: string | null,
       ): AsyncGenerator<string> {
         const rows = await pageAll(prisma, { userId, folderId });
-        if (rows.length === 0 && folderId !== null) return; // skip empty folders
+        // Library exports skip empty folders; a chosen folder is always emitted.
+        if (rows.length === 0 && folderId !== null && includeUnfiled) return;
         yield `    <DT><H3>${escapeHtml(folderName)}</H3>\n    <DL><p>\n`;
         for (const row of rows) {
           const tagList = (row.tags ?? []).map((t) => t.tag.name).join(",");
@@ -217,15 +229,10 @@ export class ExportService {
         yield `    </DL><p>\n`;
       };
 
-      if (scopedFolderId) {
-        const folder = folders.find((f) => f.id === scopedFolderId);
-        if (folder) yield* emitFolder(folder.name, folder.id);
-      } else {
-        for (const folder of folders) {
-          yield* emitFolder(folder.name, folder.id);
-        }
-        yield* emitFolder("Unfiled", null);
+      for (const folder of folders) {
+        yield* emitFolder(folder.name, folder.id);
       }
+      if (includeUnfiled) yield* emitFolder("Unfiled", null);
       yield `</DL><p>\n`;
     }
 

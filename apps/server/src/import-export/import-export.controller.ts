@@ -3,8 +3,8 @@
  *
  * Import is a staged job: POST the file (multipart), poll GET until the
  * preview is ready, then POST commit with a duplicate policy. Export streams
- * a file download. Folder tokens arrive via x-folder-token (single folder)
- * and x-folder-tokens (comma-separated, whole-library protected folders).
+ * a file download. Folder tokens arrive via x-folder-token (one folder)
+ * and x-folder-tokens (comma-separated, library or multi-folder exports).
  */
 import {
   Body,

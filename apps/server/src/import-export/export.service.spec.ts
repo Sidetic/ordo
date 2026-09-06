@@ -52,7 +52,10 @@ describe("ExportService", () => {
         const included = inClause?.folderId?.in ?? [];
         return bookmarks.filter((b) => b.folderId === null || included.includes(b.folderId));
       }
-      const folderId = where.folderId as string | null | undefined;
+      const folderId = where.folderId as string | { in: string[] } | null | undefined;
+      if (folderId && typeof folderId === "object" && Array.isArray(folderId.in)) {
+        return bookmarks.filter((b) => typeof b.folderId === "string" && folderId.in.includes(b.folderId));
+      }
       if (folderId === null || folderId === undefined) {
         return bookmarks.filter((b) => b.folderId === null);
       }
@@ -138,5 +141,39 @@ describe("ExportService", () => {
     );
     expect(lines[1]).toContain("https://example.com/one,One,Public,");
     expect(body).not.toContain("secret");
+  });
+
+  it("folderIds export includes only those folders and omits unfiled", async () => {
+    const { service, prisma } = setup();
+    prisma.folderToken.findUnique.mockImplementation(async ({ where }: { where: { tokenHash: string } }) => ({
+      folderId: "f2",
+      expiresAt: new Date(Date.now() + 60_000),
+      tokenHash: where.tokenHash,
+    }));
+
+    const file = await service.export("u1", { format: "json", folderIds: ["f1", "f2"] }, ["tok-priv"]);
+    const body = JSON.parse(await readAll(file.stream));
+    expect(body.folders.map((f: { name: string }) => f.name)).toEqual(["Public", "Private"]);
+    expect(body.bookmarks.map((b: { url: string }) => b.url)).toEqual([
+      "https://example.com/one",
+      "https://example.com/secret",
+    ]);
+  });
+
+  it("html folderIds export skips the Unfiled section", async () => {
+    const { service } = setup();
+    const file = await service.export("u1", { format: "html", folderIds: ["f1"] }, []);
+    const body = await readAll(file.stream);
+    expect(body).toContain("<H3>Public</H3>");
+    expect(body).not.toContain("<H3>Unfiled</H3>");
+    expect(body).not.toContain("https://example.com/unfiled");
+  });
+
+  it("legacy folderId still scopes to a single folder", async () => {
+    const { service } = setup();
+    const file = await service.export("u1", { format: "json", folderId: "f1" }, []);
+    const body = JSON.parse(await readAll(file.stream));
+    expect(body.folders.map((f: { name: string }) => f.name)).toEqual(["Public"]);
+    expect(body.bookmarks.map((b: { url: string }) => b.url)).toEqual(["https://example.com/one"]);
   });
 });
