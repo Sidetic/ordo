@@ -183,6 +183,7 @@ export default function TagDetailScreen() {
             : undefined
         }
         showBack
+        maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth}
         right={
           anchor ? (
             <View style={styles.headerActions}>

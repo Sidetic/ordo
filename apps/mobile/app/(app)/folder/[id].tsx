@@ -193,6 +193,7 @@ export default function FolderDetailScreen() {
         title={folder?.name ?? (isRoot ? "Bookmarks" : "Folder")}
         subtitle={folder ? `${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}` : undefined}
         showBack
+        maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth}
         right={
           folder ? (
             <View style={styles.headerActions}>

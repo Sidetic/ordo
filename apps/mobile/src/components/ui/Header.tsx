@@ -1,10 +1,10 @@
 /**
  * Screen header with optional back button, title, and trailing action.
- * Compact detail headers keep the title centered on the same row as the
- * controls; large tab headers retain their stacked treatment.
+ * Large tab headers and compact pushed headers share one title slot so
+ * "Bookmarks" and a folder name sit on the same line when you navigate.
  */
 import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View, type TextStyle } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,7 +15,16 @@ import { haptics } from "../../lib/haptics";
 import { layout, spacing } from "../../theme/tokens";
 import { useResponsiveLayout } from "../../hooks/use-responsive-layout";
 
+/** Matches `Text` variant "header" line height (14px × 1.5). */
 const HEADER_LINE_HEIGHT = 21;
+/** Clears the 36px back control and a pair of 32px trailing icons. */
+const TITLE_SLOT_INSET = 48;
+
+const titleMetrics: TextStyle = {
+  width: "100%",
+  includeFontPadding: false,
+  textAlignVertical: "center",
+};
 
 export interface HeaderProps {
   title: string;
@@ -52,10 +61,8 @@ export function Header({
   const topInset = safeTop ? insets.top : 0;
   // Both header sizes share the screen's 16px horizontal padding so titles,
   // controls, and page content align on the same edge.
-  const horizontalInsets = {
-    paddingLeft: Math.max(insets.left, spacing[16]),
-    paddingRight: Math.max(insets.right, spacing[16]),
-  };
+  const sidePad = Math.max(insets.left, spacing[16]);
+  const endPad = Math.max(insets.right, spacing[16]);
   const showLarge = large && (!isLandscape || isTablet);
 
   const handleBack = () => {
@@ -65,21 +72,10 @@ export function Header({
     else router.replace("/");
   };
 
-  const titles = (
-    <>
-      <Text variant="header" align="center" numberOfLines={1}>{title}</Text>
-      {subtitle ? (
-        <Text
-          variant="footnote"
-          color="secondary"
-          align="center"
-          numberOfLines={1}
-          style={showLarge ? { marginTop: spacing[2] } : undefined}
-        >
-          {subtitle}
-        </Text>
-      ) : null}
-    </>
+  const titleEl = (
+    <Text variant="header" align="center" numberOfLines={1} style={titleMetrics}>
+      {title}
+    </Text>
   );
   const titleBlock = onTitleLongPress ? (
     <Pressable
@@ -88,58 +84,38 @@ export function Header({
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint={titleAccessibilityHint}
-      style={showLarge ? undefined : styles.compactTitleHit}
+      style={styles.titleHit}
     >
-      {titles}
+      {titleEl}
     </Pressable>
   ) : (
-    titles
+    titleEl
   );
-
-  if (showLarge) {
-    return (
-      <View
-        style={[
-          styles.largeWrap,
-          {
-            maxWidth,
-            paddingTop: topInset + spacing[4],
-            paddingLeft: Math.max(insets.left, spacing[16]),
-            paddingRight: Math.max(insets.right, spacing[16]),
-            borderBottomColor: palette.border,
-            borderBottomWidth: divider ? StyleSheet.hairlineWidth : 0,
-          },
-        ]}
-      >
-        {right ? (
-          <View
-            style={[
-              styles.largeRight,
-              { top: topInset - spacing[2], right: Math.max(insets.right, spacing[16]) },
-            ]}
-          >
-            {right}
-          </View>
-        ) : null}
-        <View style={[styles.largeTitles, !subtitle && styles.singleLineTitle]}>
-          {titleBlock}
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View
       style={[
-        styles.compactWrap,
-        horizontalInsets,
-        { maxWidth, paddingTop: topInset + spacing[4], borderBottomColor: palette.border, borderBottomWidth: divider ? StyleSheet.hairlineWidth : 0 },
+        styles.wrap,
+        {
+          maxWidth,
+          paddingTop: topInset + spacing[4],
+          paddingLeft: sidePad,
+          paddingRight: endPad,
+          borderBottomColor: palette.border,
+          borderBottomWidth: divider ? StyleSheet.hairlineWidth : 0,
+        },
       ]}
     >
-      <View style={[styles.compactRow, subtitle && styles.compactRowWithSubtitle]}>
-        {showBack ? (
+      {showLarge && right ? (
+        <View style={[styles.largeRight, { top: topInset - spacing[2], right: endPad }]}>
+          {right}
+        </View>
+      ) : null}
+
+      <View style={styles.titleRow}>
+        {!showLarge && showBack ? (
           <PressableScale
-            style={[styles.backBtn, styles.compactLeft]}
+            style={[styles.backBtn, styles.overlay, styles.overlayLeft]}
             scaleTo={0.85}
             onPress={handleBack}
             hitSlop={8}
@@ -149,37 +125,66 @@ export function Header({
             <Ionicons name="chevron-back" size={24} color={palette.text} />
           </PressableScale>
         ) : null}
+
         <View
           pointerEvents={onTitleLongPress ? "auto" : "none"}
-          style={styles.compactTitle}
+          style={styles.titleSlot}
         >
           {titleBlock}
         </View>
-        {right ? <View style={styles.compactRight}>{right}</View> : null}
+
+        {!showLarge && right ? (
+          <View style={[styles.overlay, styles.overlayRight]}>{right}</View>
+        ) : null}
       </View>
+
+      {subtitle ? (
+        <Text
+          variant="footnote"
+          color="secondary"
+          align="center"
+          numberOfLines={1}
+          style={styles.subtitle}
+        >
+          {subtitle}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  largeWrap: {
+  wrap: {
     width: "100%",
     alignSelf: "center",
     paddingBottom: spacing[6],
   },
-  compactWrap: {
-    width: "100%",
-    alignSelf: "center",
-    paddingBottom: spacing[6],
+  titleRow: {
+    height: HEADER_LINE_HEIGHT,
+    justifyContent: "center",
   },
-  compactRow: { height: 32, justifyContent: "center" },
-  compactRowWithSubtitle: { height: 40 },
+  titleSlot: {
+    ...StyleSheet.absoluteFillObject,
+    left: TITLE_SLOT_INSET,
+    right: TITLE_SLOT_INSET,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  titleHit: { width: "100%", height: "100%", justifyContent: "center" },
+  subtitle: {
+    width: "100%",
+    marginTop: spacing[2],
+    paddingHorizontal: TITLE_SLOT_INSET,
+    includeFontPadding: false,
+  },
   backBtn: { width: 36, height: 32, alignItems: "center", justifyContent: "center" },
-  compactLeft: { position: "absolute", left: 0, top: "50%", marginTop: -16, zIndex: 1 },
-  compactRight: { position: "absolute", right: 0, top: "50%", marginTop: -16, height: 32, justifyContent: "center", zIndex: 1 },
+  overlay: {
+    position: "absolute",
+    top: "50%",
+    marginTop: -16,
+    zIndex: 1,
+  },
+  overlayLeft: { left: 0 },
+  overlayRight: { right: 0, height: 32, justifyContent: "center" },
   largeRight: { position: "absolute", height: 32, justifyContent: "center", zIndex: 1 },
-  largeTitles: { alignItems: "center" },
-  singleLineTitle: { height: HEADER_LINE_HEIGHT, justifyContent: "center" },
-  compactTitle: { position: "absolute", top: 0, bottom: 0, left: 48, right: 48, alignItems: "center", justifyContent: "center" },
-  compactTitleHit: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
 });
