@@ -43,10 +43,9 @@ export interface FolderActionsSheetProps {
   onDismiss: () => void;
   folder: FolderDto | null;
   onDeleted?: (id: string) => void;
-  onSelect?: (folder: FolderDto) => void;
 }
 
-export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted, onSelect }: FolderActionsSheetProps) {
+export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted }: FolderActionsSheetProps) {
   const { palette } = useTheme();
   const serverInfo = useServerInfo();
   /** Older servers drop lockType and silently store every lock as a password. */
@@ -375,16 +374,6 @@ export function FolderActionsSheet({ visible, onDismiss, folder, onDeleted, onSe
           />
           {error ? <Text variant="footnote" color="danger" style={styles.error}>{error}</Text> : null}
           <View>
-            {onSelect ? (
-              <SheetActionRow
-                icon="checkmark-circle-outline"
-                label="Select"
-                onPress={() => {
-                  onSelect(folder);
-                  onDismiss();
-                }}
-              />
-            ) : null}
             <SheetActionRow icon={folder.pinned ? "pin" : "pin-outline"} label={folder.pinned ? "Unpin folder" : "Pin folder"} onPress={doTogglePinned} />
             <SheetActionRow icon="happy-outline" label="Change icon" onPress={() => showMode("icon")} />
             <SheetActionRow icon="create-outline" label="Rename" onPress={() => showMode("rename")} />

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { FloatingPanel } from "../ui/FloatingPanel";
@@ -8,6 +8,10 @@ import { SheetActionRow } from "../ui/SheetActionRow";
 import { useTheme } from "../../theme/ThemeProvider";
 import { spacing } from "../../theme/tokens";
 import { copyLink } from "../../lib/copy-link";
+import { bookmarkCanBeArticle, bookmarkIsArticle } from "../../lib/bookmark-reader";
+import { useSetContentKind } from "../../hooks/use-bookmarks";
+import { toast } from "../ui/toast-store";
+import { errorMessage } from "../../lib/error-message";
 import type { BookmarkDto } from "@ordo/shared";
 
 export interface BookmarkActionsSheetProps {
@@ -16,9 +20,8 @@ export interface BookmarkActionsSheetProps {
   bookmark: BookmarkDto | null;
   onToggleRead: (bookmark: BookmarkDto) => void;
   onMove: (bookmark: BookmarkDto) => void;
-  onDelete: (bookmark: BookmarkDto) => void;
+  onDelete: (bookmark: BookmarkDto) => { undo: () => void; commit: () => void } | void;
   onEditTags?: (bookmark: BookmarkDto) => void;
-  onSelect?: (bookmark: BookmarkDto) => void;
 }
 
 export function BookmarkActionsSheet({
@@ -29,20 +32,32 @@ export function BookmarkActionsSheet({
   onMove,
   onDelete,
   onEditTags,
-  onSelect,
 }: BookmarkActionsSheetProps) {
   const { palette } = useTheme();
   const router = useRouter();
-  const [mode, setMode] = useState<"menu" | "delete">("menu");
+  const setContentKind = useSetContentKind();
+  const [mode, setMode] = useState<"menu" | "delete" | "deleted">("menu");
+  const pendingDelete = useRef<{ undo: () => void; commit: () => void } | null>(null);
 
   useEffect(() => {
-    if (visible) setMode("menu");
+    if (visible) {
+      setMode("menu");
+      return;
+    }
+    pendingDelete.current?.commit();
+    pendingDelete.current = null;
   }, [visible]);
 
   if (!bookmark) return null;
 
+  const dismiss = () => {
+    pendingDelete.current?.commit();
+    pendingDelete.current = null;
+    onDismiss();
+  };
+
   return (
-    <FloatingPanel visible={visible} onDismiss={onDismiss}>
+    <FloatingPanel visible={visible} onDismiss={dismiss}>
       {mode === "delete" ? (
         <>
           <PanelHeader
@@ -50,7 +65,7 @@ export function BookmarkActionsSheet({
             iconColor={palette.danger}
             iconBackground={palette.dangerSoft}
             title="Delete this bookmark?"
-            subtitle="This can't be undone."
+            subtitle="You can undo this."
           />
           <View style={styles.actions}>
             <Button
@@ -59,26 +74,40 @@ export function BookmarkActionsSheet({
               block
               size="lg"
               onPress={() => {
-                onDelete(bookmark);
-                onDismiss();
+                pendingDelete.current = onDelete(bookmark) ?? null;
+                setMode("deleted");
               }}
             />
             <Button label="Cancel" variant="ghost" block onPress={() => setMode("menu")} />
           </View>
         </>
+      ) : mode === "deleted" ? (
+        <>
+          <PanelHeader
+            icon="trash-outline"
+            iconColor={palette.danger}
+            iconBackground={palette.dangerSoft}
+            title="Bookmark deleted"
+            subtitle="You can undo this."
+          />
+          <View style={styles.actions}>
+            <Button
+              label="Undo"
+              variant="primary"
+              block
+              size="lg"
+              onPress={() => {
+                pendingDelete.current?.undo();
+                pendingDelete.current = null;
+                setMode("menu");
+              }}
+            />
+            <Button label="Done" variant="ghost" block onPress={dismiss} />
+          </View>
+        </>
       ) : (
         <>
           <PanelHeader title={bookmark.title || bookmark.url} numberOfLines={2} style={styles.title} />
-          {onSelect ? (
-          <SheetActionRow
-            icon="checkmark-circle-outline"
-            label="Select"
-            onPress={() => {
-              onSelect(bookmark);
-              onDismiss();
-            }}
-          />
-          ) : null}
           <SheetActionRow
             icon={bookmark.isRead ? "radio-button-off" : "checkmark-circle"}
             label={bookmark.isRead ? "Mark as unread" : "Mark as read"}
@@ -117,6 +146,45 @@ export function BookmarkActionsSheet({
               onDismiss();
             }}
           />
+          {bookmarkIsArticle(bookmark) ? (
+            <SheetActionRow
+              icon="globe-outline"
+              label="This is not an article"
+              onPress={() => {
+                setContentKind.mutate(
+                  {
+                    id: bookmark.id,
+                    folderId: bookmark.folderId,
+                    contentKindOverride: "web",
+                  },
+                  {
+                    onSuccess: () => toast.success("Saved as a website"),
+                    onError: (err) => toast.error(errorMessage(err, "Couldn't update this bookmark.")),
+                  },
+                );
+                onDismiss();
+              }}
+            />
+          ) : bookmarkCanBeArticle(bookmark) ? (
+            <SheetActionRow
+              icon="reader-outline"
+              label="Mark as article"
+              onPress={() => {
+                setContentKind.mutate(
+                  {
+                    id: bookmark.id,
+                    folderId: bookmark.folderId,
+                    contentKindOverride: "article",
+                  },
+                  {
+                    onSuccess: () => toast.success("Saved as an article"),
+                    onError: (err) => toast.error(errorMessage(err, "Couldn't update this bookmark.")),
+                  },
+                );
+                onDismiss();
+              }}
+            />
+          ) : null}
           <SheetActionRow
             icon="link-outline"
             label="Copy link"
@@ -131,7 +199,7 @@ export function BookmarkActionsSheet({
             tone="danger"
             onPress={() => setMode("delete")}
           />
-          <Button label="Cancel" variant="ghost" block onPress={onDismiss} style={styles.menuCancel} />
+          <Button label="Cancel" variant="ghost" block onPress={dismiss} style={styles.menuCancel} />
         </>
       )}
     </FloatingPanel>

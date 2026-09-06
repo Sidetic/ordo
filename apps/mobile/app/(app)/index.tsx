@@ -108,10 +108,7 @@ export default function BookmarksScreen() {
 
   const onDelete = (bookmark: BookmarkDto) => {
     haptics.medium();
-    deleteBookmark.mutate(bookmark.id, {
-      onSuccess: () => toast.success("Bookmark deleted"),
-      onError: (cause) => toast.error(errorMessage(cause)),
-    });
+    return deleteBookmark.mutate(bookmark, { showToast: false });
   };
 
   const onMarkAllRead = () => {
@@ -376,7 +373,6 @@ export default function BookmarksScreen() {
         onMove={setMoveTarget}
         onDelete={onDelete}
         onEditTags={setEditTagsTarget}
-        onSelect={(bookmark) => selection.enter(bookmarkKey(bookmark.id))}
       />
 
       <EditTagsSheet
@@ -398,7 +394,6 @@ export default function BookmarksScreen() {
         visible={!!actionsFolder}
         folder={actionsFolder}
         onDismiss={() => setActionsFolder(null)}
-        onSelect={(folder) => selection.enter(folderKey(folder.id))}
         onDeleted={() => {
           toast.success("Folder deleted");
           setActionsFolder(null);

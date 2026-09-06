@@ -114,14 +114,13 @@ export default function FolderDetailScreen() {
 
   const onDelete = (b: BookmarkDto) => {
     haptics.medium();
-    deleteBm.mutate(b.id, {
-      onSuccess: () => {
-        toast.success("Bookmark deleted");
+    return deleteBm.mutate(b, {
+      showToast: false,
+      onDeleted: () => {
         if (selectedBookmarkId === b.id) {
           router.replace({ pathname: "/folder/[id]", params: { id: folderId ?? "root" } });
         }
       },
-      onError: (e) => toast.error(errorMessage(e)),
     });
   };
 
@@ -334,7 +333,6 @@ export default function FolderDetailScreen() {
         onMove={(b) => setMoveTarget(b)}
         onDelete={onDelete}
         onEditTags={setEditTagsBm}
-        onSelect={(bookmark) => selection.enter(bookmarkKey(bookmark.id))}
       />
 
       <EditTagsSheet

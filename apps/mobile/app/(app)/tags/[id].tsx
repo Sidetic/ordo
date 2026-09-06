@@ -95,14 +95,13 @@ export default function TagDetailScreen() {
 
   const onDelete = (b: BookmarkDto) => {
     haptics.medium();
-    deleteBm.mutate(b.id, {
-      onSuccess: () => {
-        toast.success("Bookmark deleted");
+    return deleteBm.mutate(b, {
+      showToast: false,
+      onDeleted: () => {
         if (selectedBookmarkId === b.id) {
           router.replace({ pathname: "/tags/[id]", params: { id: routeId ?? "" } });
         }
       },
-      onError: (e) => toast.error(errorMessage(e)),
     });
   };
 
@@ -279,7 +278,6 @@ export default function TagDetailScreen() {
         onMove={setMoveTarget}
         onDelete={onDelete}
         onEditTags={setEditTagsBm}
-        onSelect={(bookmark) => selection.enter(bookmarkKey(bookmark.id))}
       />
 
       <MoveSheet

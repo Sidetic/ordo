@@ -29,10 +29,9 @@ import { useResponsiveLayout } from "../../src/hooks/use-responsive-layout";
 import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metrics";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { flattenPages } from "../../src/lib/api/query-keys";
-import { haptics } from "../../src/lib/haptics";
-import { toast } from "../../src/components/ui/toast-store";
-import { layout, radius, spacing } from "../../src/theme/tokens";
 import { errorMessage } from "../../src/lib/error-message";
+import { haptics } from "../../src/lib/haptics";
+import { layout, radius, spacing } from "../../src/theme/tokens";
 import type { BookmarkDto } from "@ordo/shared";
 
 export default function SearchScreen() {
@@ -114,14 +113,13 @@ export default function SearchScreen() {
 
   const onDelete = (bookmark: BookmarkDto) => {
     haptics.medium();
-    deleteBm.mutate(bookmark.id, {
-      onSuccess: () => {
-        toast.success("Bookmark deleted");
+    return deleteBm.mutate(bookmark, {
+      showToast: false,
+      onDeleted: () => {
         if (selectedBookmarkId === bookmark.id) {
           router.setParams({ bookmark: undefined });
         }
       },
-      onError: (e) => toast.error(errorMessage(e)),
     });
   };
 
@@ -297,7 +295,6 @@ export default function SearchScreen() {
         onMove={setMoveTarget}
         onDelete={onDelete}
         onEditTags={setEditTagsBm}
-        onSelect={(bookmark) => selection.enter(bookmarkKey(bookmark.id))}
       />
       <EditTagsSheet
         visible={!!editTagsBm}
