@@ -5,6 +5,7 @@
  */
 import React from "react";
 import { Tabs, usePathname } from "expo-router";
+import { BottomTabBar, type BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { layout, radius, spacing } from "../../src/theme/tokens";
@@ -13,7 +14,7 @@ import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metric
 import { useAuthStore } from "../../src/store/auth";
 import { useSettingsStore } from "../../src/store/settings";
 import { MfaEnrollmentScreen } from "../../src/components/auth/MfaEnrollmentScreen";
-import { Text as NativeText, View } from "react-native";
+import { StyleSheet, Text as NativeText, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const HIDDEN = {
@@ -32,6 +33,7 @@ export default function AppLayout() {
     compact,
     sideNavigation,
     hideBottomNav,
+    visible: floatingDockVisible,
     bottom: floatingBottom,
     height: floatingHeight,
     windowWidth,
@@ -51,15 +53,11 @@ export default function AppLayout() {
     : layout.compactNavigationRailIconHeight;
   const compactDockLeft = Math.max(0, (windowWidth - compactDockWidth) / 2);
   const compactRailTop = Math.max(0, (windowHeight - compactRailHeight) / 2);
-  const floatingDockTop = Math.max(0, windowHeight - floatingHeight - floatingBottom);
-  const floatingDockWidth = Math.max(0, windowWidth - spacing[16] * 2);
   const railInset = Math.max(insets.left, spacing[8]);
   const tabBarStyle = React.useMemo(
     () => {
-      // React Navigation keeps one native tab bar when tabBarPosition flips.
-      // Android's old architecture ignores `top: "auto"` for position insets,
-      // so leftover landscape `top` would stick (compact dock in the middle,
-      // full dock at the top). Every inset is a number or `null` (clears Yoga).
+      // Geometry for the reused native tab bar. Portrait floating docks are
+      // positioned by a wrapper (see renderTabBar); this style only fills it.
       const reset = {
         borderWidth: 0,
         borderTopWidth: 0,
@@ -158,13 +156,13 @@ export default function AppLayout() {
       return {
         ...reset,
         position: "absolute" as const,
-        left: compact ? compactDockLeft : spacing[16],
-        right: compact ? null : spacing[16],
-        start: compact ? compactDockLeft : spacing[16],
-        end: compact ? null : spacing[16],
-        top: floatingDockTop,
-        bottom: floatingBottom,
-        width: compact ? compactDockWidth : floatingDockWidth,
+        top: 0,
+        left: 0,
+        right: 0,
+        start: 0,
+        end: 0,
+        bottom: 0,
+        width: "auto" as const,
         height: floatingHeight,
         marginLeft: 0,
         marginRight: 0,
@@ -174,23 +172,17 @@ export default function AppLayout() {
         paddingRight: spacing[4],
         paddingTop: spacing[4],
         paddingBottom: spacing[4],
-        backgroundColor: palette.surfaceElevated,
-        borderWidth: 1,
-        borderColor: palette.borderStrong,
-        borderRadius: radius["3xl"],
-        ...shadows.level3,
+        backgroundColor: "transparent",
+        borderWidth: 0,
+        shadowOpacity: 0,
+        elevation: 0,
       };
     },
     [
       floating,
       compact,
-      compactDockLeft,
-      compactDockWidth,
       compactRailHeight,
       compactRailTop,
-      floatingBottom,
-      floatingDockTop,
-      floatingDockWidth,
       floatingHeight,
       insets.bottom,
       insets.left,
@@ -263,10 +255,65 @@ export default function AppLayout() {
   // unmounted routes and kicked Settings → Account back to Home.
   const needsMfaEnrollment = Boolean(serverInfo?.mfaRequired && user && !user.mfaEnabled);
 
+  const renderTabBar = React.useCallback(
+    (props: BottomTabBarProps) => {
+      // Own the floating dock's screen position with a View that is never the
+      // landscape rail. Pinning the reused native tab bar with `top` used the
+      // window height, which does not match the navigator parent after rotate.
+      if (floatingDockVisible) {
+        return (
+          <View key={compact ? "compact-dock" : "full-dock"} pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+            <View
+              collapsable={false}
+              style={{
+                position: "absolute",
+                left: compact ? compactDockLeft : spacing[16],
+                right: compact ? null : spacing[16],
+                width: compact ? compactDockWidth : ("auto" as const),
+                top: null,
+                bottom: floatingBottom,
+                height: floatingHeight,
+                ...shadows.level3,
+              }}
+            >
+              <View
+                style={{
+                  flex: 1,
+                  overflow: "hidden",
+                  backgroundColor: palette.surfaceElevated,
+                  borderWidth: 1,
+                  borderColor: palette.borderStrong,
+                  borderRadius: radius["3xl"],
+                }}
+              >
+                <BottomTabBar key="floating-dock" {...props} />
+              </View>
+            </View>
+          </View>
+        );
+      }
+
+      return <BottomTabBar key={sideNavigation ? "rail" : "bottom"} {...props} />;
+    },
+    [
+      compact,
+      compactDockLeft,
+      compactDockWidth,
+      floatingBottom,
+      floatingDockVisible,
+      floatingHeight,
+      palette.borderStrong,
+      palette.surfaceElevated,
+      shadows.level3,
+      sideNavigation,
+    ],
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
       <Tabs
         backBehavior="history"
+        tabBar={renderTabBar}
         screenOptions={{
           headerShown: false,
           tabBarPosition: sideNavigation ? "left" : "bottom",
