@@ -4,27 +4,31 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../theme/ThemeProvider";
 import { radius } from "../../theme/tokens";
 
-export function SelectionMark({ selected }: { selected: boolean }) {
+export function SelectionMark({ selected, size = 22 }: { selected: boolean; size?: number }) {
   const { palette } = useTheme();
   return (
     <View
       style={[
         styles.mark,
+        {
+          width: size,
+          height: size,
+          borderRadius: radius.full,
+        },
         selected
           ? { backgroundColor: palette.accent, borderColor: palette.accent }
-          : { backgroundColor: palette.surface, borderColor: palette.borderStrong },
+          : { backgroundColor: "transparent", borderColor: palette.borderStrong },
       ]}
     >
-      {selected ? <Ionicons name="checkmark" size={14} color={palette.onAccent} /> : null}
+      {selected ? (
+        <Ionicons name="checkmark" size={Math.round(size * 0.64)} color={palette.onAccent} />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   mark: {
-    width: 22,
-    height: 22,
-    borderRadius: radius.full,
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",

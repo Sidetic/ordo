@@ -52,9 +52,14 @@ export function FolderRow({ folder, onPress, onMore, onLongPress, selected, sele
         onLongPress={onLongPress ? () => onLongPress(folder) : onMore ? () => onMore(folder) : undefined}
         delayLongPress={SELECTION_LONG_PRESS_MS}
       >
-        <View style={[styles.iconWrap, { backgroundColor: palette.surfaceSecondary }]}>
+        <View
+          style={[
+            styles.iconWrap,
+            selectionMode ? null : { backgroundColor: palette.surfaceSecondary },
+          ]}
+        >
           {selectionMode ? (
-            <SelectionMark selected={!!selected} />
+            <SelectionMark selected={!!selected} size={24} />
           ) : (
             <Ionicons name={folder.icon ?? DEFAULT_FOLDER_ICON} size={18} color={palette.accent} />
           )}
@@ -80,6 +85,8 @@ export function FolderRow({ folder, onPress, onMore, onLongPress, selected, sele
         >
           <Ionicons name="ellipsis-horizontal" size={20} color={palette.textTertiary} />
         </PressableScale>
+      ) : onMore ? (
+        <View style={styles.moreBtn} pointerEvents="none" />
       ) : null}
     </View>
   );

@@ -110,11 +110,13 @@ export function BookmarkRow({
         <View
           style={[
             styles.faviconFrame,
-            { backgroundColor: palette.surfaceSecondary, borderColor: palette.border },
+            selectionMode
+              ? { backgroundColor: "transparent", borderColor: "transparent" }
+              : { backgroundColor: palette.surfaceSecondary, borderColor: palette.border },
           ]}
         >
           {selectionMode ? (
-            <SelectionMark selected={!!selected} />
+            <SelectionMark selected={!!selected} size={24} />
           ) : failedFavicon === faviconUrl ? (
             <Ionicons
               name="globe-outline"
@@ -220,6 +222,8 @@ export function BookmarkRow({
         >
           <Ionicons name="ellipsis-horizontal" size={20} color={palette.textTertiary} />
         </PressableScale>
+      ) : onMore ? (
+        <View style={styles.moreBtn} pointerEvents="none" />
       ) : null}
     </View>
   );
