@@ -92,7 +92,7 @@ export function BookmarkRow({
       style={[
         styles.wrap,
         {
-          backgroundColor: selected ? palette.accentSoft : "transparent",
+          backgroundColor: selected ? palette.surfaceSecondary : "transparent",
           borderBottomColor: palette.border,
         },
       ]}

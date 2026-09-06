@@ -34,7 +34,7 @@ export function FolderRow({ folder, onPress, onMore, onLongPress, selected, sele
       style={[
         styles.wrap,
         {
-          backgroundColor: selected ? palette.accentSoft : "transparent",
+          backgroundColor: selected ? palette.surfaceSecondary : "transparent",
           borderBottomColor: palette.border,
         },
       ]}
@@ -93,7 +93,7 @@ export function FolderRow({ folder, onPress, onMore, onLongPress, selected, sele
             ) : null}
           </View>
         </View>
-        {unread ? <Badge tone="accent">{folder.unreadCount}</Badge> : null}
+        {unread && !selectionMode ? <Badge tone="accent">{folder.unreadCount}</Badge> : null}
       </PressableScale>
       {onMore && !selectionMode ? (
         <PressableScale
