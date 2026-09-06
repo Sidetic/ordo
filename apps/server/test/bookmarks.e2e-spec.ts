@@ -1442,4 +1442,127 @@ describe("Bookmarks & Folders (e2e)", () => {
       expect(moved.body.folderId).toBe(dest.body.id);
     });
   });
+
+  describe("batch actions", () => {
+    it("marks, moves, tags, and deletes many bookmarks in one request", async () => {
+      const { agent, userId } = await setup();
+      const folder = await agent.post("/api/folders").send({ name: "Later" }).expect(201);
+      const tag = await agent.post("/api/tags").send({ name: "queue", color: "blue" }).expect(201);
+      const a = await agent.post("/api/bookmarks").send({ url: "https://example.com/a" }).expect(201);
+      const b = await agent.post("/api/bookmarks").send({ url: "https://example.com/b" }).expect(201);
+      const c = await agent.post("/api/bookmarks").send({ url: "https://example.com/c" }).expect(201);
+
+      const read = await agent
+        .post("/api/bookmarks/batch")
+        .send({ action: "markRead", ids: [a.body.id, b.body.id] })
+        .expect(200);
+      expect(read.body.updated).toBe(2);
+
+      const unread = await agent
+        .post("/api/bookmarks/batch")
+        .send({ action: "markUnread", ids: [a.body.id] })
+        .expect(200);
+      expect(unread.body.updated).toBe(1);
+
+      const tagged = await agent
+        .post("/api/bookmarks/batch")
+        .send({ action: "addTags", ids: [a.body.id, b.body.id], tagIds: [tag.body.id] })
+        .expect(200);
+      expect(tagged.body.updated).toBe(2);
+      const taggedDetail = await agent.get(`/api/bookmarks/${a.body.id}`).expect(200);
+      expect(taggedDetail.body.tags.map((t: { id: string }) => t.id)).toEqual([tag.body.id]);
+
+      const moved = await agent
+        .post("/api/bookmarks/batch")
+        .send({ action: "move", ids: [a.body.id, b.body.id, c.body.id], folderId: folder.body.id })
+        .expect(200);
+      expect(moved.body.updated).toBe(3);
+      const inFolder = await agent.get(`/api/bookmarks?folderId=${folder.body.id}`).expect(200);
+      expect(inFolder.body.items).toHaveLength(3);
+
+      const deleted = await agent
+        .post("/api/bookmarks/batch")
+        .send({ action: "delete", ids: [a.body.id, b.body.id] })
+        .expect(200);
+      expect(deleted.body.updated).toBe(2);
+      const remaining = await agent.get(`/api/bookmarks?folderId=${folder.body.id}`).expect(200);
+      expect(remaining.body.items.map((item: { id: string }) => item.id)).toEqual([c.body.id]);
+      expect(await ctx.prisma.bookmark.count({ where: { userId } })).toBe(1);
+    });
+
+    it("requires a folder token to batch-edit bookmarks in a locked folder", async () => {
+      const { agent } = await setup();
+      const folder = await agent.post("/api/folders").send({ name: "Secret" }).expect(201);
+      const created = await agent
+        .post("/api/bookmarks")
+        .send({ url: "https://example.com/secret", folderId: folder.body.id })
+        .expect(201);
+      await agent.post(`/api/folders/${folder.body.id}/password`).send({ password: "lock" }).expect(200);
+
+      const blocked = await agent
+        .post("/api/bookmarks/batch")
+        .send({ action: "markRead", ids: [created.body.id] })
+        .expect(403);
+      expect(blocked.body.error.code).toBe(ErrorCode.FOLDER_PROTECTED);
+
+      const token = (
+        await agent.post(`/api/folders/${folder.body.id}/unlock`).send({ password: "lock" }).expect(200)
+      ).body.token;
+      const ok = await agent
+        .post("/api/bookmarks/batch")
+        .set("x-folder-token", token)
+        .send({ action: "markRead", ids: [created.body.id] })
+        .expect(200);
+      expect(ok.body.updated).toBe(1);
+    });
+
+    it("ignores other users' bookmarks and rejects an empty batch", async () => {
+      const { agent } = await setup();
+      const other = await registerUser(ctx.app, "other-batch@ordo.app");
+      const foreign = await ctx.prisma.bookmark.create({
+        data: {
+          userId: other.user.id,
+          url: "https://example.com/foreign",
+          title: "Foreign",
+          domain: "example.com",
+        },
+      });
+      const mine = await agent.post("/api/bookmarks").send({ url: "https://example.com/mine" }).expect(201);
+
+      const res = await agent
+        .post("/api/bookmarks/batch")
+        .send({ action: "delete", ids: [mine.body.id, foreign.id] })
+        .expect(200);
+      expect(res.body.updated).toBe(1);
+      expect(await ctx.prisma.bookmark.findUnique({ where: { id: foreign.id } })).toBeTruthy();
+
+      const empty = await agent.post("/api/bookmarks/batch").send({ action: "delete", ids: [] }).expect(400);
+      expect(empty.body.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+    });
+
+    it("pins and deletes many folders, cascading their bookmarks", async () => {
+      const { agent, userId } = await setup();
+      const keep = await agent.post("/api/folders").send({ name: "Keep" }).expect(201);
+      const goneA = await agent.post("/api/folders").send({ name: "Gone A" }).expect(201);
+      const goneB = await agent.post("/api/folders").send({ name: "Gone B" }).expect(201);
+      await agent.post("/api/bookmarks").send({ url: "https://example.com/a", folderId: goneA.body.id }).expect(201);
+      await agent.post("/api/bookmarks").send({ url: "https://example.com/b", folderId: goneB.body.id }).expect(201);
+
+      const pinned = await agent
+        .post("/api/folders/batch")
+        .send({ action: "pin", ids: [keep.body.id, goneA.body.id], pinned: true })
+        .expect(200);
+      expect(pinned.body.updated).toBe(2);
+      const listed = await agent.get("/api/folders").expect(200);
+      expect(listed.body.find((folder: { id: string }) => folder.id === keep.body.id).pinned).toBe(true);
+
+      const deleted = await agent
+        .post("/api/folders/batch")
+        .send({ action: "delete", ids: [goneA.body.id, goneB.body.id] })
+        .expect(200);
+      expect(deleted.body.updated).toBe(2);
+      expect(await ctx.prisma.folder.count({ where: { userId } })).toBe(1);
+      expect(await ctx.prisma.bookmark.count({ where: { userId } })).toBe(0);
+    });
+  });
 });

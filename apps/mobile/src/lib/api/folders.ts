@@ -4,6 +4,7 @@
 import {
   FolderRoutes,
   buildPath,
+  type BatchFoldersInput,
   type CreateFolderInput,
   type RemoveFolderPasswordInput,
   type SetFolderPasswordInput,
@@ -39,4 +40,7 @@ export const foldersApi = {
     api.post<{ token: string; expiresIn: number }>(buildPath(FolderRoutes.unlock.path, { id }), {
       password,
     }),
+
+  batch: (body: BatchFoldersInput) =>
+    api.post<typeof FolderRoutes.batch.response>(FolderRoutes.batch.path, body),
 };

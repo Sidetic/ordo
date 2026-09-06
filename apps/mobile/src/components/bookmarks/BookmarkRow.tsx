@@ -1,7 +1,8 @@
 /**
  * A single bookmark row. Tapping opens the reader; the trailing button reveals
- * row actions. The title leads the hierarchy, while source and status details
- * sit in a quieter metadata line. Unread items are marked on the favicon.
+ * row actions. A long-press enters multi-select. The title leads the hierarchy,
+ * while source and status details sit in a quieter metadata line. Unread items
+ * are marked on the favicon.
  */
 import React from "react";
 import { ActivityIndicator, Image, StyleSheet, View } from "react-native";
@@ -10,11 +11,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { PressableScale } from "../ui/PressableScale";
 import { Text } from "../ui/Text";
 import { TagChip } from "../tags/TagChip";
+import { SelectionMark } from "./SelectionMark";
 import { useTheme } from "../../theme/ThemeProvider";
 import { domainFromUrl, relativeTime } from "../../lib/format";
 import { bookmarkOpensAsWebsite } from "../../lib/bookmark-reader";
 import { haptics } from "../../lib/haptics";
 import { radius, spacing } from "../../theme/tokens";
+import { SELECTION_LONG_PRESS_MS } from "../../hooks/use-selection";
 import type { BookmarkDto } from "@ordo/shared";
 
 /** Compact tags shown inline on a row before overflow. */
@@ -24,14 +27,25 @@ export interface BookmarkRowProps {
   bookmark: BookmarkDto;
   onPress: (b: BookmarkDto) => void;
   onMore?: (b: BookmarkDto) => void;
+  onLongPress?: (b: BookmarkDto) => void;
   selected?: boolean;
+  selectionMode?: boolean;
   /** Override chip taps (e.g. toggle a search filter). Default: open that tag. */
   onTagPress?: (tagId: string) => void;
   /** Hide tags already expressed by the current view (e.g. the active tag filter). */
   omitTagIds?: readonly string[];
 }
 
-export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress, omitTagIds }: BookmarkRowProps) {
+export function BookmarkRow({
+  bookmark,
+  onPress,
+  onMore,
+  onLongPress,
+  selected,
+  selectionMode,
+  onTagPress,
+  omitTagIds,
+}: BookmarkRowProps) {
   const { palette } = useTheme();
   const router = useRouter();
   const titleColor = bookmark.isRead ? "secondary" : "primary";
@@ -62,6 +76,7 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress, o
     .join(", ");
 
   const handleTagPress = (tagId: string) => {
+    if (selectionMode) return;
     if (onTagPress) {
       onTagPress(tagId);
       return;
@@ -81,12 +96,16 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress, o
       ]}
     >
       <PressableScale
-        accessibilityRole="button"
+        accessibilityRole={selectionMode ? "checkbox" : "button"}
         accessibilityLabel={accessibilityLabel}
-        accessibilityState={{ selected: !!selected }}
+        accessibilityState={selectionMode ? { checked: !!selected } : { selected: !!selected }}
+        accessibilityHint={
+          selectionMode ? (selected ? "Deselect this bookmark" : "Select this bookmark") : undefined
+        }
         style={styles.body}
         onPress={() => onPress(bookmark)}
-        onLongPress={onMore ? () => onMore(bookmark) : undefined}
+        onLongPress={onLongPress ? () => onLongPress(bookmark) : onMore ? () => onMore(bookmark) : undefined}
+        delayLongPress={SELECTION_LONG_PRESS_MS}
       >
         <View
           style={[
@@ -94,7 +113,9 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress, o
             { backgroundColor: palette.surfaceSecondary, borderColor: palette.border },
           ]}
         >
-          {failedFavicon === faviconUrl ? (
+          {selectionMode ? (
+            <SelectionMark selected={!!selected} />
+          ) : failedFavicon === faviconUrl ? (
             <Ionicons
               name="globe-outline"
               size={18}
@@ -110,7 +131,7 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress, o
               onError={() => setFailedFavicon(faviconUrl)}
             />
           )}
-          {!bookmark.isRead ? (
+          {!selectionMode && !bookmark.isRead ? (
             <View style={[styles.unreadDot, { backgroundColor: palette.accent }]} />
           ) : null}
         </View>
@@ -188,7 +209,7 @@ export function BookmarkRow({ bookmark, onPress, onMore, selected, onTagPress, o
         </View>
       </PressableScale>
 
-      {onMore ? (
+      {onMore && !selectionMode ? (
         <PressableScale
           accessibilityRole="button"
           accessibilityLabel={`More actions for ${bookmark.title || domainFromUrl(bookmark.url)}`}

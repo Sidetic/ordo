@@ -18,6 +18,7 @@ export interface BookmarkActionsSheetProps {
   onMove: (bookmark: BookmarkDto) => void;
   onDelete: (bookmark: BookmarkDto) => void;
   onEditTags?: (bookmark: BookmarkDto) => void;
+  onSelect?: (bookmark: BookmarkDto) => void;
 }
 
 export function BookmarkActionsSheet({
@@ -28,6 +29,7 @@ export function BookmarkActionsSheet({
   onMove,
   onDelete,
   onEditTags,
+  onSelect,
 }: BookmarkActionsSheetProps) {
   const { palette } = useTheme();
   const router = useRouter();
@@ -68,6 +70,16 @@ export function BookmarkActionsSheet({
       ) : (
         <>
           <PanelHeader title={bookmark.title || bookmark.url} numberOfLines={2} style={styles.title} />
+          {onSelect ? (
+          <SheetActionRow
+            icon="checkmark-circle-outline"
+            label="Select"
+            onPress={() => {
+              onSelect(bookmark);
+              onDismiss();
+            }}
+          />
+          ) : null}
           <SheetActionRow
             icon={bookmark.isRead ? "radio-button-off" : "checkmark-circle"}
             label={bookmark.isRead ? "Mark as unread" : "Mark as read"}

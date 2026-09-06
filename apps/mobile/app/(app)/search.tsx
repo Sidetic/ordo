@@ -7,6 +7,12 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../src/components/ui/Header";
+import { SelectionHeader } from "../../src/components/bookmarks/SelectionHeader";
+import { SelectionTools } from "../../src/components/bookmarks/SelectionTools";
+import { SELECTION_BAR_HEIGHT } from "../../src/components/bookmarks/SelectionActionBar";
+import { BookmarkActionsSheet } from "../../src/components/bookmarks/BookmarkActionsSheet";
+import { MoveSheet } from "../../src/components/bookmarks/MoveSheet";
+import { EditTagsSheet } from "../../src/components/tags/EditTagsSheet";
 import { ScreenContent } from "../../src/components/ui/ScreenContent";
 import { Input } from "../../src/components/ui/Input";
 import { EmptyState } from "../../src/components/ui/EmptyState";
@@ -16,13 +22,15 @@ import { BookmarkRow } from "../../src/components/bookmarks/BookmarkRow";
 import { ExtractionProgressLine } from "../../src/components/bookmarks/ExtractionProgressLine";
 import { TagChip } from "../../src/components/tags/TagChip";
 import { ReaderPane, ReaderPanePlaceholder } from "../../src/components/reader/ReaderPane";
-import { useInfiniteSearch } from "../../src/hooks/use-bookmarks";
+import { useInfiniteSearch, useToggleRead, useDeleteBookmark } from "../../src/hooks/use-bookmarks";
+import { bookmarkKey, useSelectionMode } from "../../src/hooks/use-selection";
 import { useTags } from "../../src/hooks/use-tags";
 import { useResponsiveLayout } from "../../src/hooks/use-responsive-layout";
 import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metrics";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { flattenPages } from "../../src/lib/api/query-keys";
 import { haptics } from "../../src/lib/haptics";
+import { toast } from "../../src/components/ui/toast-store";
 import { layout, radius, spacing } from "../../src/theme/tokens";
 import { errorMessage } from "../../src/lib/error-message";
 import type { BookmarkDto } from "@ordo/shared";
@@ -44,6 +52,12 @@ export default function SearchScreen() {
   const [input, setInput] = useState(routeQuery);
   const [q, setQ] = useState(routeQuery);
   const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const [actionBm, setActionBm] = useState<BookmarkDto | null>(null);
+  const [moveTarget, setMoveTarget] = useState<BookmarkDto | null>(null);
+  const [editTagsBm, setEditTagsBm] = useState<BookmarkDto | null>(null);
+  const selection = useSelectionMode();
+  const toggleRead = useToggleRead(null);
+  const deleteBm = useDeleteBookmark(null);
   const { data: allTags } = useTags();
   const browsing = q.length > 0 || tagFilter.length > 0;
 
@@ -61,6 +75,11 @@ export default function SearchScreen() {
 
   const search = useInfiniteSearch(q, tagFilter);
   const items = useMemo(() => flattenPages(search.data?.pages ?? []), [search.data]);
+  const selectedBookmarks = useMemo(
+    () => items.filter((bookmark) => selection.has(bookmarkKey(bookmark.id))),
+    [items, selection],
+  );
+  const selectableKeys = useMemo(() => items.map((bookmark) => bookmarkKey(bookmark.id)), [items]);
 
   useEffect(() => {
     if (routeQuery !== q) {
@@ -81,26 +100,60 @@ export default function SearchScreen() {
   };
 
   const toggleTag = (tagId: string) => {
+    if (selection.active) return;
     haptics.selection();
     setTagFilter((prev) =>
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
     );
   };
 
-  const listContentPadding = floatingNavigation
-    ? bottomClearance
-    : sideNavigation
-      ? spacing[32]
-      : spacing[96];
+  const onToggleRead = (bookmark: BookmarkDto) => {
+    haptics.light();
+    toggleRead.mutate({ id: bookmark.id, isRead: !bookmark.isRead });
+  };
+
+  const onDelete = (bookmark: BookmarkDto) => {
+    haptics.medium();
+    deleteBm.mutate(bookmark.id, {
+      onSuccess: () => {
+        toast.success("Bookmark deleted");
+        if (selectedBookmarkId === bookmark.id) {
+          router.setParams({ bookmark: undefined });
+        }
+      },
+      onError: (e) => toast.error(errorMessage(e)),
+    });
+  };
+
+  const listContentPadding =
+    (floatingNavigation
+      ? bottomClearance
+      : sideNavigation
+        ? spacing[32]
+        : spacing[96]) + (selection.active ? SELECTION_BAR_HEIGHT + spacing[16] : 0);
   const listPane = (
     <FlashList
       data={items}
+      extraData={selection.revision}
       keyExtractor={(b: BookmarkDto) => b.id}
       renderItem={({ item }: { item: BookmarkDto }) => (
         <BookmarkRow
           bookmark={item}
-          onPress={openReader}
-          selected={hasDetailPane && item.id === selectedBookmarkId}
+          selectionMode={selection.active}
+          selected={
+            selection.active
+              ? selection.has(bookmarkKey(item.id))
+              : hasDetailPane && item.id === selectedBookmarkId
+          }
+          onPress={(bookmark) => {
+            if (selection.active) selection.toggle(bookmarkKey(bookmark.id));
+            else openReader(bookmark);
+          }}
+          onLongPress={(bookmark) => {
+            if (selection.active) selection.toggle(bookmarkKey(bookmark.id));
+            else selection.enter(bookmarkKey(bookmark.id));
+          }}
+          onMore={setActionBm}
           onTagPress={toggleTag}
         />
       )}
@@ -115,7 +168,20 @@ export default function SearchScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
-      <Header title="Search" large />
+      {selection.active ? (
+        <SelectionHeader
+          count={selection.count}
+          selectableCount={selectableKeys.length}
+          onCancel={selection.exit}
+          onToggleSelectAll={() => {
+            if (selection.count === selectableKeys.length) selection.replace([]);
+            else selection.replace(selectableKeys);
+          }}
+          maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth}
+        />
+      ) : (
+        <Header title="Search" large />
+      )}
       <ExtractionProgressLine maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth} />
       <ScreenContent
         maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth}
@@ -218,6 +284,41 @@ export default function SearchScreen() {
           <View style={styles.singlePane}>{listPane}</View>
         )}
       </ScreenContent>
+
+      <BookmarkActionsSheet
+        visible={!!actionBm}
+        bookmark={actionBm}
+        onDismiss={() => setActionBm(null)}
+        onToggleRead={onToggleRead}
+        onMove={setMoveTarget}
+        onDelete={onDelete}
+        onEditTags={setEditTagsBm}
+        onSelect={(bookmark) => selection.enter(bookmarkKey(bookmark.id))}
+      />
+      <EditTagsSheet
+        visible={!!editTagsBm}
+        bookmark={editTagsBm}
+        onDismiss={() => setEditTagsBm(null)}
+      />
+      <MoveSheet
+        visible={!!moveTarget}
+        bookmark={moveTarget}
+        fromFolderId={moveTarget?.folderId ?? null}
+        onDismiss={() => setMoveTarget(null)}
+      />
+      <SelectionTools
+        active={selection.active}
+        bookmarks={selectedBookmarks}
+        fromFolderId={null}
+        onFinished={() => {
+          if (hasDetailPane && selectedBookmarkId && selection.has(bookmarkKey(selectedBookmarkId))) {
+            router.setParams({ bookmark: undefined });
+          }
+          selection.exit();
+        }}
+        bottom={floatingNavigation ? bottomClearance : spacing[20]}
+        maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth}
+      />
     </View>
   );
 }

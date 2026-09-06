@@ -16,10 +16,13 @@ import { qk } from "../lib/api/query-keys";
 import {
   prependBookmarkToPages,
   removeBookmarkFromPages,
+  removeBookmarksEverywhere,
   updateBookmarkEverywhere,
   updateBookmarkInPages,
+  updateBookmarksEverywhere,
 } from "../lib/cache-helpers";
 import {
+  BATCH_ITEM_LIMIT,
   DEFAULT_PAGE_SIZE,
   type BookmarkDetailDto,
   type BookmarkDto,
@@ -239,6 +242,74 @@ export function useMarkAllRead(folderId: string | null) {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.bookmarks(folderId) });
       void queryClient.refetchQueries({ queryKey: qk.folders });
+    },
+  });
+}
+
+async function runBookmarkBatchChunks(
+  ids: string[],
+  run: (chunk: string[]) => Promise<{ updated: number }>,
+): Promise<{ updated: number }> {
+  let updated = 0;
+  for (let i = 0; i < ids.length; i += BATCH_ITEM_LIMIT) {
+    const result = await run(ids.slice(i, i + BATCH_ITEM_LIMIT));
+    updated += result.updated;
+  }
+  return { updated };
+}
+
+export function useBatchBookmarks() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      action,
+      ids,
+      folderId,
+      tagIds,
+      scopeFolderId,
+    }: {
+      action: "delete" | "markRead" | "markUnread" | "move" | "addTags";
+      ids: string[];
+      folderId?: string | null;
+      tagIds?: string[];
+      scopeFolderId?: string | null;
+    }) =>
+      runBookmarkBatchChunks(ids, (chunk) => {
+        if (action === "move") {
+          return bookmarksApi.batch({ action, ids: chunk, folderId: folderId ?? null }, { folderId: scopeFolderId });
+        }
+        if (action === "addTags") {
+          return bookmarksApi.batch({ action, ids: chunk, tagIds: tagIds ?? [] }, { folderId: scopeFolderId });
+        }
+        return bookmarksApi.batch({ action, ids: chunk }, { folderId: scopeFolderId });
+      }),
+    onMutate: ({ action, ids }) => {
+      const snapshots = qc.getQueriesData({ queryKey: ["bookmarks"] });
+      const prevFolders = qc.getQueryData<FolderDto[]>(qk.folders);
+      const idSet = new Set(ids);
+      if (action === "delete") {
+        removeBookmarksEverywhere(qc, idSet);
+      } else if (action === "markRead") {
+        updateBookmarksEverywhere(qc, idSet, (bookmark) => ({ ...bookmark, isRead: true }));
+      } else if (action === "markUnread") {
+        updateBookmarksEverywhere(qc, idSet, (bookmark) => ({
+          ...bookmark,
+          isRead: false,
+          completedAt: null,
+        }));
+      }
+      return { snapshots, prevFolders };
+    },
+    onError: (_e, _v, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+      if (ctx?.prevFolders) qc.setQueryData(qk.folders, ctx.prevFolders);
+    },
+    onSettled: (_data, _error, variables) => {
+      void qc.invalidateQueries({ queryKey: ["bookmarks"] });
+      void qc.invalidateQueries({ queryKey: qk.folders });
+      if (variables.action === "delete" || variables.action === "addTags") {
+        void qc.invalidateQueries({ queryKey: ["tags"] });
+      }
     },
   });
 }

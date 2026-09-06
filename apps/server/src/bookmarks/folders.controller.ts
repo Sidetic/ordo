@@ -10,11 +10,13 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  BatchFoldersSchema,
   CreateFolderSchema,
   RemoveFolderPasswordSchema,
   SetFolderPasswordSchema,
   UnlockFolderSchema,
   UpdateFolderSchema,
+  type BatchFoldersInput,
   type CreateFolderInput,
   type FolderDto,
   type RemoveFolderPasswordInput,
@@ -46,6 +48,15 @@ export class FoldersController {
     @Body(new ZodValidationPipe(CreateFolderSchema)) body: CreateFolderInput,
   ): Promise<FolderDto> {
     return this.folders.create(user.userId, body);
+  }
+
+  @Post("batch")
+  @HttpCode(200)
+  async batch(
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(BatchFoldersSchema)) body: BatchFoldersInput,
+  ): Promise<{ updated: number }> {
+    return this.folders.batch(user.userId, body);
   }
 
   @Patch(":id")

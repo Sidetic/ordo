@@ -1,7 +1,7 @@
 /**
  * Bookmarks API endpoints.
  */
-import { BookmarkRoutes, buildPath } from "@ordo/shared";
+import { BookmarkRoutes, buildPath, type BatchBookmarksInput } from "@ordo/shared";
 import { api } from "./client";
 
 /** `folderId` is null for the unfiled root list ("Bookmarks"). */
@@ -90,6 +90,12 @@ export const bookmarksApi = {
       { folderId },
       { folderId },
     ),
+
+  batch: (body: BatchBookmarksInput, opts?: { folderId?: string | null }) =>
+    api.post<typeof BookmarkRoutes.batch.response>(BookmarkRoutes.batch.path, body, {
+      folderId: opts?.folderId,
+      folderTokens: true,
+    }),
 
   extractionProgress: () =>
     api.get<typeof BookmarkRoutes.extractionProgress.response>(

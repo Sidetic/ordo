@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_TAGS_PER_BOOKMARK } from "../constants.js";
+import { BATCH_ITEM_LIMIT, MAX_TAGS_PER_BOOKMARK } from "../constants.js";
 
 const url = z
   .string()
@@ -46,3 +46,29 @@ export const MarkAllReadSchema = z.object({
   folderId,
 });
 export type MarkAllReadInput = z.infer<typeof MarkAllReadSchema>;
+
+const batchIds = z
+  .array(z.string().min(1))
+  .min(1, { message: "Select at least one bookmark." })
+  .max(BATCH_ITEM_LIMIT, { message: `Select at most ${BATCH_ITEM_LIMIT} bookmarks.` });
+
+/** Destination folder for a batch move. `null` files the bookmarks as unfiled. */
+const batchFolderId = z.string().min(1, { message: "Choose a folder." }).nullable();
+
+export const BatchBookmarksSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("delete"), ids: batchIds }),
+  z.object({ action: z.literal("markRead"), ids: batchIds }),
+  z.object({ action: z.literal("markUnread"), ids: batchIds }),
+  z.object({ action: z.literal("move"), ids: batchIds, folderId: batchFolderId }),
+  z.object({
+    action: z.literal("addTags"),
+    ids: batchIds,
+    tagIds: z.array(z.string().min(1)).min(1).max(MAX_TAGS_PER_BOOKMARK),
+  }),
+]);
+export type BatchBookmarksInput = z.infer<typeof BatchBookmarksSchema>;
+
+export const BatchResultSchema = z.object({
+  updated: z.number().int().nonnegative(),
+});
+export type BatchResult = z.infer<typeof BatchResultSchema>;

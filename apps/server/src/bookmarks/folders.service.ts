@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import bcrypt from "bcryptjs";
 import type {
+  BatchFoldersInput,
   CreateFolderInput,
   FolderDto,
   RemoveFolderPasswordInput,
@@ -90,6 +91,21 @@ export class FoldersService {
     const folder = await this.prisma.folder.findFirst({ where: { id: folderId, userId } });
     if (!folder) throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "This folder no longer exists.");
     await this.prisma.folder.delete({ where: { id: folderId } });
+  }
+
+  async batch(userId: string, input: BatchFoldersInput): Promise<{ updated: number }> {
+    const ids = [...new Set(input.ids)];
+    if (input.action === "delete") {
+      const result = await this.prisma.folder.deleteMany({
+        where: { id: { in: ids }, userId },
+      });
+      return { updated: result.count };
+    }
+    const result = await this.prisma.folder.updateMany({
+      where: { id: { in: ids }, userId },
+      data: { pinned: input.pinned },
+    });
+    return { updated: result.count };
   }
 
   async setPassword(folderId: string, userId: string, input: SetFolderPasswordInput): Promise<void> {

@@ -76,6 +76,9 @@ export type AvatarMime = (typeof AVATAR.ALLOWED_TYPES)[number];
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
 
+/** Max bookmarks or folders in one batch selection request. */
+export const BATCH_ITEM_LIMIT = 200;
+
 /**
  * Version of the server's article-extraction pipeline. Bumped whenever the
  * pipeline changes enough that stored content should be re-extracted; rows
@@ -226,6 +229,13 @@ export type ImportFormat = (typeof IMPORT_FORMATS)[number];
 /** Export file formats. */
 export const EXPORT_FORMATS = ["json", "html", "csv"] as const;
 export type ExportFormat = (typeof EXPORT_FORMATS)[number];
+
+/** MIME types for export downloads and the native save-as picker. */
+export const EXPORT_MIME: Record<ExportFormat, string> = {
+  json: "application/json",
+  html: "text/html",
+  csv: "text/csv",
+};
 
 /** What to do when an imported URL already exists in the account. */
 export const DUPLICATE_POLICIES = ["skip", "update", "copy"] as const;

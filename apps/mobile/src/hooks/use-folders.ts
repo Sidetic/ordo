@@ -127,6 +127,44 @@ export function useDeleteFolder() {
   });
 }
 
+export function useBatchFolders() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { action: "delete" | "pin"; ids: string[]; pinned?: boolean }) =>
+      foldersApi.batch(
+        input.action === "pin"
+          ? { action: "pin", ids: input.ids, pinned: input.pinned ?? true }
+          : { action: "delete", ids: input.ids },
+      ),
+    onMutate: (input) => {
+      const prev = qc.getQueryData<FolderDto[]>(qk.folders);
+      if (input.action === "delete") {
+        const removed = new Set(input.ids);
+        qc.setQueryData<FolderDto[]>(qk.folders, (old) => (old ?? []).filter((folder) => !removed.has(folder.id)));
+      } else {
+        qc.setQueryData<FolderDto[]>(qk.folders, (old) =>
+          sortFolders(
+            (old ?? []).map((folder) =>
+              input.ids.includes(folder.id) ? { ...folder, pinned: input.pinned ?? true } : folder,
+            ),
+          ),
+        );
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(qk.folders, ctx.prev);
+    },
+    onSuccess: (_data, input) => {
+      if (input.action === "delete") {
+        for (const id of input.ids) useFolderTokenStore.getState().clear(id);
+        void qc.invalidateQueries({ queryKey: ["bookmarks"] });
+        void qc.invalidateQueries({ queryKey: tagsAnyAccess });
+      }
+    },
+  });
+}
+
 export interface FolderActionResult {
   ok: boolean;
   error?: string;

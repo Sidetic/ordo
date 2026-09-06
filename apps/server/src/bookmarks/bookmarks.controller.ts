@@ -16,8 +16,10 @@ import type { Request } from "express";
 import {
   CreateBookmarkSchema,
   MarkAllReadSchema,
+  BatchBookmarksSchema,
   UpdateBookmarkSchema,
   UpdateBookmarkTagsSchema,
+  type BatchBookmarksInput,
   type BookmarkDto,
   type CursorPage,
   type ExtractionProgressDto,
@@ -169,6 +171,16 @@ export class BookmarksController {
       : null;
     const updated = await this.bookmarks.markAllRead(user.userId, folder);
     return { updated };
+  }
+
+  @Post("batch")
+  @HttpCode(200)
+  async batch(
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(BatchBookmarksSchema)) body: BatchBookmarksInput,
+    @Req() req: Request,
+  ): Promise<{ updated: number }> {
+    return this.bookmarks.batch(user.userId, body, getPresentedFolderTokens(req));
   }
 
   private parseTagIds(value: string | undefined): string[] {

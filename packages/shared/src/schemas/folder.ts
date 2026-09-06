@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FOLDER_ICONS } from "../constants.js";
+import { BATCH_ITEM_LIMIT, FOLDER_ICONS } from "../constants.js";
 import type { FolderLockType } from "../types.js";
 
 const name = z
@@ -68,3 +68,14 @@ export const RemoveFolderPasswordSchema = z
     message: "Enter the folder password or your account password.",
   });
 export type RemoveFolderPasswordInput = z.infer<typeof RemoveFolderPasswordSchema>;
+
+const batchFolderIds = z
+  .array(z.string().min(1))
+  .min(1, { message: "Select at least one folder." })
+  .max(BATCH_ITEM_LIMIT, { message: `Select at most ${BATCH_ITEM_LIMIT} folders.` });
+
+export const BatchFoldersSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("delete"), ids: batchFolderIds }),
+  z.object({ action: z.literal("pin"), ids: batchFolderIds, pinned: z.boolean() }),
+]);
+export type BatchFoldersInput = z.infer<typeof BatchFoldersSchema>;

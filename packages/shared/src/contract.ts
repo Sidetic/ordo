@@ -21,6 +21,9 @@ import type {
   UserDto,
 } from "./types.js";
 import type {
+  BatchBookmarksInput,
+  BatchFoldersInput,
+  BatchResult,
   CommitImportInput,
   CreateFolderInput,
   ExportRequestInput,
@@ -343,6 +346,14 @@ export const FolderRoutes = {
     params: {} as { id: string },
     response: {} as { token: string; expiresIn: number },
   },
+  batch: {
+    path: `${API_PREFIX}/folders/batch`,
+    method: "POST",
+    body: {} as BatchFoldersInput,
+    query: {} as Empty,
+    params: {} as Empty,
+    response: {} as BatchResult,
+  },
 } satisfies Record<string, RouteDef>;
 
 // ---------- Tags ----------
@@ -455,6 +466,14 @@ export const BookmarkRoutes = {
     params: {} as Empty,
     response: {} as { updated: number },
   },
+  batch: {
+    path: `${API_PREFIX}/bookmarks/batch`,
+    method: "POST",
+    body: {} as BatchBookmarksInput,
+    query: {} as Empty,
+    params: {} as Empty,
+    response: {} as BatchResult,
+  },
 } satisfies Record<string, RouteDef>;
 
 // ---------- Server ----------
@@ -507,7 +526,7 @@ export const ImportExportRoutes = {
     params: {} as { id: string },
     response: {} as { success: true },
   },
-  /** Export the library (or one folder) as a file download. */
+  /** Export the library or selected folders as a file download. */
   export: {
     path: `${API_PREFIX}/import-export/export`,
     method: "POST",

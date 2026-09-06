@@ -1,5 +1,5 @@
 /**
- * Floating dialog to move a bookmark into another folder.
+ * Floating dialog to move one or more bookmarks into another folder.
  */
 import React, { useEffect, useState } from "react";
 import { FlatList, StyleSheet } from "react-native";
@@ -10,22 +10,25 @@ import { UnlockForm } from "./LockPrompt";
 import { Text } from "../ui/Text";
 import { PressableScale } from "../ui/PressableScale";
 import { useFolders } from "../../hooks/queries";
-import { useMoveBookmark } from "../../hooks/use-bookmarks";
 import { useFolderTokenStore } from "../../store/folder-tokens";
 import { errorMessage, isFolderProtected } from "../../lib/error-message";
 import { haptics } from "../../lib/haptics";
 import { toast } from "../ui/toast-store";
+import { movedBookmarksToast } from "../../lib/copy";
 import { useTheme } from "../../theme/ThemeProvider";
 import { spacing } from "../../theme/tokens";
 import { useResponsiveLayout } from "../../hooks/use-responsive-layout";
 import { DEFAULT_FOLDER_ICON, type BookmarkDto, type FolderDto } from "@ordo/shared";
+import { useMoveBookmark, useBatchBookmarks } from "../../hooks/use-bookmarks";
 
 export interface MoveSheetProps {
   visible: boolean;
   onDismiss: () => void;
-  bookmark: BookmarkDto | null;
+  bookmark?: BookmarkDto | null;
+  bookmarks?: BookmarkDto[];
   /** Folder the list is currently scoped to, or null for unfiled root. */
   fromFolderId: string | null;
+  onMoved?: () => void;
 }
 
 /** Sentinel row representing the unfiled root ("Bookmarks"). */
@@ -36,13 +39,22 @@ function isRootDestination(d: Destination): d is typeof ROOT_DESTINATION {
   return d === ROOT_DESTINATION;
 }
 
-export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSheetProps) {
+export function MoveSheet({
+  visible,
+  onDismiss,
+  bookmark,
+  bookmarks,
+  fromFolderId,
+  onMoved,
+}: MoveSheetProps) {
   const { palette } = useTheme();
   const { data: folders } = useFolders();
   const move = useMoveBookmark(fromFolderId);
+  const batch = useBatchBookmarks();
   const { height } = useResponsiveLayout();
   const [error, setError] = useState("");
   const [lockedTarget, setLockedTarget] = useState<FolderDto | null>(null);
+  const targets = bookmarks ?? (bookmark ? [bookmark] : []);
 
   useEffect(() => {
     if (visible) {
@@ -56,7 +68,7 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
   if (fromFolderId !== null) destinations.unshift(ROOT_DESTINATION);
 
   const pick = async (destination: Destination) => {
-    if (!bookmark) return;
+    if (targets.length === 0) return;
     const toFolderId = isRootDestination(destination) ? null : destination.id;
     const name = isRootDestination(destination) ? "Bookmarks" : destination.name;
     setError("");
@@ -66,8 +78,18 @@ export function MoveSheet({ visible, onDismiss, bookmark, fromFolderId }: MoveSh
     }
     haptics.light();
     try {
-      await move.mutateAsync({ id: bookmark.id, toFolderId });
-      toast.success(`Moved to ${name}`);
+      if (targets.length === 1) {
+        await move.mutateAsync({ id: targets[0].id, toFolderId });
+      } else {
+        await batch.mutateAsync({
+          action: "move",
+          ids: targets.map((item) => item.id),
+          folderId: toFolderId,
+          scopeFolderId: fromFolderId,
+        });
+      }
+      toast.success(movedBookmarksToast(targets.length, name));
+      onMoved?.();
       onDismiss();
     } catch (e) {
       if (!isRootDestination(destination) && isFolderProtected(e)) {

@@ -5,7 +5,9 @@ import {
   ErrorCode,
   EXTRACTION_VERSION,
   MAX_PAGE_SIZE,
+  MAX_TAGS_PER_BOOKMARK,
   READ_COMPLETION_THRESHOLD,
+  type BatchBookmarksInput,
   type BookmarkDto,
   type CursorPage,
 } from "@ordo/shared";
@@ -304,6 +306,122 @@ export class BookmarksService implements OnApplicationBootstrap {
       data: { isRead: true },
     });
     return result.count;
+  }
+
+  /** Apply one action to many bookmarks the user can currently access. */
+  async batch(
+    userId: string,
+    input: BatchBookmarksInput,
+    tokens: readonly string[],
+  ): Promise<{ updated: number }> {
+    const ids = [...new Set(input.ids)];
+    const bookmarks = await this.prisma.bookmark.findMany({
+      where: { id: { in: ids }, userId },
+      select: { id: true, folderId: true },
+    });
+    await this.assertFolderAccess(userId, bookmarks, tokens);
+    const targetIds = bookmarks.map((bookmark) => bookmark.id);
+    if (targetIds.length === 0) return { updated: 0 };
+
+    if (input.action === "delete") {
+      const result = await this.prisma.bookmark.deleteMany({
+        where: { id: { in: targetIds }, userId },
+      });
+      return { updated: result.count };
+    }
+
+    if (input.action === "markRead") {
+      const result = await this.prisma.bookmark.updateMany({
+        where: { id: { in: targetIds }, userId, isRead: false },
+        data: { isRead: true },
+      });
+      return { updated: result.count };
+    }
+
+    if (input.action === "markUnread") {
+      const result = await this.prisma.bookmark.updateMany({
+        where: { id: { in: targetIds }, userId, isRead: true },
+        data: { isRead: false, completedAt: null },
+      });
+      return { updated: result.count };
+    }
+
+    if (input.action === "move") {
+      if (input.folderId) {
+        await this.access.requireFolder(input.folderId, userId, tokens);
+      }
+      const result = await this.prisma.bookmark.updateMany({
+        where: { id: { in: targetIds }, userId },
+        data: { folderId: input.folderId },
+      });
+      return { updated: result.count };
+    }
+
+    return { updated: await this.addTagsToBookmarks(userId, targetIds, input.tagIds) };
+  }
+
+  private async assertFolderAccess(
+    userId: string,
+    bookmarks: Array<{ folderId: string | null }>,
+    tokens: readonly string[],
+  ): Promise<void> {
+    const folderIds = [
+      ...new Set(bookmarks.map((bookmark) => bookmark.folderId).filter((id): id is string => Boolean(id))),
+    ];
+    if (folderIds.length === 0) return;
+    const folders = await this.prisma.folder.findMany({
+      where: { userId, id: { in: folderIds } },
+      select: { id: true, passwordHash: true },
+    });
+    if (folders.length !== folderIds.length) {
+      throw new AppError(ErrorCode.FOLDER_NOT_FOUND, "This folder no longer exists.");
+    }
+    const locked = folders.filter((folder) => folder.passwordHash);
+    if (locked.length === 0) return;
+    const authorized = new Set(await this.access.authorizedFolderIds(userId, tokens));
+    const blocked = locked.find((folder) => !authorized.has(folder.id));
+    if (blocked) {
+      throw new AppError(ErrorCode.FOLDER_PROTECTED, "This folder is locked.", {
+        folderId: blocked.id,
+      });
+    }
+  }
+
+  private async addTagsToBookmarks(
+    userId: string,
+    bookmarkIds: string[],
+    tagIds: string[],
+  ): Promise<number> {
+    const uniqueTagIds = [...new Set(tagIds)];
+    await this.tags.requireOwnedIds(userId, uniqueTagIds);
+    const existing = await this.prisma.bookmarkTag.findMany({
+      where: { bookmarkId: { in: bookmarkIds } },
+      select: { bookmarkId: true, tagId: true },
+    });
+    const currentByBookmark = new Map<string, Set<string>>();
+    for (const id of bookmarkIds) currentByBookmark.set(id, new Set());
+    for (const row of existing) {
+      currentByBookmark.get(row.bookmarkId)?.add(row.tagId);
+    }
+    const links: Array<{ bookmarkId: string; tagId: string }> = [];
+    for (const [bookmarkId, current] of currentByBookmark) {
+      let remaining = MAX_TAGS_PER_BOOKMARK - current.size;
+      if (remaining <= 0) continue;
+      for (const tagId of uniqueTagIds) {
+        if (current.has(tagId)) continue;
+        if (remaining <= 0) break;
+        links.push({ bookmarkId, tagId });
+        remaining -= 1;
+      }
+    }
+    if (links.length === 0) return bookmarkIds.length;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.bookmarkTag.createMany({ data: links });
+      await tx.bookmarkTagSuggestion.deleteMany({
+        where: { bookmarkId: { in: bookmarkIds }, tagId: { in: uniqueTagIds } },
+      });
+    });
+    return bookmarkIds.length;
   }
 
   // --- internals ---

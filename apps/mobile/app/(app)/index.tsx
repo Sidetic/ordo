@@ -5,6 +5,9 @@ import { useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../src/components/ui/Header";
+import { SelectionHeader } from "../../src/components/bookmarks/SelectionHeader";
+import { SelectionTools } from "../../src/components/bookmarks/SelectionTools";
+import { SELECTION_BAR_HEIGHT } from "../../src/components/bookmarks/SelectionActionBar";
 import { FAB, FABLayer } from "../../src/components/ui/FAB";
 import { FloatingPanel } from "../../src/components/ui/FloatingPanel";
 import { PanelHeader } from "../../src/components/ui/PanelHeader";
@@ -34,6 +37,7 @@ import {
   useToggleRead,
 } from "../../src/hooks/use-bookmarks";
 import { useFloatingDockMetrics } from "../../src/hooks/use-floating-dock-metrics";
+import { bookmarkKey, folderKey, useSelectionMode } from "../../src/hooks/use-selection";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { haptics } from "../../src/lib/haptics";
 import { toast } from "../../src/components/ui/toast-store";
@@ -68,11 +72,24 @@ export default function BookmarksScreen() {
   const [actionBookmark, setActionBookmark] = useState<BookmarkDto | null>(null);
   const [moveTarget, setMoveTarget] = useState<BookmarkDto | null>(null);
   const [editTagsTarget, setEditTagsTarget] = useState<BookmarkDto | null>(null);
+  const selection = useSelectionMode();
 
   const items = useMemo(() => flattenPages(bookmarks.data?.pages ?? []), [bookmarks.data]);
   const hasUnread = items.some((bookmark) => !bookmark.isRead);
   const folderItems = folders.data ?? [];
   const tagCount = tags.data?.length ?? 0;
+  const selectedBookmarks = useMemo(
+    () => items.filter((bookmark) => selection.has(bookmarkKey(bookmark.id))),
+    [items, selection],
+  );
+  const selectedFolders = useMemo(
+    () => folderItems.filter((folder) => selection.has(folderKey(folder.id))),
+    [folderItems, selection],
+  );
+  const selectableKeys = useMemo(
+    () => [...folderItems.map((folder) => folderKey(folder.id)), ...items.map((bookmark) => bookmarkKey(bookmark.id))],
+    [folderItems, items],
+  );
 
   const onToggleRead = (bookmark: BookmarkDto) => {
     haptics.light();
@@ -139,7 +156,19 @@ export default function BookmarksScreen() {
               <React.Fragment key={folder.id}>
                 <FolderRow
                   folder={folder}
-                  onPress={(selected) => router.push(`/folder/${selected.id}`)}
+                  selectionMode={selection.active}
+                  selected={selection.has(folderKey(folder.id))}
+                  onPress={(selectedFolder) => {
+                    if (selection.active) {
+                      selection.toggle(folderKey(selectedFolder.id));
+                      return;
+                    }
+                    router.push(`/folder/${selectedFolder.id}`);
+                  }}
+                  onLongPress={(selectedFolder) => {
+                    if (selection.active) selection.toggle(folderKey(selectedFolder.id));
+                    else selection.enter(folderKey(selectedFolder.id));
+                  }}
                   onMore={setActionsFolder}
                 />
                 {index < folderItems.length - 1 ? <View style={styles.folderSeparator} /> : null}
@@ -189,6 +218,18 @@ export default function BookmarksScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
+      {selection.active ? (
+        <SelectionHeader
+          count={selection.count}
+          selectableCount={selectableKeys.length}
+          onCancel={selection.exit}
+          onToggleSelectAll={() => {
+            if (selection.count === selectableKeys.length) selection.replace([]);
+            else selection.replace(selectableKeys);
+          }}
+          maxWidth={layout.maxContentWidth}
+        />
+      ) : (
       <Header
         title="Bookmarks"
         large
@@ -207,6 +248,7 @@ export default function BookmarksScreen() {
           ) : undefined
         }
       />
+      )}
 
       <ExtractionProgressLine />
 
@@ -227,10 +269,20 @@ export default function BookmarksScreen() {
             renderItem={({ item }: { item: BookmarkDto }) => (
               <BookmarkRow
                 bookmark={item}
-                onPress={openBookmark}
+                selectionMode={selection.active}
+                selected={selection.has(bookmarkKey(item.id))}
+                onPress={(bookmark) => {
+                  if (selection.active) selection.toggle(bookmarkKey(bookmark.id));
+                  else openBookmark(bookmark);
+                }}
+                onLongPress={(bookmark) => {
+                  if (selection.active) selection.toggle(bookmarkKey(bookmark.id));
+                  else selection.enter(bookmarkKey(bookmark.id));
+                }}
                 onMore={setActionBookmark}
               />
             )}
+            extraData={selection.revision}
             estimatedItemSize={108}
             ListHeaderComponent={listHeader}
             ListEmptyComponent={
@@ -252,7 +304,11 @@ export default function BookmarksScreen() {
                 <View style={styles.footer}><ActivityIndicator color={palette.accent} /></View>
               ) : null
             }
-            contentContainerStyle={{ paddingBottom: floatingNavigation ? bottomClearance : spacing[96] }}
+            contentContainerStyle={{
+              paddingBottom:
+                (floatingNavigation ? bottomClearance : spacing[96]) +
+                (selection.active ? SELECTION_BAR_HEIGHT + spacing[16] : 0),
+            }}
             refreshing={(bookmarks.isFetching || folders.isFetching || tags.isFetching) && !bookmarks.isLoading}
             onRefresh={refresh}
             onEndReached={loadMore}
@@ -261,6 +317,7 @@ export default function BookmarksScreen() {
         </ScreenContent>
       )}
 
+      {!selection.active ? (
       <FABLayer maxWidth={layout.maxContentWidth}>
         <FAB
           onPress={() => runCreateAction(createButtonTapAction)}
@@ -279,6 +336,7 @@ export default function BookmarksScreen() {
           right={spacing[20]}
         />
       </FABLayer>
+      ) : null}
 
       <FloatingPanel visible={createMenuOpen} onDismiss={() => setCreateMenuOpen(false)}>
         <PanelHeader title="Create" />
@@ -335,6 +393,7 @@ export default function BookmarksScreen() {
         onMove={setMoveTarget}
         onDelete={onDelete}
         onEditTags={setEditTagsTarget}
+        onSelect={(bookmark) => selection.enter(bookmarkKey(bookmark.id))}
       />
 
       <EditTagsSheet
@@ -356,10 +415,21 @@ export default function BookmarksScreen() {
         visible={!!actionsFolder}
         folder={actionsFolder}
         onDismiss={() => setActionsFolder(null)}
+        onSelect={(folder) => selection.enter(folderKey(folder.id))}
         onDeleted={() => {
           toast.success("Folder deleted");
           setActionsFolder(null);
         }}
+      />
+
+      <SelectionTools
+        active={selection.active}
+        bookmarks={selectedBookmarks}
+        folders={selectedFolders}
+        fromFolderId={null}
+        onFinished={selection.exit}
+        bottom={floatingNavigation ? bottomClearance : spacing[20]}
+        maxWidth={layout.maxContentWidth}
       />
     </View>
   );

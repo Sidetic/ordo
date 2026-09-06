@@ -80,20 +80,56 @@ export function updateBookmarkEverywhere(
   id: string,
   updater: (b: BookmarkDto) => BookmarkDto,
 ) {
+  updateBookmarksEverywhere(qc, new Set([id]), updater);
+}
+
+/** Apply the same list/detail patch to many bookmarks in one cache walk. */
+export function updateBookmarksEverywhere(
+  qc: QueryClient,
+  ids: ReadonlySet<string>,
+  updater: (b: BookmarkDto) => BookmarkDto,
+) {
+  if (ids.size === 0) return;
   qc.setQueriesData<unknown>({ queryKey: ["bookmarks"] }, (data: unknown) => {
     if (!data || typeof data !== "object") return data;
     if (Array.isArray((data as { pages?: unknown }).pages)) {
       const paged = data as InfiniteData<CursorPage<BookmarkDto>>;
-      return {
-        ...paged,
-        pages: paged.pages.map((page) => ({
-          ...page,
-          items: page.items.map((b) => (b.id === id ? updater(b) : b)),
-        })),
-      };
+      let changed = false;
+      const pages = paged.pages.map((page) => {
+        let pageChanged = false;
+        const items = page.items.map((b) => {
+          if (!ids.has(b.id)) return b;
+          pageChanged = true;
+          return updater(b);
+        });
+        if (!pageChanged) return page;
+        changed = true;
+        return { ...page, items };
+      });
+      return changed ? { ...paged, pages } : data;
     }
     const detail = data as BookmarkDetailDto;
-    return detail.id === id ? updater(detail) : data;
+    return ids.has(detail.id) ? updater(detail) : data;
+  });
+}
+
+/** Remove many bookmarks from every cached list in one cache walk. */
+export function removeBookmarksEverywhere(qc: QueryClient, ids: ReadonlySet<string>) {
+  if (ids.size === 0) return;
+  qc.setQueriesData<unknown>({ queryKey: ["bookmarks"] }, (data: unknown) => {
+    if (!data || typeof data !== "object") return data;
+    if (!Array.isArray((data as { pages?: unknown }).pages)) return data;
+    const paged = data as InfiniteData<CursorPage<BookmarkDto>>;
+    let changed = false;
+    const pages = paged.pages.map((page) => {
+      const items = page.items.filter((b) => {
+        if (!ids.has(b.id)) return true;
+        changed = true;
+        return false;
+      });
+      return items.length === page.items.length ? page : { ...page, items };
+    });
+    return changed ? { ...paged, pages } : data;
   });
 }
 

@@ -7,35 +7,57 @@ import { Ionicons } from "@expo/vector-icons";
 import { PressableScale } from "../ui/PressableScale";
 import { Text } from "../ui/Text";
 import { Badge } from "../ui/Badge";
+import { SelectionMark } from "./SelectionMark";
 import { useTheme } from "../../theme/ThemeProvider";
 import { haptics } from "../../lib/haptics";
 import { radius, spacing } from "../../theme/tokens";
+import { SELECTION_LONG_PRESS_MS } from "../../hooks/use-selection";
 import { DEFAULT_FOLDER_ICON, type FolderDto } from "@ordo/shared";
 
 export interface FolderRowProps {
   folder: FolderDto;
   onPress: (f: FolderDto) => void;
   onMore?: (f: FolderDto) => void;
+  onLongPress?: (f: FolderDto) => void;
+  selected?: boolean;
+  selectionMode?: boolean;
 }
 
-export function FolderRow({ folder, onPress, onMore }: FolderRowProps) {
+export function FolderRow({ folder, onPress, onMore, onLongPress, selected, selectionMode }: FolderRowProps) {
   const { palette } = useTheme();
   const unread = folder.unreadCount > 0;
 
   return (
-    <View style={[styles.wrap, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+    <View
+      style={[
+        styles.wrap,
+        {
+          backgroundColor: selected && selectionMode ? palette.accentSoft : palette.surface,
+          borderColor: palette.border,
+        },
+      ]}
+    >
       <PressableScale
-        accessibilityRole="button"
+        accessibilityRole={selectionMode ? "checkbox" : "button"}
         accessibilityLabel={`${folder.name}, ${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}${folder.pinned ? ", pinned" : ""}${folder.protected ? ", locked" : ""}`}
+        accessibilityState={selectionMode ? { checked: !!selected } : undefined}
+        accessibilityHint={
+          selectionMode ? (selected ? "Deselect this folder" : "Select this folder") : undefined
+        }
         style={styles.rowButton}
         onPress={() => {
-          haptics.light();
+          if (!selectionMode) haptics.light();
           onPress(folder);
         }}
-        onLongPress={onMore ? () => onMore(folder) : undefined}
+        onLongPress={onLongPress ? () => onLongPress(folder) : onMore ? () => onMore(folder) : undefined}
+        delayLongPress={SELECTION_LONG_PRESS_MS}
       >
         <View style={[styles.iconWrap, { backgroundColor: palette.surfaceSecondary }]}>
-          <Ionicons name={folder.icon ?? DEFAULT_FOLDER_ICON} size={18} color={palette.accent} />
+          {selectionMode ? (
+            <SelectionMark selected={!!selected} />
+          ) : (
+            <Ionicons name={folder.icon ?? DEFAULT_FOLDER_ICON} size={18} color={palette.accent} />
+          )}
         </View>
         <View style={styles.body}>
           <Text variant="title3" numberOfLines={1}>{folder.name}</Text>
@@ -47,7 +69,7 @@ export function FolderRow({ folder, onPress, onMore }: FolderRowProps) {
         {folder.pinned ? <Ionicons name="pin" size={15} color={palette.accent} /> : null}
         {unread ? <Badge tone="accent">{folder.unreadCount}</Badge> : null}
       </PressableScale>
-      {onMore ? (
+      {onMore && !selectionMode ? (
         <PressableScale
           accessibilityRole="button"
           accessibilityLabel={`More actions for ${folder.name}`}

@@ -8,6 +8,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { Header } from "../../../src/components/ui/Header";
+import { SelectionHeader } from "../../../src/components/bookmarks/SelectionHeader";
+import { SelectionTools } from "../../../src/components/bookmarks/SelectionTools";
+import { SELECTION_BAR_HEIGHT } from "../../../src/components/bookmarks/SelectionActionBar";
 import { FAB, FABLayer } from "../../../src/components/ui/FAB";
 import { Button } from "../../../src/components/ui/Button";
 import { PressableScale } from "../../../src/components/ui/PressableScale";
@@ -32,6 +35,7 @@ import {
   useDeleteBookmark,
 } from "../../../src/hooks/use-bookmarks";
 import { useResponsiveLayout } from "../../../src/hooks/use-responsive-layout";
+import { bookmarkKey, useSelectionMode } from "../../../src/hooks/use-selection";
 import { useTheme } from "../../../src/theme/ThemeProvider";
 import { haptics } from "../../../src/lib/haptics";
 import { toast } from "../../../src/components/ui/toast-store";
@@ -64,8 +68,14 @@ export default function TagDetailScreen() {
   const [tagActionsOpen, setTagActionsOpen] = useState(false);
   const [editTagOpen, setEditTagOpen] = useState(false);
   const [deleteTagOpen, setDeleteTagOpen] = useState(false);
+  const selection = useSelectionMode();
 
   const items = useMemo(() => flattenPages(list.data?.pages ?? []), [list.data]);
+  const selectedBookmarks = useMemo(
+    () => items.filter((bookmark) => selection.has(bookmarkKey(bookmark.id))),
+    [items, selection],
+  );
+  const selectableKeys = useMemo(() => items.map((bookmark) => bookmarkKey(bookmark.id)), [items]);
 
   const openReader = (b: BookmarkDto) => {
     if (hasDetailPane) {
@@ -103,22 +113,38 @@ export default function TagDetailScreen() {
   const listPane = (
     <FlashList
       data={items}
+      extraData={selection.revision}
       keyExtractor={(b: BookmarkDto) => b.id}
       renderItem={({ item }: { item: BookmarkDto }) => (
         <BookmarkRow
           bookmark={item}
-          onPress={openReader}
+          selectionMode={selection.active}
+          selected={
+            selection.active
+              ? selection.has(bookmarkKey(item.id))
+              : hasDetailPane && item.id === selectedBookmarkId
+          }
+          onPress={(bookmark) => {
+            if (selection.active) selection.toggle(bookmarkKey(bookmark.id));
+            else openReader(bookmark);
+          }}
+          onLongPress={(bookmark) => {
+            if (selection.active) selection.toggle(bookmarkKey(bookmark.id));
+            else selection.enter(bookmarkKey(bookmark.id));
+          }}
           onMore={(b) => setActionBm(b)}
-          selected={hasDetailPane && item.id === selectedBookmarkId}
           omitTagIds={activeIds}
           onTagPress={(tagId) => {
+            if (selection.active) return;
             haptics.light();
             router.replace(`/tags/${tagId}`);
           }}
         />
       )}
       estimatedItemSize={108}
-      contentContainerStyle={{ paddingBottom: spacing[96] }}
+      contentContainerStyle={{
+        paddingBottom: spacing[96] + (selection.active ? SELECTION_BAR_HEIGHT + spacing[16] : 0),
+      }}
       refreshing={list.isFetching && !list.isFetchingNextPage}
       onRefresh={() => list.refetch()}
       onEndReached={loadMore}
@@ -137,6 +163,18 @@ export default function TagDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
+      {selection.active ? (
+        <SelectionHeader
+          count={selection.count}
+          selectableCount={selectableKeys.length}
+          onCancel={selection.exit}
+          onToggleSelectAll={() => {
+            if (selection.count === selectableKeys.length) selection.replace([]);
+            else selection.replace(selectableKeys);
+          }}
+          maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth}
+        />
+      ) : (
       <Header
         title={anchor?.name ?? "Tag"}
         subtitle={
@@ -162,6 +200,7 @@ export default function TagDetailScreen() {
           ) : undefined
         }
       />
+      )}
 
       <ExtractionProgressLine maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth} />
 
@@ -213,6 +252,7 @@ export default function TagDetailScreen() {
         </ScreenContent>
       )}
 
+      {selection.active ? null : (
       <FABLayer maxWidth={layout.maxContentWidth}>
         <FAB
           onPress={() => setAddOpen(true)}
@@ -220,6 +260,7 @@ export default function TagDetailScreen() {
           right={spacing[20]}
         />
       </FABLayer>
+      )}
 
       <AddBookmarkSheet
         visible={addOpen}
@@ -237,6 +278,7 @@ export default function TagDetailScreen() {
         onMove={setMoveTarget}
         onDelete={onDelete}
         onEditTags={setEditTagsBm}
+        onSelect={(bookmark) => selection.enter(bookmarkKey(bookmark.id))}
       />
 
       <MoveSheet
@@ -309,6 +351,19 @@ export default function TagDetailScreen() {
             onError: (e) => toast.error(errorMessage(e)),
           });
         }}
+      />
+      <SelectionTools
+        active={selection.active}
+        bookmarks={selectedBookmarks}
+        fromFolderId={null}
+        onFinished={() => {
+          if (hasDetailPane && selectedBookmarkId && selection.has(bookmarkKey(selectedBookmarkId))) {
+            router.replace({ pathname: "/tags/[id]", params: { id: routeId ?? "" } });
+          }
+          selection.exit();
+        }}
+        bottom={spacing[20]}
+        maxWidth={hasDetailPane ? layout.maxLibraryWidth : layout.maxContentWidth}
       />
     </View>
   );
