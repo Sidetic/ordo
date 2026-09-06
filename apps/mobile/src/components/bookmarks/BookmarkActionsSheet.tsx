@@ -9,10 +9,19 @@ import { useTheme } from "../../theme/ThemeProvider";
 import { spacing } from "../../theme/tokens";
 import { copyLink } from "../../lib/copy-link";
 import { bookmarkCanBeArticle, bookmarkIsArticle } from "../../lib/bookmark-reader";
-import { useSetContentKind } from "../../hooks/use-bookmarks";
+import * as bookmarkHooks from "../../hooks/use-bookmarks";
 import { toast } from "../ui/toast-store";
 import { errorMessage } from "../../lib/error-message";
 import type { BookmarkDto } from "@ordo/shared";
+
+function useSetContentKindMissing() {
+  return { mutate: () => undefined, isPending: false };
+}
+
+const useSetContentKind =
+  typeof bookmarkHooks.useSetContentKind === "function"
+    ? bookmarkHooks.useSetContentKind
+    : useSetContentKindMissing;
 
 export interface BookmarkActionsSheetProps {
   visible: boolean;
@@ -146,7 +155,7 @@ export function BookmarkActionsSheet({
               onDismiss();
             }}
           />
-          {bookmarkIsArticle(bookmark) ? (
+          {typeof bookmarkHooks.useSetContentKind === "function" && bookmarkIsArticle(bookmark) ? (
             <SheetActionRow
               icon="globe-outline"
               label="This is not an article"
@@ -165,7 +174,7 @@ export function BookmarkActionsSheet({
                 onDismiss();
               }}
             />
-          ) : bookmarkCanBeArticle(bookmark) ? (
+          ) : typeof bookmarkHooks.useSetContentKind === "function" && bookmarkCanBeArticle(bookmark) ? (
             <SheetActionRow
               icon="reader-outline"
               label="Mark as article"

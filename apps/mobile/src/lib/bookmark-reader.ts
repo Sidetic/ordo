@@ -1,10 +1,36 @@
-import type { BookmarkDto, ContentKind } from "@ordo/shared";
-import { bookmarkContentKind } from "@ordo/shared";
+import type {
+  BookmarkDto,
+  ContentKind,
+  ContentKindOverride,
+  ExtractionReason,
+  FetchStatus,
+} from "@ordo/shared";
+import * as shared from "@ordo/shared";
+
+function classifyContentKind(
+  fetchStatus: FetchStatus,
+  extractionReason: ExtractionReason | null,
+  override: ContentKindOverride | null = null,
+): ContentKind | null {
+  if (override === "article" || override === "web") return override;
+  if (fetchStatus === "pending") return null;
+  if (fetchStatus === "ok") return "article";
+  if (extractionReason === "social_video_or_app") return "media";
+  if (extractionReason === "non_html_content") return "file";
+  return "web";
+}
 
 export function resolveContentKind(bookmark: BookmarkDto): ContentKind | null {
-  return (
-    bookmark.contentKind ??
-    bookmarkContentKind(bookmark.fetchStatus, bookmark.extractionReason, bookmark.contentKindOverride ?? null)
+  // Prefer the server field when present so a stale/missing shared helper cannot crash the list.
+  if (bookmark.contentKind !== undefined) return bookmark.contentKind;
+  const classify = (shared as { bookmarkContentKind?: typeof classifyContentKind }).bookmarkContentKind;
+  if (typeof classify === "function") {
+    return classify(bookmark.fetchStatus, bookmark.extractionReason, bookmark.contentKindOverride ?? null);
+  }
+  return classifyContentKind(
+    bookmark.fetchStatus,
+    bookmark.extractionReason,
+    bookmark.contentKindOverride ?? null,
   );
 }
 

@@ -56,18 +56,20 @@ export function BookmarkRow({
   const [failedFavicon, setFailedFavicon] = React.useState<string | null>(null);
   const opensAsWebsite = bookmarkOpensAsWebsite(bookmark);
   const isPending = bookmark.fetchStatus === "pending";
-  const hasSuggestions = bookmark.suggestedTags.length > 0;
+  const tags = Array.isArray(bookmark.tags) ? bookmark.tags : [];
+  const suggestedTags = Array.isArray(bookmark.suggestedTags) ? bookmark.suggestedTags : [];
+  const hasSuggestions = suggestedTags.length > 0;
   const rowTags = omitTagIds?.length
-    ? bookmark.tags.filter((tag) => !omitTagIds.includes(tag.id))
-    : bookmark.tags;
+    ? tags.filter((tag) => !omitTagIds.includes(tag.id))
+    : tags;
   const visibleTags = rowTags.slice(0, MAX_ROW_TAGS);
   const overflowCount = rowTags.length - visibleTags.length;
   const accessibilityLabel = [
     title,
     domain,
     createdLabel,
-    ...bookmark.tags.map((t) => `Tag ${t.name}`),
-    hasSuggestions ? `${bookmark.suggestedTags.length} tag suggestions` : undefined,
+    ...tags.map((t) => `Tag ${t.name}`),
+    hasSuggestions ? `${suggestedTags.length} tag suggestions` : undefined,
     !bookmark.isRead ? "Unread" : undefined,
     isPending ? "Article processing" : undefined,
     opensAsWebsite ? "Opens as website" : undefined,
@@ -170,8 +172,8 @@ export function BookmarkRow({
             <View style={styles.suggestionRow}>
               <Ionicons name="sparkles-outline" size={12} color={palette.accent} />
               <Text variant="caption" color="accent">
-                {bookmark.suggestedTags.length} tag{" "}
-                {bookmark.suggestedTags.length === 1 ? "suggestion" : "suggestions"}
+                {suggestedTags.length} tag{" "}
+                {suggestedTags.length === 1 ? "suggestion" : "suggestions"}
               </Text>
             </View>
           ) : null}

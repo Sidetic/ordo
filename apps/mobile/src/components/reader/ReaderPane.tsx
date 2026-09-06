@@ -53,7 +53,8 @@ import { resolvePalette, type Palette } from "../../theme/theme";
 import { queryClient } from "../../lib/query-client";
 import { bookmarksApi } from "../../lib/api/bookmarks";
 import { findBookmarkInCache, updateBookmarkEverywhere } from "../../lib/cache-helpers";
-import { useBookmarkDetail, useSetContentKind, useToggleRead } from "../../hooks/use-bookmarks";
+import { useBookmarkDetail, useToggleRead } from "../../hooks/use-bookmarks";
+import * as bookmarkHooks from "../../hooks/use-bookmarks";
 import { useFolders } from "../../hooks/queries";
 import { useReaderPreferences } from "../../hooks/use-reader-preferences";
 import { useSettingsStore } from "../../store/settings";
@@ -70,6 +71,15 @@ import {
   canReadInOrdo,
 } from "../../lib/bookmark-reader";
 import { copyLink } from "../../lib/copy-link";
+
+function useSetContentKindMissing() {
+  return { mutate: () => undefined, isPending: false };
+}
+
+const useSetContentKind =
+  typeof bookmarkHooks.useSetContentKind === "function"
+    ? bookmarkHooks.useSetContentKind
+    : useSetContentKindMissing;
 
 export interface ReaderPaneProps {
   bookmarkId?: string;
