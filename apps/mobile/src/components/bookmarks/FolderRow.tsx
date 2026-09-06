@@ -1,5 +1,6 @@
 /**
- * Folder list row with custom icon, counts, pin, and lock indicators.
+ * Folder list row — same chrome as BookmarkRow so folders and bookmarks
+ * read as one library, not two stacked features.
  */
 import React from "react";
 import { StyleSheet, View } from "react-native";
@@ -26,25 +27,26 @@ export interface FolderRowProps {
 export function FolderRow({ folder, onPress, onMore, onLongPress, selected, selectionMode }: FolderRowProps) {
   const { palette } = useTheme();
   const unread = folder.unreadCount > 0;
+  const countLabel = `${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}`;
 
   return (
     <View
       style={[
         styles.wrap,
         {
-          backgroundColor: selected && selectionMode ? palette.accentSoft : palette.surface,
-          borderColor: palette.border,
+          backgroundColor: selected ? palette.accentSoft : "transparent",
+          borderBottomColor: palette.border,
         },
       ]}
     >
       <PressableScale
         accessibilityRole={selectionMode ? "checkbox" : "button"}
-        accessibilityLabel={`${folder.name}, ${folder.bookmarkCount} ${folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}${folder.pinned ? ", pinned" : ""}${folder.protected ? ", locked" : ""}`}
+        accessibilityLabel={`${folder.name}, ${countLabel}${folder.pinned ? ", pinned" : ""}${folder.protected ? ", locked" : ""}${unread ? `, ${folder.unreadCount} unread` : ""}`}
         accessibilityState={selectionMode ? { checked: !!selected } : undefined}
         accessibilityHint={
           selectionMode ? (selected ? "Deselect this folder" : "Select this folder") : undefined
         }
-        style={styles.rowButton}
+        style={styles.body}
         onPress={() => {
           if (!selectionMode) haptics.light();
           onPress(folder);
@@ -54,8 +56,10 @@ export function FolderRow({ folder, onPress, onMore, onLongPress, selected, sele
       >
         <View
           style={[
-            styles.iconWrap,
-            selectionMode ? null : { backgroundColor: palette.surfaceSecondary },
+            styles.iconFrame,
+            selectionMode
+              ? { backgroundColor: "transparent", borderColor: "transparent" }
+              : { backgroundColor: palette.surfaceSecondary, borderColor: palette.border },
           ]}
         >
           {selectionMode ? (
@@ -64,14 +68,33 @@ export function FolderRow({ folder, onPress, onMore, onLongPress, selected, sele
             <Ionicons name={folder.icon ?? DEFAULT_FOLDER_ICON} size={18} color={palette.accent} />
           )}
         </View>
-        <View style={styles.body}>
-          <Text variant="title3" numberOfLines={1}>{folder.name}</Text>
-          <Text variant="monoSmall" color="tertiary">
-            {folder.bookmarkCount} {folder.bookmarkCount === 1 ? "bookmark" : "bookmarks"}
-          </Text>
+
+        <View style={styles.content}>
+          <Text variant="headline" numberOfLines={1}>{folder.name}</Text>
+          <View style={styles.metaRow}>
+            <Text variant="caption" color="tertiary" numberOfLines={1} style={styles.count}>
+              {countLabel}
+            </Text>
+            {folder.protected ? (
+              <Ionicons
+                name="lock-closed"
+                size={12}
+                color={palette.textTertiary}
+                style={styles.statusIcon}
+                accessible={false}
+              />
+            ) : null}
+            {folder.pinned ? (
+              <Ionicons
+                name="pin"
+                size={13}
+                color={palette.accent}
+                style={styles.statusIcon}
+                accessible={false}
+              />
+            ) : null}
+          </View>
         </View>
-        {folder.protected ? <Ionicons name="lock-closed" size={14} color={palette.textTertiary} /> : null}
-        {folder.pinned ? <Ionicons name="pin" size={15} color={palette.accent} /> : null}
         {unread ? <Badge tone="accent">{folder.unreadCount}</Badge> : null}
       </PressableScale>
       {onMore && !selectionMode ? (
@@ -95,19 +118,36 @@ export function FolderRow({ folder, onPress, onMore, onLongPress, selected, sele
 const styles = StyleSheet.create({
   wrap: {
     flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: radius.sm,
+    alignItems: "flex-start",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingRight: spacing[8],
   },
-  rowButton: {
+  body: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    paddingLeft: spacing[12],
-    paddingVertical: spacing[12],
     gap: spacing[12],
+    paddingVertical: spacing[14],
+    paddingLeft: spacing[16],
+    paddingRight: spacing[8],
   },
-  iconWrap: { width: 34, height: 34, borderRadius: radius.sm, alignItems: "center", justifyContent: "center" },
-  body: { flex: 1, gap: 2 },
-  moreBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  iconFrame: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  content: { flex: 1, minWidth: 0 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: spacing[6], marginTop: spacing[8] },
+  count: { flexShrink: 1 },
+  statusIcon: { marginLeft: spacing[2] },
+  moreBtn: {
+    width: 40,
+    height: 40,
+    marginTop: spacing[10],
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

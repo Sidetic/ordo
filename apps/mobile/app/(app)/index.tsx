@@ -1,4 +1,4 @@
-/** Bookmarks home: unfiled bookmarks first, with folders available above them. */
+/** Bookmarks home: folders and unfiled bookmarks in one library list. */
 import React, { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -15,9 +15,7 @@ import { Button } from "../../src/components/ui/Button";
 import { Text } from "../../src/components/ui/Text";
 import { PressableScale } from "../../src/components/ui/PressableScale";
 import { ScreenContent } from "../../src/components/ui/ScreenContent";
-import { SettingsSectionLabel } from "../../src/components/settings/SettingsPage";
 import { BookmarkListSkeleton } from "../../src/components/ui/BookmarkListSkeleton";
-import { Skeleton } from "../../src/components/ui/Skeleton";
 import { EmptyState } from "../../src/components/ui/EmptyState";
 import { AddBookmarkSheet } from "../../src/components/bookmarks/AddBookmarkSheet";
 import { BookmarkActionsSheet } from "../../src/components/bookmarks/BookmarkActionsSheet";
@@ -52,6 +50,10 @@ import {
 import { layout, spacing } from "../../src/theme/tokens";
 import { type BookmarkDto, type FolderDto } from "@ordo/shared";
 
+type LibraryItem =
+  | { type: "folder"; folder: FolderDto }
+  | { type: "bookmark"; bookmark: BookmarkDto };
+
 export default function BookmarksScreen() {
   const { palette } = useTheme();
   const router = useRouter();
@@ -78,6 +80,14 @@ export default function BookmarksScreen() {
   const hasUnread = items.some((bookmark) => !bookmark.isRead);
   const folderItems = folders.data ?? [];
   const tagCount = tags.data?.length ?? 0;
+  const libraryItems = useMemo<LibraryItem[]>(
+    () => [
+      ...folderItems.map((folder) => ({ type: "folder" as const, folder })),
+      ...items.map((bookmark) => ({ type: "bookmark" as const, bookmark })),
+    ],
+    [folderItems, items],
+  );
+  const libraryLoading = (folders.isLoading || bookmarks.isLoading) && libraryItems.length === 0;
   const selectedBookmarks = useMemo(
     () => items.filter((bookmark) => selection.has(bookmarkKey(bookmark.id))),
     [items, selection],
@@ -144,77 +154,41 @@ export default function BookmarksScreen() {
     return "create a folder";
   };
 
-  const listHeader = (
-    <View style={styles.listHeader}>
-      <SettingsSectionLabel compact>Folders</SettingsSectionLabel>
-      {folders.isLoading ? (
-        <Skeleton height={68} radiusKey="lg" />
-      ) : (
-        <View style={styles.folderList}>
-          {folderItems.length > 0 ? (
-            folderItems.map((folder, index) => (
-              <React.Fragment key={folder.id}>
-                <FolderRow
-                  folder={folder}
-                  selectionMode={selection.active}
-                  selected={selection.has(folderKey(folder.id))}
-                  onPress={(selectedFolder) => {
-                    if (selection.active) {
-                      selection.toggle(folderKey(selectedFolder.id));
-                      return;
-                    }
-                    router.push(`/folder/${selectedFolder.id}`);
-                  }}
-                  onLongPress={(selectedFolder) => {
-                    if (selection.active) selection.toggle(folderKey(selectedFolder.id));
-                    else selection.enter(folderKey(selectedFolder.id));
-                  }}
-                  onMore={setActionsFolder}
-                />
-                {index < folderItems.length - 1 ? <View style={styles.folderSeparator} /> : null}
-              </React.Fragment>
-            ))
-          ) : (
-            <PressableScale
-              accessibilityRole="button"
-              accessibilityLabel="New folder"
-              accessibilityHint="Organize bookmarks into a folder."
-              style={[styles.noFolders, { borderColor: palette.border, backgroundColor: palette.surface }]}
-              onPress={() => setCreateOpen(true)}
-            >
-              <Ionicons name="folder-open-outline" size={20} color={palette.accent} />
-              <View style={styles.noFoldersCopy}>
-                <Text variant="bodyStrong">Organize with folders</Text>
-                <Text variant="footnote" color="tertiary">Create one whenever you need it.</Text>
-              </View>
-              <Ionicons name="add" size={20} color={palette.textTertiary} />
-            </PressableScale>
-          )}
-        </View>
-      )}
+  const openFolder = (folder: FolderDto) => {
+    router.push(`/folder/${folder.id}`);
+  };
 
-      <View style={styles.bookmarksSectionHeader}>
-        <SettingsSectionLabel compact>Bookmarks</SettingsSectionLabel>
+  const headerRight =
+    tagCount > 0 || hasUnread ? (
+      <View style={styles.headerActions}>
         {tagCount > 0 ? (
           <PressableScale
-            accessibilityRole="button"
-            accessibilityLabel={`Tags, ${tagCount} ${tagCount === 1 ? "tag" : "tags"}`}
-            accessibilityHint="Browse and manage tags."
-            style={styles.tagsLink}
+            style={styles.headerAction}
             onPress={() => {
               haptics.light();
               router.push("/tags");
             }}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`Tags, ${tagCount} ${tagCount === 1 ? "tag" : "tags"}`}
+            accessibilityHint="Browse and manage tags."
           >
-            <Ionicons name="pricetags-outline" size={11} color={palette.textTertiary} />
-            <Text variant="label" color="secondary">
-              Tags
-            </Text>
+            <Ionicons name="pricetags-outline" size={22} color={palette.text} />
+          </PressableScale>
+        ) : null}
+        {hasUnread ? (
+          <PressableScale
+            style={styles.headerAction}
+            onPress={onMarkAllRead}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Mark all as read"
+          >
+            <Ionicons name="checkmark-done" size={22} color={palette.accent} />
           </PressableScale>
         ) : null}
       </View>
-    </View>
-  );
+    ) : undefined;
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
@@ -234,25 +208,13 @@ export default function BookmarksScreen() {
         title="Bookmarks"
         large
         maxWidth={layout.maxContentWidth}
-        right={
-          hasUnread ? (
-            <PressableScale
-              style={styles.headerAction}
-              onPress={onMarkAllRead}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Mark all as read"
-            >
-              <Ionicons name="checkmark-done" size={22} color={palette.accent} />
-            </PressableScale>
-          ) : undefined
-        }
+        right={headerRight}
       />
       )}
 
       <ExtractionProgressLine />
 
-      {bookmarks.error && !bookmarks.data ? (
+      {bookmarks.error && !bookmarks.data && folderItems.length === 0 && !folders.isLoading ? (
         <ScreenContent maxWidth={layout.maxContentWidth} style={styles.center}>
           <EmptyState
             icon="cloud-offline-outline"
@@ -264,36 +226,64 @@ export default function BookmarksScreen() {
       ) : (
         <ScreenContent maxWidth={layout.maxContentWidth} style={styles.content}>
           <FlashList
-            data={items}
-            keyExtractor={(bookmark: BookmarkDto) => bookmark.id}
-            renderItem={({ item }: { item: BookmarkDto }) => (
-              <BookmarkRow
-                bookmark={item}
-                selectionMode={selection.active}
-                selected={selection.has(bookmarkKey(item.id))}
-                onPress={(bookmark) => {
-                  if (selection.active) selection.toggle(bookmarkKey(bookmark.id));
-                  else openBookmark(bookmark);
-                }}
-                onLongPress={(bookmark) => {
-                  if (selection.active) selection.toggle(bookmarkKey(bookmark.id));
-                  else selection.enter(bookmarkKey(bookmark.id));
-                }}
-                onMore={setActionBookmark}
-              />
-            )}
+            data={libraryItems}
+            keyExtractor={(item: LibraryItem) =>
+              item.type === "folder" ? folderKey(item.folder.id) : bookmarkKey(item.bookmark.id)
+            }
+            getItemType={(item: LibraryItem) => item.type}
+            overrideItemLayout={(layout, item: LibraryItem) => {
+              layout.size = item.type === "folder" ? 76 : 108;
+            }}
+            renderItem={({ item }: { item: LibraryItem }) => {
+              if (item.type === "folder") {
+                return (
+                  <FolderRow
+                    folder={item.folder}
+                    selectionMode={selection.active}
+                    selected={selection.has(folderKey(item.folder.id))}
+                    onPress={(selectedFolder) => {
+                      if (selection.active) {
+                        selection.toggle(folderKey(selectedFolder.id));
+                        return;
+                      }
+                      openFolder(selectedFolder);
+                    }}
+                    onLongPress={(selectedFolder) => {
+                      if (selection.active) selection.toggle(folderKey(selectedFolder.id));
+                      else selection.enter(folderKey(selectedFolder.id));
+                    }}
+                    onMore={setActionsFolder}
+                  />
+                );
+              }
+              return (
+                <BookmarkRow
+                  bookmark={item.bookmark}
+                  selectionMode={selection.active}
+                  selected={selection.has(bookmarkKey(item.bookmark.id))}
+                  onPress={(bookmark) => {
+                    if (selection.active) selection.toggle(bookmarkKey(bookmark.id));
+                    else openBookmark(bookmark);
+                  }}
+                  onLongPress={(bookmark) => {
+                    if (selection.active) selection.toggle(bookmarkKey(bookmark.id));
+                    else selection.enter(bookmarkKey(bookmark.id));
+                  }}
+                  onMore={setActionBookmark}
+                />
+              );
+            }}
             extraData={selection.revision}
             estimatedItemSize={108}
-            ListHeaderComponent={listHeader}
             ListEmptyComponent={
-              bookmarks.isLoading ? (
+              libraryLoading ? (
                 <BookmarkListSkeleton />
               ) : (
                 <View style={styles.emptyBookmarks}>
                   <EmptyState
                     icon="bookmark-outline"
                     title="No bookmarks yet"
-                    message="Save a link now, then organize it into a folder whenever you want."
+                    message="Save a link to start reading. Keep it here or file it in a folder whenever you want."
                     action={<Button label="Save bookmark" onPress={() => setAddOpen(true)} />}
                   />
                 </View>
@@ -305,6 +295,7 @@ export default function BookmarksScreen() {
               ) : null
             }
             contentContainerStyle={{
+              paddingTop: spacing[8],
               paddingBottom:
                 (floatingNavigation ? bottomClearance : spacing[96]) +
                 (selection.active ? SELECTION_BAR_HEIGHT + spacing[16] : 0),
@@ -438,33 +429,8 @@ export default function BookmarksScreen() {
 const styles = StyleSheet.create({
   content: { flex: 1, width: "100%" },
   center: { flex: 1, width: "100%", justifyContent: "center" },
+  headerActions: { flexDirection: "row", alignItems: "center" },
   headerAction: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
-  listHeader: { paddingTop: spacing[8] },
-  folderList: { paddingBottom: spacing[4] },
-  folderSeparator: { height: spacing[8] },
-  noFolders: {
-    minHeight: 68,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[12],
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingHorizontal: spacing[16],
-  },
-  noFoldersCopy: { flex: 1 },
-  bookmarksSectionHeader: {
-    paddingTop: spacing[20],
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  tagsLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[6],
-    paddingBottom: spacing[8],
-    paddingRight: spacing[12],
-  },
   emptyBookmarks: { minHeight: 300, justifyContent: "center" },
   footer: { paddingVertical: spacing[20], alignItems: "center" },
   createMenuActions: { gap: spacing[8] },
