@@ -4,7 +4,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../theme/ThemeProvider";
 import { radius } from "../../theme/tokens";
 
-export function SelectionMark({ selected, size = 22 }: { selected: boolean; size?: number }) {
+/** Same footprint as folder/favicon tiles so selection chrome matches the row. */
+export const SELECTION_MARK_SIZE = 36;
+
+export function SelectionMark({ selected, size = SELECTION_MARK_SIZE }: { selected: boolean; size?: number }) {
   const { palette } = useTheme();
   return (
     <View
@@ -13,15 +16,13 @@ export function SelectionMark({ selected, size = 22 }: { selected: boolean; size
         {
           width: size,
           height: size,
-          borderRadius: radius.full,
+          backgroundColor: selected ? palette.accent : palette.surfaceSecondary,
+          borderColor: selected ? palette.accent : palette.border,
         },
-        selected
-          ? { backgroundColor: palette.accent, borderColor: palette.accent }
-          : { backgroundColor: "transparent", borderColor: palette.borderStrong },
       ]}
     >
       {selected ? (
-        <Ionicons name="checkmark" size={Math.round(size * 0.64)} color={palette.onAccent} />
+        <Ionicons name="checkmark" size={18} color={palette.onAccent} />
       ) : null}
     </View>
   );
@@ -29,8 +30,10 @@ export function SelectionMark({ selected, size = 22 }: { selected: boolean; size
 
 const styles = StyleSheet.create({
   mark: {
-    borderWidth: 2,
+    borderRadius: radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
 });

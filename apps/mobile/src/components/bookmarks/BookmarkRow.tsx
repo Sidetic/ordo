@@ -107,36 +107,36 @@ export function BookmarkRow({
         onLongPress={onLongPress ? () => onLongPress(bookmark) : onMore ? () => onMore(bookmark) : undefined}
         delayLongPress={SELECTION_LONG_PRESS_MS}
       >
-        <View
-          style={[
-            styles.faviconFrame,
-            selectionMode
-              ? { backgroundColor: "transparent", borderColor: "transparent" }
-              : { backgroundColor: palette.surfaceSecondary, borderColor: palette.border },
-          ]}
-        >
-          {selectionMode ? (
-            <SelectionMark selected={!!selected} size={24} />
-          ) : failedFavicon === faviconUrl ? (
-            <Ionicons
-              name="globe-outline"
-              size={18}
-              color={palette.textTertiary}
-              accessible={false}
-            />
-          ) : (
-            <Image
-              source={{ uri: faviconUrl }}
-              style={styles.favicon}
-              resizeMode="contain"
-              accessible={false}
-              onError={() => setFailedFavicon(faviconUrl)}
-            />
-          )}
-          {!selectionMode && !bookmark.isRead ? (
-            <View style={[styles.unreadDot, { backgroundColor: palette.accent }]} />
-          ) : null}
-        </View>
+        {selectionMode ? (
+          <SelectionMark selected={!!selected} />
+        ) : (
+          <View
+            style={[
+              styles.faviconFrame,
+              { backgroundColor: palette.surfaceSecondary, borderColor: palette.border },
+            ]}
+          >
+            {failedFavicon === faviconUrl ? (
+              <Ionicons
+                name="globe-outline"
+                size={18}
+                color={palette.textTertiary}
+                accessible={false}
+              />
+            ) : (
+              <Image
+                source={{ uri: faviconUrl }}
+                style={styles.favicon}
+                resizeMode="contain"
+                accessible={false}
+                onError={() => setFailedFavicon(faviconUrl)}
+              />
+            )}
+            {!bookmark.isRead ? (
+              <View style={[styles.unreadDot, { backgroundColor: palette.accent }]} />
+            ) : null}
+          </View>
+        )}
 
         <View style={styles.content}>
           <Text variant="headline" color={titleColor} numberOfLines={1}>
